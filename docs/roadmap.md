@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Proposed for Product Owner approval  
+**Status:** Approved; M1 delivered   
 **Last updated:** 2026-10-22  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
@@ -185,6 +185,50 @@ M1 is done when:
 - The implementation has not silently expanded product scope.
 - The PRD/architecture/decisions documents remain consistent with the code.
 
+### 3.10 M1 implementation status
+
+Delivered 2026-10-22. All work is local; no scheduler, notifier, or second source was added.
+
+| Area | Status |
+|---|---|
+| Package, CLI entry point, configuration | `jobscout scan`, `jobscout summary --current`, `jobscout status`; optional `config.toml`; stdlib-only runtime |
+| Contracts (`Job`, `ScanResult`, `LocationResult`, `MatchDecision`, `ScanOutcome`) | Done |
+| SQLite schema and ordered migration runner | `sources`, `scans`, `jobs`, `PRAGMA user_version`; WAL and foreign keys on |
+| Palantir Lever adapter | One request per scan, explicit skip reasons, no raw payload storage |
+| Location normalizer and deterministic matcher | `matching.RULES_VERSION = "m1.1"`; reasons recorded per role |
+| Baseline, new-role, update, partial, closure, restart transitions | Done, covered by state-transition tests |
+| Suspicious-empty guard | Done, with an explicit `--accept-empty` override |
+| Fixtures and tests | 121 tests, no network access |
+
+Acceptance evidence:
+
+| Criterion | Where it is verified |
+|---|---|
+| M1-A1 | `test_cli.py::test_scan_dry_run_reports_a_baseline` |
+| M1-A2 | `test_adapter_lever.py::test_unusable_records_are_skipped_with_a_reason` |
+| M1-A3 | `test_scanner.py::test_first_complete_scan_establishes_a_silent_baseline`, `test_cli.py::test_summary_lists_current_matches_and_is_read_only` |
+| M1-A4 | `test_scanner.py::test_new_role_after_baseline_produces_one_candidate` |
+| M1-A5 | `test_scanner.py::test_repeating_the_same_snapshot_produces_no_duplicate_candidate` |
+| M1-A6 | `test_scanner.py::test_changed_role_details_update_without_re_alerting` |
+| M1-A7 | `test_scanner.py::test_role_closes_after_two_consecutive_complete_misses`, `test_partial_scan_never_increments_closure_misses`, `test_failed_scan_never_increments_closure_misses` |
+| M1-A8 | `test_scanner.py::test_role_first_seen_in_a_partial_scan_becomes_eligible_in_a_complete_scan` |
+| M1-A9 | `test_scanner.py::test_valid_empty_first_scan_is_a_complete_baseline`, `test_suspicious_empty_result_from_non_empty_source_is_partial`, `test_accepted_empty_result_follows_the_normal_closure_rule` |
+| M1-A10 | `test_scanner.py::test_restart_preserves_state_and_prevents_duplicate_candidates` |
+| M1-A11 | `test_matching.py`, `test_location.py` |
+| M1-A12 | `test_cli.py::test_status_reports_operational_state_without_secrets` |
+| M1-A13 | `test_adapter_lever.py` and the fixture set; `test_cli.py::test_fixture_scan_uses_no_network` |
+| M1-A14 | `test_cli.py::test_scan_requires_dry_run_in_m1`; no Telegram code or configuration exists |
+| M1-A15 | No scheduler or loop exists; only the explicit single `scan` command |
+
+Known deviations and limitations:
+
+- `scan` without `--dry-run` exits with code 2 rather than silently recording. M1 has no notifier, so the flag is mandatory.
+- `--accept-empty` was added to make the suspicious-empty guard overridable by an explicit operator decision.
+- Because any unmappable record makes a scan `partial` (D-033), a persistently malformed record would block baseline and alerting. It is always visible in `status` and dry-run output, but resolving it requires an adapter fix.
+- Matching precision has only been exercised on curated fixtures, not on a live Palantir snapshot. D-026 remains pending review.
+- Filter terms are code-defined in M1; configurable filters (PRD FR-12) are scheduled for M2 under D-035.
+- M1 sign-off still requires Product Owner review of this dry-run sample and of the default keyword list.
+
 ## 4. Post-M1 gates
 
 ### M2 — Telegram delivery for Palantir
@@ -193,6 +237,7 @@ M1 is done when:
 - Approve the ambiguous-delivery policy before implementation.
 - Test fake success, 429, 5xx, permanent 4xx, timeout-after-send, restart, and duplicate suppression.
 - Deliver one live test alert if Palantir permission allows.
+- Complete FR-12: the Telegram destination and matching filter overrides become configuration, joining the already configurable database path and source settings. Overrides may add terms but must not remove approved categories or exclusions.
 - First usable version is complete when Palantir alerts work reliably enough for daily use.
 
 ### M3 — Workday: Barclays and Lloyds Graduate

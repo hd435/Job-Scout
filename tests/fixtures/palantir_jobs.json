@@ -1,0 +1,319 @@
+[
+  {
+    "id": "8a1f4c10-0001-4000-8000-000000000001",
+    "text": "Forward Deployed Software Engineer - New Grad",
+    "categories": {
+      "team": "Deployment",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Work directly with customers to deploy our platform. New graduates welcome; visa sponsorship available.",
+    "createdAt": 1756684800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0001-4000-8000-000000000001",
+    "salaryRange": {
+      "min": 85000,
+      "max": 95000,
+      "currency": "GBP",
+      "interval": "per-year-salary"
+    }
+  },
+  {
+    "id": "8a1f4c10-0002-4000-8000-000000000002",
+    "text": "Software Engineer Intern",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Internship"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Twelve week summer internship on a product engineering team.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0002-4000-8000-000000000002"
+  },
+  {
+    "id": "8a1f4c10-0003-4000-8000-000000000003",
+    "text": "Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Build and ship backend services for our data platform.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0003-4000-8000-000000000003"
+  },
+  {
+    "id": "8a1f4c10-0004-4000-8000-000000000004",
+    "text": "Senior Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Lead the design of distributed systems with several years of experience.",
+    "createdAt": 1756684800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0004-4000-8000-000000000004"
+  },
+  {
+    "id": "8a1f4c10-0005-4000-8000-000000000005",
+    "text": "Data Scientist",
+    "categories": {
+      "team": "Foundry",
+      "location": "New York, NY",
+      "allLocations": ["New York, NY"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Partner with customers on applied data science projects.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0005-4000-8000-000000000005"
+  },
+  {
+    "id": "8a1f4c10-0006-4000-8000-000000000006",
+    "text": "Software Engineer, New Grad",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom", "New York, United States"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Multiple locations available for our graduate intake.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0006-4000-8000-000000000006"
+  },
+  {
+    "id": "8a1f4c10-0007-4000-8000-000000000007",
+    "text": "Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "location": "Remote - US",
+      "allLocations": ["Remote - US"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "remote",
+    "descriptionPlain": "Remote role for candidates based in the United States.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0007-4000-8000-000000000007"
+  },
+  {
+    "id": "8a1f4c10-0008-4000-8000-000000000008",
+    "text": "Graduate Data Engineer",
+    "categories": {
+      "team": "Foundry",
+      "location": "Remote - United Kingdom",
+      "allLocations": ["Remote - United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "remote",
+    "descriptionPlain": "Join our graduate programme building data pipelines, working remotely across the UK.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0008-4000-8000-000000000008",
+    "salaryRange": {
+      "min": 45000,
+      "max": 52000,
+      "currency": "GBP",
+      "interval": "per-year-salary"
+    }
+  },
+  {
+    "id": "8a1f4c10-0009-4000-8000-000000000009",
+    "text": "Junior Data Analyst",
+    "categories": {
+      "team": "Business Operations",
+      "location": "Manchester, United Kingdom",
+      "allLocations": ["Manchester, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Support the commercial team with reporting and analysis.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0009-4000-8000-000000000009"
+  },
+  {
+    "id": "8a1f4c10-0010-4000-8000-000000000010",
+    "text": "Account Executive",
+    "categories": {
+      "team": "Sales",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Own enterprise sales opportunities across EMEA.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0010-4000-8000-000000000010"
+  },
+  {
+    "id": "8a1f4c10-0011-4000-8000-000000000011",
+    "text": "Deployment Strategist",
+    "categories": {
+      "team": "Deployment",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Translate customer problems into platform deployments.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0011-4000-8000-000000000011"
+  },
+  {
+    "id": "8a1f4c10-0012-4000-8000-000000000012",
+    "text": "Quantitative Researcher - New Grad",
+    "categories": {
+      "team": "Finance",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Apply quantitative methods to internal risk problems.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0012-4000-8000-000000000012"
+  },
+  {
+    "id": "8a1f4c10-0013-4000-8000-000000000013",
+    "text": "Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Location not yet published for this requisition.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0013-4000-8000-000000000013"
+  },
+  {
+    "id": "8a1f4c10-0014-4000-8000-000000000014",
+    "text": "Software Engineer, New Grad",
+    "categories": {
+      "team": "Engineering",
+      "location": "Bengaluru, India",
+      "allLocations": ["Bengaluru, India"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Graduate engineering role in our India office.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0014-4000-8000-000000000014"
+  },
+  {
+    "id": "8a1f4c10-0015-4000-8000-000000000015",
+    "text": "Engineering Manager",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Lead a team of eight engineers.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0015-4000-8000-000000000015"
+  },
+  {
+    "id": "8a1f4c10-0016-4000-8000-000000000016",
+    "text": "Data Engineer",
+    "categories": {
+      "team": "Foundry",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Build and operate batch and streaming data pipelines.",
+    "createdAt": "not-a-timestamp",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0016-4000-8000-000000000016"
+  },
+  {
+    "id": "8a1f4c10-0017-4000-8000-000000000017",
+    "text": "Product Designer",
+    "categories": {
+      "team": "Design",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Design interfaces for our platform applications.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0017-4000-8000-000000000017"
+  },
+  {
+    "id": "8a1f4c10-0018-4000-8000-000000000018",
+    "text": "Graduate Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Two year structured graduate development programme.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0018-4000-8000-000000000018",
+    "salaryRange": {
+      "min": 55000,
+      "currency": "GBP",
+      "interval": "per-year-salary"
+    }
+  },
+  {
+    "id": "8a1f4c10-0019-4000-8000-000000000019",
+    "text": "Software Engineer",
+    "categories": {
+      "team": "Engineering",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "remote",
+    "descriptionPlain": "Fully remote role with occasional London office visits.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0019-4000-8000-000000000019"
+  },
+  {
+    "id": "8a1f4c10-0020-4000-8000-000000000020",
+    "text": "Machine Learning Engineer, Intern",
+    "categories": {
+      "team": "Artificial Intelligence",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Internship"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Internship focused on applied machine learning research.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0020-4000-8000-000000000020"
+  },
+  {
+    "id": "8a1f4c10-0021-4000-8000-000000000021",
+    "text": "Legal Counsel",
+    "categories": {
+      "team": "Legal",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "onsite",
+    "descriptionPlain": "Provide commercial legal advice to the UK business.",
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0021-4000-8000-000000000021"
+  },
+  {
+    "id": "8a1f4c10-0022-4000-8000-000000000022",
+    "text": "Business Analyst - Graduate Programme",
+    "categories": {
+      "team": "Business Operations",
+      "location": "London, United Kingdom",
+      "allLocations": ["London, United Kingdom"],
+      "commitment": "Full-time"
+    },
+    "workplaceType": "hybrid",
+    "descriptionPlain": "Rotational graduate programme for business analysis.",
+    "createdAt": 1759276800000,
+    "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-0022-4000-8000-000000000022",
+    "salaryRange": {
+      "min": 42000,
+      "max": 46000,
+      "currency": "GBP",
+      "interval": "per-year-salary"
+    }
+  }
+]

@@ -1,6 +1,6 @@
 # Job-Scout — Product Requirements Document
 
-**Status:** Product defaults approved; architecture and roadmap under review  
+**Status:** Approved (product defaults and architecture direction approved; M1 implemented)  
 **Last updated:** 2026-10-22  
 **Owner:** Product Owner  
 **Companion evidence:** [docs/sources.md](./sources.md)  
@@ -8,7 +8,7 @@
 **Decision log:** [docs/decisions.md](./decisions.md)  
 **Delivery plan:** [docs/roadmap.md](./roadmap.md)  
 **Authority:** This PRD is the product source of truth. Discovery evidence remains in `docs/sources.md`; technical design and delivery planning derive from this document.  
-**Repository state:** documentation only; no application code exists as of this draft.
+**Repository state:** M1 implemented (local Palantir-only dry run: persistence, matching, baseline and closure handling, `scan`/`summary`/`status` CLI). Telegram, scheduling, deployment, and the other five sources are not implemented.
 
 ## 1. Product vision
 

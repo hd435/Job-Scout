@@ -56,6 +56,11 @@ This is a concise decision log, not a duplicate of the PRD. Status values:
 | D-028 | Repository visibility, licence, and self-host packaging | Deferred to M6 | Personal MVP unaffected. Decide before a public clone-and-run release. |
 | D-029 | Historical match-decision storage | Deferred | Store the latest decision on the job for M1. Add history only if tuning evidence requires it. |
 | D-030 | Multi-user accounts, AI ranking, dashboard, saved jobs, application tracking | Deferred / out of scope | No evidence of need for this MVP. |
+| D-031 | M1 implementation uses a `src/` layout, a standard-library-only runtime, and `pytest`/`ruff` as dev-only tools | Implemented (M1) | Keeps the self-host footprint small and the dependency surface minimal; no HTTP, parsing, or CLI library was needed. |
+| D-032 | Matching keywords live in code behind a version string (`matching.RULES_VERSION`), and the version is stored with every match decision | Implemented (M1) | Keeps matching explainable and reproducible; keyword tuning bumps the version. This fixes the versioning mechanism only: the terms themselves still need Product Owner review (D-026), and keyword configurability is D-035, not resolved here. |
+| D-033 | Any unmappable record makes the scan `partial`, not complete | Implemented (M1) | Follows architecture 3.1 and guarantees no silent drops or false closures. Known limitation: a persistently malformed record prevents baseline/alerting; it is visible in `status` and dry-run output. Revisit if live data shows this pattern. |
+| D-034 | A suspicious empty response (source previously returned roles, now zero) is downgraded to `partial` unless `--accept-empty` is passed | Implemented (M1) | Prevents an upstream outage from looking like mass closure. The override keeps a genuine source shutdown workable without mass false closures. |
+| D-035 | PRD FR-12 (config-driven sources, filters, and Telegram destination) is completed in M2; M1 deliberately leaves filter terms in code | Approved, scheduled for M2 | No M1 acceptance criterion requires configurable filters (M1-A14 assumes no configuration). Sources, `enabled`, and cadence are already configuration. Bundling filter overrides with the M2 Telegram destination keeps one config surface, and overrides may add terms but never remove approved categories or exclusions. |
 
 ## Change rule
 

@@ -1,6 +1,6 @@
 # Job-Scout — Architecture
 
-**Status:** Proposed for Product Owner approval  
+**Status:** Approved; M1 implementation in place   
 **Last updated:** 2026-10-22  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Source evidence:** [docs/sources.md](./sources.md)  
