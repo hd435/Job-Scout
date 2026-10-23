@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1, M2 and M3 (offline) delivered   
+**Status:** Approved; M1, M2, M3 and M4 (offline) delivered   
 **Last updated:** 2026-10-23  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
@@ -23,7 +23,7 @@ M1 is the first implementation milestone. It is not the completed product.
 | **M1** | Local Palantir scan, SQLite persistence, deterministic matching, baseline, dry-run and status CLI | M1 acceptance criteria in section 3 |
 | **M2** | Palantir Telegram alerts with formatting, dedupe, and failure visibility | M1 accepted; Telegram token and chat ID; notification policy approved; Palantir permission sufficient for live delivery |
 | **M3** | Barclays and Lloyds Graduate added through Workday (adapter delivered offline; live validation outstanding) | M2 accepted; pagination/429 fixtures; cross-source dedupe addressed; terms review still open for live use |
-| **M4** | Wise, Arm, and Monzo added; all six sources operational | M3 accepted; terms review; parser fixtures; all six acceptance checks |
+| **M4** | Wise, Arm, and Monzo added; all six sources operational (adapters delivered offline; live validation outstanding) | M3 accepted; parser fixtures; all six acceptance checks; terms review still open for live use |
 | **M5** | Unattended operation, seven-day run, status and failure notices | M4 accepted; host/deployment chosen; retention approved; reliability threshold met |
 | **M6** | Friend can clone and run an independent deployment | Post-MVP: packaging, licence/visibility, quickstart |
 
@@ -299,6 +299,30 @@ Live validation still required before these sources can be trusted or run unatte
 - Validate sitemap caching, detail-page fetch rules, parser fixtures, and parse-failure reporting.
 - Never request Wise query-string job pages or Arm search-results paths.
 - Confirm all six sources and full acceptance matrix.
+
+**M4 delivery (offline, synthetic fixtures)**
+
+| Item | Status |
+|---|---|
+| `GreenhouseAdapter` for `monzo`: one board response per scan, HTML-escaped content unescaped, location/offices mapping, salary fallback | Delivered 2026-10-23 (fixtures) |
+| `SitemapHtmlAdapter` for `wise` and `arm`: in-code profiles, index or urlset discovery, job-URL identity, JSON-LD fields | Delivered (fixtures) |
+| Incremental refresh: only new, unrevisioned, or changed roles are fetched; unchanged roles are reported as observed-only and keep their stored details | Delivered; contract covered end to end |
+| Politeness: configurable request delay (0.5s default), sitemap document cap, detail-fetch cap, no disallowed paths | Delivered (defaults unvalidated) |
+| Partial-scan safety: malformed sitemap, unmatched URL pattern, detail failure, and cap exhaustion all make the scan `partial` and never close roles | Delivered (fixtures) |
+| All six intended sources configured (Palantir, Barclays, Lloyds Graduate, Monzo, Wise, Arm) | Delivered; none validated live |
+| Live validation against real payloads for Monzo, Wise, and Arm | **Not done**; requires permitted access (D-055) |
+
+M4 decisions: observation separated from refresh with a stored revision marker (D-049); Greenhouse mapping and double-escaped content (D-050); in-code sitemap profiles with JSON-LD first and a title-only fallback (D-051); discovery constraints and loud failure on unmatched patterns (D-052); request spacing and caps (D-053); cross-source dedupe closed as a reasoned no-op (D-054); fixture-only evidence recorded as an open gap (D-055).
+
+M4 acceptance evidence: `tests/test_adapter_greenhouse.py` (field mapping, HTML unescaping, location and offices fallback, salary sources, malformed payloads, transport failure, skips, duplicates, empty board), `tests/test_adapter_sitemap_html.py` (index traversal, child-sitemap filtering, non-job URL handling, JSON-LD and fallback mapping, multi-location, duplicate ids, malformed sitemaps, detail failure, revision-skip/changed/unrevisioned refresh, fetch caps, request spacing, scanner integration for unchanged roles, new-role alerting, and two-scan closure), `tests/test_incremental_scan.py` (the observed-versus-refreshed contract), `tests/test_http.py` (text GET, fixture text), and `tests/test_config.py` (six default sources).
+
+Live validation still required before these sources can be trusted or run unattended:
+
+1. Confirm the Greenhouse board response for Monzo and the real `location`/`content`/salary shapes.
+2. Confirm the Wise and Arm sitemap structure, the job URL patterns, and JSON-LD availability per page.
+3. Confirm whether `lastmod` really changes when a role's details change; if it does not, refresh must fall back to a different signal.
+4. Confirm observed request-tolerance and rate limits for the 0.5s delay and the fetch caps.
+5. Complete terms review for recurring automated access (D-027); reachability is not permission.
 
 ### M5 — Unattended operation and MVP completion
 

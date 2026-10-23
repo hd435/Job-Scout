@@ -92,6 +92,27 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
             "locale": "en-US",
         },
     ),
+    SourceConfig(
+        id="monzo",
+        employer="Monzo",
+        adapter="greenhouse",
+        cadence_minutes=30,
+        options={"board": "monzo"},
+    ),
+    SourceConfig(
+        id="wise",
+        employer="Wise",
+        adapter="sitemap_html",
+        cadence_minutes=30,
+        options={"profile": "wise"},
+    ),
+    SourceConfig(
+        id="arm",
+        employer="Arm",
+        adapter="sitemap_html",
+        cadence_minutes=30,
+        options={"profile": "arm"},
+    ),
 )
 
 

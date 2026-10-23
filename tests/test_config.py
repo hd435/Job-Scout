@@ -39,7 +39,14 @@ def test_defaults_are_usable_without_a_config_file(tmp_path: Path, monkeypatch) 
     config = load_config()
 
     assert config.database_path == default_config().database_path
-    assert [source.id for source in config.sources] == ["palantir", "barclays", "lloyds_graduate"]
+    assert [source.id for source in config.sources] == [
+        "palantir",
+        "barclays",
+        "lloyds_graduate",
+        "monzo",
+        "wise",
+        "arm",
+    ]
     assert config.source("palantir").cadence_minutes == 30
 
 
@@ -121,8 +128,8 @@ def test_incomplete_source_is_rejected(tmp_path: Path) -> None:
 
 
 def test_unknown_source_is_reported() -> None:
-    with pytest.raises(ConfigError, match="unknown source 'monzo'"):
-        default_config().source("monzo")
+    with pytest.raises(ConfigError, match="unknown source 'acme'"):
+        default_config().source("acme")
 
 
 def test_telegram_configuration_comes_from_the_environment() -> None:

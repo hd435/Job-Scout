@@ -104,6 +104,26 @@ class FakeWorkdayHttp:
         raise AssertionError(f"unexpected detail request: {url}")
 
 
+class FakeHtmlHttp:
+    """Serves scripted sitemaps and job pages as text; records every request."""
+
+    def __init__(self, documents: dict[str, Any] | None = None) -> None:
+        self.documents = dict(documents or {})
+        self.gets: list[str] = []
+        self.error: Exception | None = None
+
+    def get_text(self, url: str) -> str:
+        self.gets.append(url)
+        if self.error is not None:
+            raise self.error
+        if url in self.documents:
+            document = self.documents[url]
+            if isinstance(document, Exception):
+                raise document
+            return str(document)
+        raise AssertionError(f"unexpected text request: {url}")
+
+
 def lever_record(
     source_job_id: str,
     title: str,
@@ -214,6 +234,61 @@ def workday_payloads() -> dict[str, Any]:
             "workday_barclays_page2",
             "workday_barclays_detail",
             "workday_lloyds_graduate",
+        )
+    }
+
+
+@pytest.fixture
+def fake_html_http() -> type[FakeHtmlHttp]:
+    return FakeHtmlHttp
+
+
+@pytest.fixture
+def monzo() -> SourceConfig:
+    return SourceConfig(
+        id="monzo",
+        employer="Monzo",
+        adapter="greenhouse",
+        options={"board": "monzo"},
+    )
+
+
+@pytest.fixture
+def wise() -> SourceConfig:
+    return SourceConfig(
+        id="wise",
+        employer="Wise",
+        adapter="sitemap_html",
+        options={"profile": "wise"},
+    )
+
+
+@pytest.fixture
+def arm() -> SourceConfig:
+    return SourceConfig(
+        id="arm",
+        employer="Arm",
+        adapter="sitemap_html",
+        options={"profile": "arm"},
+    )
+
+
+@pytest.fixture
+def greenhouse_payload() -> dict[str, Any]:
+    return json.loads((FIXTURES / "greenhouse_monzo.json").read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def html_payloads() -> dict[str, str]:
+    return {
+        name: (FIXTURES / name).read_text(encoding="utf-8")
+        for name in (
+            "wise_sitemap_index.xml",
+            "wise_vacancies_sitemap.xml",
+            "wise_job_page.html",
+            "arm_sitemap.xml",
+            "arm_job_page.html",
+            "arm_job_page_no_ld.html",
         )
     }
 

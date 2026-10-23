@@ -1,0 +1,43 @@
+{
+  "meta": { "total": 3 },
+  "jobs": [
+    {
+      "id": 4102001,
+      "title": "Graduate Software Engineer",
+      "updated_at": "2026-10-20T09:15:00-04:00",
+      "first_published": "2026-10-02T12:00:00-04:00",
+      "absolute_url": "https://boards.greenhouse.io/monzo/jobs/4102001",
+      "location": { "name": "London, UK" },
+      "offices": [{ "id": 1, "name": "London" }],
+      "departments": [{ "id": 2, "name": "Engineering" }],
+      "content": "&lt;p&gt;Build the bank of the future with our &lt;strong&gt;graduate&lt;/strong&gt; engineering team.&lt;/p&gt;&lt;p&gt;London based, hybrid.&lt;/p&gt;",
+      "metadata": []
+    },
+    {
+      "id": 4102002,
+      "title": "Associate Data Scientist Intern",
+      "updated_at": "2026-10-18T11:45:00-04:00",
+      "first_published": "2026-09-28T08:30:00-04:00",
+      "absolute_url": "https://boards.greenhouse.io/monzo/jobs/4102002",
+      "location": { "name": "Remote - UK" },
+      "offices": [],
+      "departments": [{ "id": 3, "name": "Data" }],
+      "content": "&lt;p&gt;A 12 week internship in data science.&lt;/p&gt;",
+      "metadata": [
+        { "id": 9, "name": "Salary range", "value": "£40,000 - £45,000 pro rata" }
+      ]
+    },
+    {
+      "id": 4102003,
+      "title": "Senior Software Engineer",
+      "updated_at": "2026-10-21T10:05:00-04:00",
+      "first_published": "2026-08-14T09:00:00-04:00",
+      "absolute_url": "https://boards.greenhouse.io/monzo/jobs/4102003",
+      "location": { "name": "Cardiff, UK" },
+      "offices": [{ "id": 4, "name": "Cardiff" }],
+      "departments": [{ "id": 2, "name": "Engineering" }],
+      "content": "&lt;p&gt;Lead delivery of our core ledger.&lt;/p&gt;",
+      "metadata": []
+    }
+  ]
+}

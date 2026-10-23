@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from .base import AdapterError, SourceAdapter, build_job
+from .greenhouse import GreenhouseAdapter
 from .lever import LeverAdapter
+from .sitemap_html import SitemapHtmlAdapter
 from .workday import WorkdayAdapter
 
 _ADAPTERS: dict[str, SourceAdapter] = {
-    adapter.adapter_id: adapter for adapter in (LeverAdapter(), WorkdayAdapter())
+    adapter.adapter_id: adapter
+    for adapter in (
+        LeverAdapter(),
+        GreenhouseAdapter(),
+        WorkdayAdapter(),
+        SitemapHtmlAdapter(),
+    )
 }
 
 

@@ -116,6 +116,32 @@ def test_post_returns_success_payload() -> None:
     }
 
 
+def test_get_text_returns_decoded_body_and_retries() -> None:
+    seen = []
+
+    def transport(request, timeout):
+        seen.append(request)
+        if len(seen) == 1:
+            return HttpResponse(503, b"", {"retry-after": "0"})
+        return HttpResponse(200, b"<urlset></urlset>", {})
+
+    client = UrllibHttpClient(transport=transport, sleep=lambda _s: None)
+
+    assert client.get_text("https://example.test/sitemap.xml") == "<urlset></urlset>"
+    assert len(seen) == 2
+    assert seen[1].headers["Accept"].startswith("application/xml")
+
+
+def test_fixture_client_serves_text_from_disk(tmp_path) -> None:
+    path = tmp_path / "page.html"
+    path.write_text("<html><h1>Graduate Engineer</h1></html>", encoding="utf-8")
+
+    client = FixtureHttpClient(path)
+
+    assert "Graduate Engineer" in client.get_text("https://example.test/job/1")
+    assert client.requests == ["https://example.test/job/1"]
+
+
 def test_fixture_client_serves_one_recorded_page_then_an_empty_page(tmp_path) -> None:
     path = tmp_path / "listing.json"
     path.write_text(json.dumps({"total": 4, "jobPostings": [{"title": "A"}]}), encoding="utf-8")

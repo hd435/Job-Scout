@@ -158,6 +158,15 @@ class UrllibHttpClient:
         raw = self._request(HttpRequest("GET", url, headers), retry=True)
         return self._decode(raw, url, "GET")
 
+    def get_text(self, url: str) -> str:
+        """Plain-text GET for sitemaps and HTML pages; retried like any other read."""
+        headers = {
+            "User-Agent": USER_AGENT,
+            "Accept": "application/xml,text/xml,text/html;q=0.9,*/*;q=0.8",
+        }
+        raw = self._request(HttpRequest("GET", url, headers), retry=True)
+        return raw.decode("utf-8", errors="replace")
+
     def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
         """POST JSON. Retries are opt-in and only for idempotent, read-only queries.
 
@@ -219,6 +228,10 @@ class FixtureHttpClient:
     def get_json(self, url: str) -> Any:
         self.requests.append(url)
         return self._read()
+
+    def get_text(self, url: str) -> str:
+        self.requests.append(url)
+        return self._path.read_text(encoding="utf-8")
 
     def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
         """Serve the recorded listing page; any later offset is an empty page.

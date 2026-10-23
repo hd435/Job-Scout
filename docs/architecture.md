@@ -71,8 +71,13 @@ Job:
   closing_at: date | None
   salary_text: str | None
   workplace_type: str | None
+  source_revision: str | None
   content_hash: str
 ```
+
+`source_revision` records the source's own version marker for the role (a sitemap `lastmod`
+or an `updated_at`). It is deliberately excluded from `content_hash`: a revision bump
+alone is not a content change and must not be reported as an update or re-alert.
 
 `LocationResult` should carry at least:
 
@@ -108,6 +113,7 @@ ScanResult:
   jobs: list[Job]
   skipped: list[SkipReason]
   error_summary: str | None
+  observed_ids: list[str]
 ```
 
 Semantics:
@@ -118,6 +124,12 @@ Semantics:
 | `success_empty` | Yes, with guard | The source validly reports zero jobs. |
 | `partial` | No | Some records or detail pages could not be retrieved or parsed. |
 | `failed` | No | No usable result set was obtained. |
+
+`jobs` holds roles whose details were read in this scan. `observed_ids` holds roles the
+source advertised without a detail refresh (an unchanged sitemap-driven role). Both sets
+count as observed for closure detection; only a role in `jobs` can be new, updated, or
+alert-eligible, and an observed-only role keeps its stored details and match decision. A
+role that is absent from both sets is a closure miss, as before.
 
 `success_empty` must be treated cautiously. If a source that previously returned jobs suddenly returns zero, the adapter must verify that the source explicitly reports zero before classifying it as `success_empty`; otherwise the scan is `partial`. This prevents an upstream outage from looking like mass closure.
 
@@ -137,8 +149,13 @@ For M1, the latest decision can be stored on the job row (`match_decision`, `mat
 ### 3.4 Source adapter contract
 
 ```text
-SourceAdapter.fetch_scan(config, http_client) -> ScanResult
+SourceAdapter.fetch_scan(config, http_client, *, known=None) -> ScanResult
 ```
+
+`known` is an optional read-only mapping of source job id to the revision marker stored for
+that role. Adapters that read the whole source in one response (Lever, Greenhouse,
+Workday) ignore it; sitemap-driven adapters use it to skip unchanged detail pages. It is a
+hint, never write access: adapters still do not touch SQLite.
 
 The contract is intentionally small. Adapters:
 
@@ -330,7 +347,7 @@ This is a proposal for the retention decision, not an approved requirement.
 | `LeverAdapter` | Palantir | Full JSON list | HTTP success, valid list, every record mapped or explicitly skipped |
 | `GreenhouseAdapter` | Monzo | Full JSON list | HTTP success, valid jobs list, every record mapped or explicitly skipped |
 | `WorkdayAdapter` | Barclays, Lloyds Graduate | Paginated CXS JSON (listing query POST) plus bounded detail lookups | Every page up to the reported `total` retrieved, no short page before the total, and no required detail lookup failed |
-| `SitemapHtmlAdapter` | Wise, Arm | Sitemap discovery plus source-specific HTML detail parsing | Sitemap retrieved; every new/changed detail page fetched and parsed |
+| `SitemapHtmlAdapter` | Wise, Arm | Sitemap discovery plus source-specific HTML detail parsing | Sitemap retrieved and parsed; every role accounted for as refreshed, observed-only, or explicitly skipped |
 
 ### 6.2 Adapter responsibilities
 
@@ -345,6 +362,8 @@ This is a proposal for the retention decision, not an approved requirement.
 - Resolve multi-location ambiguity where the source provides a detail page. Workday only requests a detail page for placeholder locations ("2 Locations"), bounded per scan.
 - Normalize posted dates where possible; use `None` rather than guessing relative dates.
 - Return explicit skip reasons and a precise scan status.
+- Report roles observed without a detail refresh in `ScanResult.observed_ids`, so the scanner treats them as present for closure while keeping their stored details. Sitemap-driven adapters fetch a detail page only when the role is unknown, has no stored revision, or the sitemap revision (`lastmod`) changed; they space detail requests by a configured delay.
+- Prefer a machine-readable block (`JobPosting` JSON-LD) over heuristics. When a page offers none, recover only the title and leave the location unknown rather than guessing it.
 
 ### 6.3 HTTP rules
 
@@ -354,7 +373,10 @@ This is a proposal for the retention decision, not an approved requirement.
 - No retry for permanent 4xx.
 - Low per-host concurrency; one request at a time per host unless evidence supports more.
 - Log request failures without secrets or full response bodies.
-- Cache sitemap metadata and avoid re-fetching unchanged detail pages.
+- Cache sitemap metadata and avoid re-fetching unchanged detail pages. The stored
+  `source_revision` is the cache key: a role is re-fetched only when it is unknown, has no
+  stored revision, or the sitemap revision changed. Detail requests are spaced by a
+  configurable delay (default 0.5s) and bounded per scan.
 
 ## 7. Matcher boundaries
 

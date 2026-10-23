@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.3 + M3 (offline) — local, Palantir, Barclays, and Lloyds Graduate.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, **additive-only matching-filter overrides in configuration**, and a **shared Workday adapter for Barclays and Lloyds Graduate** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent. The Workday adapter has only ever run against synthetic fixtures: no live Barclays or Lloyds request has been made, and Wise, Arm, and Monzo are not implemented.
+**Current state: M1 + M2.3 + M3 + M4 (offline) — local, all six sources configured.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, **additive-only matching-filter overrides in configuration**, and **adapters for all six intended sources** (Lever for Palantir, Workday for Barclays and Lloyds Graduate, Greenhouse for Monzo, sitemap+HTML for Wise and Arm) are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent. Only Palantir has ever been read with recorded payloads from the live service; **the other five sources have only run against synthetic fixtures**, and no live request has been made for them.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -31,6 +31,9 @@ python -m jobscout scan --source palantir --dry-run --fixture tests/fixtures/pal
 # Recorded Workday snapshot (synthetic fixture: proves parsing, not live shapes)
 python -m jobscout scan --source lloyds_graduate --dry-run --fixture tests/fixtures/workday_lloyds_graduate.json
 
+# Recorded Greenhouse snapshot (synthetic fixture: proves parsing, not live shapes)
+python -m jobscout scan --source monzo --dry-run --fixture tests/fixtures/greenhouse_monzo.json
+
 # Live scan of the Palantir Lever board (only where the source's terms permit it)
 python -m jobscout scan --source palantir --dry-run
 
@@ -58,13 +61,17 @@ Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery
 | `palantir` | Palantir Technologies | `lever` | Implemented; exercised against recorded payloads |
 | `barclays` | Barclays | `workday` | Implemented; synthetic fixtures only |
 | `lloyds_graduate` | Lloyds Banking Group | `workday` | Implemented; synthetic fixtures only; the `Graduate_careers` site only |
-| Wise, Arm, Monzo | — | `sitemap_html`, `greenhouse` | Not implemented (M4) |
+| `monzo` | Monzo | `greenhouse` | Implemented; synthetic fixtures only |
+| `wise` | Wise | `sitemap_html` | Implemented; synthetic fixtures only; the vacancies sitemap only |
+| `arm` | Arm | `sitemap_html` | Implemented; synthetic fixtures only; never the `/search-jobs/` path |
 
 `--source` is required while more than one source is configured. The two Workday sources share one adapter: the listing is a read-only POST query that is paginated to the reported `total`, the requisition id is the job identity, and a detail page is fetched only when the listing shows a placeholder location such as "2 Locations".
 
-A `--fixture` file holds one recorded page and no detail payload, so a paginated Workday fixture scan stops as `partial` with a visible note instead of looping on the same page. The full two-page Workday flow is covered by `tests/test_adapter_workday.py`.
+Wise and Arm share the sitemap+HTML adapter: the sitemap supplies every role URL and its `lastmod`, and a detail page is fetched only when a role is new or its `lastmod` changed. Unchanged roles are recorded as observed without being re-fetched, so an unchanged role is never mistaken for a removed one. Pages are parsed from schema.org `JobPosting` JSON-LD; a page without it contributes only a title, which leaves the location unknown and the role in `needs_review` rather than guessing. Detail requests are spaced by 0.5s and capped per scan.
 
-**No live Barclays or Lloyds request has been made.** Their fixtures are synthetic, so they prove pagination, identity, failure handling, and scan safety — not that the real service returns those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs permitted live validation.
+A `--fixture` file feeds list-shaped sources only (Palantir JSON, Workday listing, Monzo board), and a paginated Workday fixture stops as `partial` with a visible note instead of looping. Sitemap-driven sources need several documents, so their offline coverage lives in `tests/test_adapter_sitemap_html.py`.
+
+**No live request has been made for Barclays, Lloyds Graduate, Monzo, Wise, or Arm.** Their fixtures are synthetic, so they prove parsing, pagination, discovery, failure handling, and scan safety — not that the real services return those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs permitted live validation.
 
 ## Telegram credentials
 
@@ -125,7 +132,7 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 
 ## Configuration
 
-Built-in defaults cover the Palantir, Barclays, and Lloyds Graduate sources. An optional `config.toml` can change the database path and source settings:
+Built-in defaults cover all six sources: Palantir, Barclays, Lloyds Graduate, Monzo, Wise, and Arm. An optional `config.toml` can change the database path and source settings:
 
 ```toml
 [jobscout]
@@ -154,6 +161,26 @@ tenant = "barclays"
 site = "External_Career_Site_Barclays"
 locale = "en-US"
 
+[[sources]]
+id = "monzo"
+employer = "Monzo"
+adapter = "greenhouse"
+enabled = true
+cadence_minutes = 30
+
+[sources.options]
+board = "monzo"
+
+[[sources]]
+id = "wise"
+employer = "Wise"
+adapter = "sitemap_html"
+enabled = true
+cadence_minutes = 30
+
+[sources.options]
+profile = "wise"
+
 # Optional, additive-only matching overrides (defaults stay unchanged if omitted)
 [matching]
 extra_exclude_terms = ["unpaid", "commission only"]
@@ -162,7 +189,7 @@ extra_exclude_terms = ["unpaid", "commission only"]
 data = ["bioinformatics analyst"]
 ```
 
-Workday sources need `host`, `tenant`, and `site`; `locale` and `page_size` are optional. Listing a `[[sources]]` block replaces the built-in source list, so keep every source you want to run.
+Workday sources need `host`, `tenant`, and `site`; `locale` and `page_size` are optional. Sitemap sources select an in-code profile (`wise` or `arm`); `sitemap`, `max_detail_fetches`, and `request_delay_seconds` may override the defaults. Listing a `[[sources]]` block replaces the built-in source list, so keep every source you want to run.
 
 Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
 

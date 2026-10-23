@@ -119,7 +119,7 @@ def test_unknown_source_is_rejected(db, capsys) -> None:
     exit_code = run_cli(
         "scan",
         "--source",
-        "monzo",
+        "acme",
         "--dry-run",
         "--db",
         str(db),
@@ -129,7 +129,7 @@ def test_unknown_source_is_rejected(db, capsys) -> None:
     captured = capsys.readouterr()
 
     assert exit_code == 2
-    assert "unknown source 'monzo'" in captured.err
+    assert "unknown source 'acme'" in captured.err
 
 
 def test_summary_lists_current_matches_and_is_read_only(db, capsys) -> None:
