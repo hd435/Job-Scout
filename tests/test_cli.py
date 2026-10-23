@@ -227,6 +227,18 @@ def use_telegram_env(monkeypatch) -> None:
     monkeypatch.setenv(TELEGRAM_CHAT_ID_ENV, CHAT_ID)
 
 
+def use_dotenv(tmp_path: Path, monkeypatch, *, token: str = BOT_TOKEN, chat: str = CHAT_ID) -> Path:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f"# local credentials\n{TELEGRAM_TOKEN_ENV}={token}\n{TELEGRAM_CHAT_ID_ENV}={chat}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("jobscout.config.DEFAULT_ENV_PATH", env_file)
+    monkeypatch.delenv(TELEGRAM_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(TELEGRAM_CHAT_ID_ENV, raising=False)
+    return env_file
+
+
 def forbid_network(monkeypatch) -> None:
     def fail(*_args, **_kwargs):  # pragma: no cover - must never run
         raise AssertionError("network access attempted")
@@ -384,3 +396,49 @@ def test_deliver_command_is_idempotent(db, capsys, monkeypatch, fake_transport) 
     assert exit_code == 0
     assert "Delivery: sent=0 failed=0 ambiguous=0 retrying=0" in out
     assert len(transport.sent) == 1
+
+
+def test_scan_deliver_reads_credentials_from_dotenv(
+    db, capsys, monkeypatch, tmp_path, fake_transport
+) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    second = scan_with_new_role(tmp_path)
+    use_dotenv(tmp_path, monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport()
+    patched_notifier(monkeypatch, transport)
+
+    exit_code = run_cli(
+        "scan", "--source", "palantir", "--deliver", "--db", str(db), "--fixture", str(second)
+    )
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Delivery: sent=1 failed=0 ambiguous=0 retrying=0" in out
+    assert transport.sent[0][0] == CHAT_ID
+    assert BOT_TOKEN not in out
+    assert CHAT_ID not in out
+
+
+def test_environment_variables_take_precedence_over_dotenv(
+    db, capsys, monkeypatch, tmp_path, fake_transport
+) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    second = scan_with_new_role(tmp_path)
+    use_dotenv(
+        tmp_path,
+        monkeypatch,
+        token="111111:AAOtherFakeTokenValueForTests",
+        chat="999000111",
+    )
+    use_telegram_env(monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport()
+    patched_notifier(monkeypatch, transport)
+
+    run_cli("scan", "--source", "palantir", "--deliver", "--db", str(db), "--fixture", str(second))
+
+    assert transport.sent[0][0] == CHAT_ID
+    assert transport.sent[0][0] != "999000111"

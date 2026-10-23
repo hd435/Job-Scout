@@ -245,7 +245,7 @@ Known deviations and limitations:
 | Increment | Outcome | Status |
 |---|---|---|
 | **M2.1** | Offline pipeline: `notifications` table, message formatting, delivery state machine, duplicate prevention, recording fake transport, delivery visibility in `status` | Delivered 2026-10-23 |
-| **M2.2** | Real Telegram transport with environment-variable credentials, redaction, and delivery CLI paths | Delivered 2026-10-23; live test message still needs explicit approval |
+| **M2.2** | Real Telegram transport with `.env` or environment credentials, redaction, and delivery CLI paths | Delivered 2026-10-23; live test message still needs explicit approval |
 | **M2.3** | Matching-filter overrides in configuration (FR-12 complete) | Not started |
 
 M2.1 decisions: ambiguous outcomes are recorded and never retried automatically (D-024); transient failures stay `pending` for a later pass; permanent rejections become `failed`; `sent` rows are never re-sent (D-036); the transport and any CLI delivery switch arrive in M2.2 (D-037); proactive failure notices stay in M5 (D-038).

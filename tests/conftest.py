@@ -94,6 +94,12 @@ def lever_record(
     return record
 
 
+@pytest.fixture(autouse=True)
+def isolate_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never read the developer's real `.env`; it may hold live credentials."""
+    monkeypatch.setattr("jobscout.config.DEFAULT_ENV_PATH", tmp_path / "absent.env")
+
+
 @pytest.fixture
 def palantir() -> SourceConfig:
     return SourceConfig(

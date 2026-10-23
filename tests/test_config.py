@@ -11,9 +11,11 @@ from jobscout.config import (
     default_config,
     load_config,
     load_telegram_config,
+    read_env_file,
 )
 
 BOT_TOKEN = "123456789:AAFakeTokenValueForRedactionTests"
+OTHER_TOKEN = "111111:AAOtherFakeTokenValueForTests"
 
 CONFIG = """
 [jobscout]
@@ -146,4 +148,91 @@ def test_telegram_config_repr_hides_the_token() -> None:
     )
 
     assert BOT_TOKEN not in repr(config)
+    assert "555000111" not in repr(config)
     assert "redacted" in repr(config)
+
+
+def test_dotenv_file_supplies_credentials(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "# local credentials\n"
+        f"export {TELEGRAM_TOKEN_ENV}={BOT_TOKEN}\n"
+        f"{TELEGRAM_CHAT_ID_ENV}='555000111'\n",
+        encoding="utf-8",
+    )
+
+    config = load_telegram_config({}, env_file=env_file)
+
+    assert config.token == BOT_TOKEN
+    assert config.chat_id == "555000111"
+
+
+def test_environment_variables_override_dotenv(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f"{TELEGRAM_TOKEN_ENV}={OTHER_TOKEN}\n{TELEGRAM_CHAT_ID_ENV}=111\n",
+        encoding="utf-8",
+    )
+
+    config = load_telegram_config(
+        {TELEGRAM_TOKEN_ENV: BOT_TOKEN, TELEGRAM_CHAT_ID_ENV: "555000111"}, env_file=env_file
+    )
+
+    assert config.token == BOT_TOKEN
+    assert config.chat_id == "555000111"
+
+
+def test_blank_environment_variable_falls_back_to_dotenv(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f"{TELEGRAM_TOKEN_ENV}={BOT_TOKEN}\n{TELEGRAM_CHAT_ID_ENV}=555000111\n",
+        encoding="utf-8",
+    )
+
+    config = load_telegram_config({TELEGRAM_TOKEN_ENV: "   "}, env_file=env_file)
+
+    assert config.token == BOT_TOKEN
+
+
+def test_missing_dotenv_file_is_not_an_error_but_still_reports_missing_values(tmp_path) -> None:
+    with pytest.raises(ConfigError) as exc:
+        load_telegram_config({}, env_file=tmp_path / "absent.env")
+
+    assert ".env" in str(exc.value)
+    assert "--dry-run" in str(exc.value)
+
+
+def test_dotenv_token_shape_is_still_validated(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f"{TELEGRAM_TOKEN_ENV}=not-a-token\n{TELEGRAM_CHAT_ID_ENV}=555000111\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_telegram_config({}, env_file=env_file)
+
+    assert "not-a-token" not in str(exc.value)
+    assert "does not look like" in str(exc.value)
+
+
+def test_env_file_parsing_ignores_noise_and_inline_comments(tmp_path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n# comment\nnot-a-pair\nKEY = value # trailing comment\n"
+        "QUOTED=\"a b # kept\"\nSINGLE='x'\nexport EXPORTED=yes\n",
+        encoding="utf-8",
+    )
+
+    values = read_env_file(env_file)
+
+    assert values["KEY"] == "value"
+    assert values["QUOTED"] == "a b # kept"
+    assert values["SINGLE"] == "x"
+    assert values["EXPORTED"] == "yes"
+    assert "not-a-pair" not in values
+
+
+def test_env_file_read_errors_yield_no_values(tmp_path) -> None:
+    assert read_env_file(tmp_path / "missing.env") == {}
+    assert read_env_file(tmp_path) == {}

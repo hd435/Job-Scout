@@ -18,6 +18,7 @@ from typing import Any
 
 DEFAULT_DB_PATH = Path("data") / "jobscout.db"
 DEFAULT_CONFIG_PATH = Path("config.toml")
+DEFAULT_ENV_PATH = Path(".env")
 
 TELEGRAM_TOKEN_ENV = "JOBSCOUT_TELEGRAM_TOKEN"
 TELEGRAM_CHAT_ID_ENV = "JOBSCOUT_TELEGRAM_CHAT_ID"
@@ -73,20 +74,65 @@ def default_config() -> AppConfig:
 
 @dataclass(frozen=True)
 class TelegramConfig:
-    """Telegram destination, supplied by environment variables only."""
+    """Telegram destination, loaded from `.env` or the environment."""
 
     token: str
     chat_id: str
 
-    def __repr__(self) -> str:  # keep the token out of tracebacks and debug output
-        return f"TelegramConfig(chat_id={self.chat_id!r}, token=<redacted>)"
+    def __repr__(self) -> str:  # keep secrets out of tracebacks and debug output
+        return "TelegramConfig(chat_id=<redacted>, token=<redacted>)"
 
 
-def load_telegram_config(environ: Mapping[str, str] | None = None) -> TelegramConfig:
-    """Read Telegram credentials from the environment; never from the repository."""
+def read_env_file(path: Path | str) -> dict[str, str]:
+    """Minimal `.env` reader: `KEY=VALUE` lines, optional `export`, no interpolation.
+
+    Deliberately dependency-free. Missing or unreadable files yield an empty
+    mapping; values are never logged.
+    """
+    values: dict[str, str] = {}
+    try:
+        text = Path(path).read_text(encoding="utf-8-sig")
+    except OSError:
+        return values
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.casefold().startswith("export "):
+            line = line[len("export ") :].strip()
+        key, separator, value = line.partition("=")
+        key = key.strip()
+        if not separator or not key:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        else:
+            value = value.split(" #", 1)[0].strip()
+        values[key] = value
+    return values
+
+
+def load_telegram_config(
+    environ: Mapping[str, str] | None = None, *, env_file: str | Path | None = None
+) -> TelegramConfig:
+    """Read Telegram credentials from the environment, falling back to `.env`.
+
+    Real environment variables win, so the file is a convenience rather than a
+    requirement. Values are validated and never echoed.
+    """
     env = os.environ if environ is None else environ
-    token = (env.get(TELEGRAM_TOKEN_ENV) or "").strip()
-    chat_id = (env.get(TELEGRAM_CHAT_ID_ENV) or "").strip()
+    dotenv = read_env_file(DEFAULT_ENV_PATH if env_file is None else env_file)
+
+    def resolve(name: str) -> str:
+        for value in (env.get(name), dotenv.get(name)):
+            if value and value.strip():
+                return value.strip()
+        return ""
+
+    token = resolve(TELEGRAM_TOKEN_ENV)
+    chat_id = resolve(TELEGRAM_CHAT_ID_ENV)
 
     missing = [
         name
@@ -97,7 +143,7 @@ def load_telegram_config(environ: Mapping[str, str] | None = None) -> TelegramCo
         raise ConfigError(
             "missing Telegram configuration: set "
             + " and ".join(missing)
-            + " (or re-run with --dry-run)"
+            + " in .env or the environment (see .env.example); or re-run with --dry-run"
         )
     if not _BOT_TOKEN_SHAPE.match(token):
         raise ConfigError(

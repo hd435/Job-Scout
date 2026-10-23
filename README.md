@@ -50,19 +50,26 @@ Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery
 
 ## Telegram credentials
 
-Delivery reads two environment variables and nothing else:
+Delivery needs two values: a bot token and your chat id. Put them in a local `.env` file in the project root:
 
 ```bash
-# Windows PowerShell
-$env:JOBSCOUT_TELEGRAM_TOKEN = "123456789:AA..."
-$env:JOBSCOUT_TELEGRAM_CHAT_ID = "555000111"
-
-# macOS / Linux
-export JOBSCOUT_TELEGRAM_TOKEN="123456789:AA..."
-export JOBSCOUT_TELEGRAM_CHAT_ID="555000111"
+cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-They are never read from `config.toml`, never committed, and never printed. The token is shape-checked before use, and every delivery error stored or displayed has the token and chat id replaced with `[redacted]`.
+Then edit `.env`:
+
+```dotenv
+JOBSCOUT_TELEGRAM_TOKEN=123456789:AA...
+JOBSCOUT_TELEGRAM_CHAT_ID=555000111
+```
+
+- `.env` is gitignored; only `.env.example`, with placeholders, is committed. Never commit real values.
+- Real environment variables override `.env`, so a host or CI can inject secrets without a file.
+- Credentials are never read from `config.toml`.
+- The token is shape-checked before use; values are never printed, and every stored or displayed delivery error has the token and chat id replaced with `[redacted]`.
+- `.env` is read with a small built-in parser (`KEY=VALUE`, optional `export`, quoted values, `#` comments), so no extra dependency is needed.
+
+The comments in [`.env.example`](./.env.example) explain where to get the token from @BotFather and how to find your chat id.
 
 ## How a scan behaves
 
