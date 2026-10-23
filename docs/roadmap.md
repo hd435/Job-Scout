@@ -240,6 +240,18 @@ Known deviations and limitations:
 - Complete FR-12: the Telegram destination and matching filter overrides become configuration, joining the already configurable database path and source settings. Overrides may add terms but must not remove approved categories or exclusions.
 - First usable version is complete when Palantir alerts work reliably enough for daily use.
 
+**M2 increments**
+
+| Increment | Outcome | Status |
+|---|---|---|
+| **M2.1** | Offline pipeline: `notifications` table, message formatting, delivery state machine, duplicate prevention, recording fake transport, delivery visibility in `status` | Delivered 2026-10-23 |
+| **M2.2** | Real Telegram transport with environment-variable credentials, redaction, and one test message | Not started: needs credentials and explicit approval to send |
+| **M2.3** | Matching-filter overrides in configuration (FR-12 complete) | Not started |
+
+M2.1 decisions: ambiguous outcomes are recorded and never retried automatically (D-024); transient failures stay `pending` for a later pass; permanent rejections become `failed`; `sent` rows are never re-sent (D-036); the transport and any CLI delivery switch arrive in M2.2 (D-037); proactive failure notices stay in M5 (D-038).
+
+M2.1 acceptance evidence: `tests/test_notifier.py` (formatting, queueing, dedupe, restart, sent/failed/ambiguous/retry paths, redaction) and `tests/test_cli.py::test_status_reports_delivery_state_without_the_chat_id`.
+
 ### M3 — Workday: Barclays and Lloyds Graduate
 
 - Add the Workday adapter only after M2.

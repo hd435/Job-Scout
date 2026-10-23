@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from jobscout.cli import main
-from jobscout.models import MatchOutcome
+from jobscout.models import DeliveryOutcome, DeliveryResult, MatchOutcome
 from jobscout.storage import Storage
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -185,6 +185,31 @@ def test_fixture_scan_uses_no_network(db, monkeypatch) -> None:
     monkeypatch.setattr("urllib.request.urlopen", fail)
 
     assert run_cli(*scan_command(db, PALANTIR_FIXTURE)) == 0
+
+
+def test_status_reports_delivery_state_without_the_chat_id(
+    db, capsys, fake_transport, make_notifier
+) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+
+    chat_id = "987654321"
+    with Storage.open(db) as storage:
+        job = storage.list_jobs_by_decision("palantir", MatchOutcome.MATCH)[0]
+        storage.create_pending_notification(chat_id, job.id, now="2026-10-22T12:00:00Z")
+        transport = fake_transport(
+            [DeliveryResult(DeliveryOutcome.PERMANENT, error="400 Bad Request: peer not found")]
+        )
+        report = make_notifier(transport).deliver_pending(storage, chat_id)
+    assert report.failed == 1
+
+    exit_code = run_cli("status", "--db", str(db))
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Notifications: failed=1" in out
+    assert "Last delivery error:" in out
+    assert chat_id not in out
 
 
 @pytest.fixture

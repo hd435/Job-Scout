@@ -44,6 +44,24 @@ class JobStatus(StrEnum):
     CLOSED = "closed"
 
 
+class NotificationStatus(StrEnum):
+    """Persisted delivery state (architecture section 5.1)."""
+
+    PENDING = "pending"
+    SENT = "sent"
+    AMBIGUOUS = "ambiguous"
+    FAILED = "failed"
+
+
+class DeliveryOutcome(StrEnum):
+    """How a transport classifies a single send attempt."""
+
+    SENT = "sent"
+    RETRYABLE = "retryable"
+    PERMANENT = "permanent"
+    AMBIGUOUS = "ambiguous"
+
+
 @dataclass(frozen=True)
 class LocationResult:
     """Normalized location verdict. Location is never guessed."""
@@ -280,6 +298,7 @@ class ScanOutcome:
     needs_review: int
     candidates: tuple[AlertCandidate, ...]
     error_summary: str | None = None
+    notifications_queued: int = 0
 
     @property
     def skipped_count(self) -> int:
@@ -311,3 +330,43 @@ class SourceState:
     @property
     def has_baseline(self) -> bool:
         return self.baseline_scan_id is not None
+
+
+@dataclass(frozen=True)
+class DeliveryResult:
+    """Outcome of one send attempt, as reported by a transport."""
+
+    outcome: DeliveryOutcome
+    message_id: str | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class PendingNotification:
+    """A notification row joined with the role fields needed to format a message."""
+
+    id: int
+    chat_id: str
+    job_id: int
+    attempt_count: int
+    title: str
+    employer: str
+    location_raw: str
+    url: str
+    salary_text: str | None = None
+    closing_at: str | None = None
+
+
+@dataclass(frozen=True)
+class DeliveryReport:
+    """What one delivery pass did. Counts are per notification row."""
+
+    sent: int = 0
+    failed: int = 0
+    ambiguous: int = 0
+    retrying: int = 0
+    messages: tuple[str, ...] = ()
+
+    @property
+    def attempted(self) -> int:
+        return self.sent + self.failed + self.ambiguous + self.retrying

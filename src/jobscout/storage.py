@@ -21,6 +21,8 @@ from .models import (
     LocationResult,
     MatchDecision,
     MatchOutcome,
+    NotificationStatus,
+    PendingNotification,
     ScanResult,
     ScanStatus,
     SourceState,
@@ -99,7 +101,25 @@ CREATE INDEX idx_jobs_source_job ON jobs(source_id, source_job_id);
 CREATE INDEX idx_scans_source_started ON scans(source_id, started_at);
 """
 
-_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1,)
+_MIGRATION_2 = """
+CREATE TABLE notifications (
+    id INTEGER PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    status TEXT NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    telegram_message_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    last_attempt_at TEXT NULL,
+    sent_at TEXT NULL,
+    last_error TEXT NULL,
+    UNIQUE(chat_id, job_id)
+);
+
+CREATE INDEX idx_notifications_status ON notifications(status);
+"""
+
+_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2)
 
 
 def utc_now_iso() -> str:
@@ -527,3 +547,123 @@ class Storage:
             "SELECT COUNT(*) AS total FROM scans WHERE source_id = ?", (source_id,)
         ).fetchone()
         return int(row["total"])
+
+    # notifications ---------------------------------------------------------
+
+    def create_pending_notification(self, chat_id: str, job_id: int, *, now: str) -> int | None:
+        """Queue one alert per `(chat_id, job_id)`. Returns None when already queued."""
+        cursor = self._conn.execute(
+            """
+            INSERT INTO notifications (chat_id, job_id, status, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(chat_id, job_id) DO NOTHING
+            """,
+            (chat_id, job_id, str(NotificationStatus.PENDING), now),
+        )
+        if cursor.rowcount == 0:
+            return None
+        return int(cursor.lastrowid)
+
+    def list_pending_notifications(
+        self, chat_id: str, *, limit: int = 50
+    ) -> list[PendingNotification]:
+        rows = self._conn.execute(
+            """
+            SELECT n.id, n.chat_id, n.job_id, n.attempt_count,
+                   j.title, j.employer, j.location_raw, j.url,
+                   j.salary_text, j.closing_at
+            FROM notifications n
+            JOIN jobs j ON j.id = n.job_id
+            WHERE n.chat_id = ? AND n.status = ?
+            ORDER BY n.id
+            LIMIT ?
+            """,
+            (chat_id, str(NotificationStatus.PENDING), limit),
+        )
+        return [
+            PendingNotification(
+                id=row["id"],
+                chat_id=row["chat_id"],
+                job_id=row["job_id"],
+                attempt_count=row["attempt_count"],
+                title=row["title"],
+                employer=row["employer"],
+                location_raw=row["location_raw"],
+                url=row["url"],
+                salary_text=row["salary_text"],
+                closing_at=row["closing_at"],
+            )
+            for row in rows
+        ]
+
+    def record_notification_sent(
+        self, notification_id: int, *, message_id: str | None, now: str
+    ) -> None:
+        self._conn.execute(
+            """
+            UPDATE notifications
+            SET status = ?, attempt_count = attempt_count + 1,
+                telegram_message_id = ?, last_attempt_at = ?, sent_at = ?,
+                last_error = NULL
+            WHERE id = ?
+            """,
+            (str(NotificationStatus.SENT), message_id, now, now, notification_id),
+        )
+
+    def record_notification_retry(self, notification_id: int, *, error: str, now: str) -> None:
+        """Transient failure: stay `pending` so a later delivery pass retries."""
+        self._conn.execute(
+            """
+            UPDATE notifications
+            SET attempt_count = attempt_count + 1, last_attempt_at = ?, last_error = ?
+            WHERE id = ?
+            """,
+            (now, error, notification_id),
+        )
+
+    def record_notification_failed(self, notification_id: int, *, error: str, now: str) -> None:
+        self._conn.execute(
+            """
+            UPDATE notifications
+            SET status = ?, attempt_count = attempt_count + 1,
+                last_attempt_at = ?, last_error = ?
+            WHERE id = ?
+            """,
+            (str(NotificationStatus.FAILED), now, error, notification_id),
+        )
+
+    def record_notification_ambiguous(self, notification_id: int, *, error: str, now: str) -> None:
+        self._conn.execute(
+            """
+            UPDATE notifications
+            SET status = ?, attempt_count = attempt_count + 1,
+                last_attempt_at = ?, last_error = ?
+            WHERE id = ?
+            """,
+            (str(NotificationStatus.AMBIGUOUS), now, error, notification_id),
+        )
+
+    def notification_status_counts(self) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT status, COUNT(*) AS total FROM notifications GROUP BY status"
+        )
+        return {row["status"]: int(row["total"]) for row in rows}
+
+    def notification_for_job(self, chat_id: str, job_id: int) -> sqlite3.Row | None:
+        return self._conn.execute(
+            "SELECT * FROM notifications WHERE chat_id = ? AND job_id = ?",
+            (chat_id, job_id),
+        ).fetchone()
+
+    def last_notification_error(self) -> tuple[str, str] | None:
+        row = self._conn.execute(
+            """
+            SELECT last_attempt_at, last_error FROM notifications
+            WHERE last_error IS NOT NULL
+            ORDER BY last_attempt_at DESC, id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        if row is None:
+            return None
+        return (row["last_attempt_at"] or "", row["last_error"] or "")

@@ -13,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from jobscout.config import SourceConfig  # noqa: E402
 from jobscout.http import HttpError  # noqa: E402
-from jobscout.models import ScanOutcome  # noqa: E402
+from jobscout.models import DeliveryOutcome, DeliveryResult, ScanOutcome  # noqa: E402
+from jobscout.notifier import Notifier  # noqa: E402
 from jobscout.scanner import run_scan  # noqa: E402
 from jobscout.sources import get_adapter  # noqa: E402
 from jobscout.storage import Storage  # noqa: E402
@@ -46,6 +47,25 @@ class FakeClock:
         current = self._current
         self._current += timedelta(seconds=30)
         return current.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class RecordingTransport:
+    """Records what would be sent and replays scripted delivery outcomes."""
+
+    def __init__(self, results: list[DeliveryResult] | None = None) -> None:
+        self.results = list(results or [])
+        self.sent: list[tuple[str, str]] = []
+
+    def send(self, chat_id: str, text: str) -> DeliveryResult:
+        index = len(self.sent)
+        self.sent.append((chat_id, text))
+        if index < len(self.results):
+            return self.results[index]
+        return DeliveryResult(DeliveryOutcome.SENT, message_id=str(index + 1))
+
+    @property
+    def messages(self) -> list[str]:
+        return [text for _chat_id, text in self.sent]
 
 
 def lever_record(
@@ -104,6 +124,21 @@ def fake_http() -> type[FakeHttp]:
 
 
 @pytest.fixture
+def fake_transport() -> type[RecordingTransport]:
+    return RecordingTransport
+
+
+@pytest.fixture
+def make_notifier(clock: FakeClock):
+    def _make(transport, **kwargs):
+        kwargs.setdefault("sleep", lambda _seconds: None)
+        kwargs.setdefault("clock", clock)
+        return Notifier(transport, **kwargs)
+
+    return _make
+
+
+@pytest.fixture
 def record() -> Callable[..., dict[str, Any]]:
     """Build a Lever-shaped record for transition tests."""
     return lever_record
@@ -128,6 +163,7 @@ def scan(store: Storage, palantir: SourceConfig, clock: FakeClock) -> Callable[.
         *,
         error: Exception | None = None,
         accept_empty: bool = False,
+        notify_chat_id: str | None = None,
         config: SourceConfig | None = None,
         storage: Storage | None = None,
     ) -> ScanOutcome:
@@ -137,6 +173,7 @@ def scan(store: Storage, palantir: SourceConfig, clock: FakeClock) -> Callable[.
             config or palantir,
             FakeHttp(payload, error=error),
             accept_empty=accept_empty,
+            notify_chat_id=notify_chat_id,
             clock=clock,
         )
 

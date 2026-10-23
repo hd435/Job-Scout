@@ -194,6 +194,8 @@ def _print_scan_outcome(outcome: ScanOutcome, source: SourceConfig, db_path: Pat
         f"  reopened: {outcome.reopened_jobs}  closed: {outcome.closed_jobs}"
         f"  needs review (this scan): {outcome.needs_review}"
     )
+    if outcome.notifications_queued:
+        print(f"Notifications queued: {outcome.notifications_queued}")
 
     if outcome.candidates:
         print()
@@ -281,6 +283,15 @@ def _print_status(source: SourceConfig, state: SourceState | None, storage: Stor
         f"  Open roles: matches={storage.count_by_decision(source.id, MatchOutcome.MATCH)}"
         f" needs_review={storage.count_by_decision(source.id, MatchOutcome.NEEDS_REVIEW)}"
     )
+    counts = storage.notification_status_counts()
+    if counts:
+        summary = ", ".join(f"{status}={total}" for status, total in sorted(counts.items()))
+        print(f"  Notifications: {summary}")
+    else:
+        print("  Notifications: none recorded")
+    last_error = storage.last_notification_error()
+    if last_error:
+        print(f"  Last delivery error: {last_error[0]} - {last_error[1]}")
     recent = storage.recent_scans(source.id, limit=3)
     if recent:
         summary = ", ".join(f"#{row['id']} {row['status']}" for row in recent)

@@ -50,7 +50,7 @@ Boundaries:
 - **The scan orchestrator** invokes one adapter, persists the scan and observed jobs, and applies baseline/closure rules. It lives in the CLI in M1 and in the scheduler later.
 - **The matcher** is a pure decision layer. It does not fetch, persist, or notify.
 - **SQLite** is the only durable state. It holds source status, scan history, job identity, baseline state, match decisions, and later notification history.
-- **The notifier** is deferred to M2. It will read notification work from state and will not be called by adapters.
+- **The notifier** (M2.1) reads queued notification rows from state, formats them, delivers them through an injected `Transport`, and records the outcome of every attempt. It is never called by adapters, and it does not decide what is new — the scan orchestrator queues work inside its own transaction.
 - There is no public inbound interface and no multi-user service boundary.
 
 ## 3. Contracts
@@ -397,7 +397,7 @@ Rules:
 - Bounded retries run inside a scan; exhausted retries produce a failed scan and a source failure count.
 - Three consecutive source failures trigger one failure notice in M2, with no repeated spam until recovery.
 - The status command must distinguish success, empty success, partial, and failed.
-- Notification failures are handled in M2 through a notification state machine. Exactly-once external delivery is not assumed.
+- Notification failures are handled by a persisted state machine (`pending`, `sent`, `ambiguous`, `failed`). Exactly-once external delivery is not assumed: an ambiguous outcome is recorded and not retried automatically (D-024), transient failures stay `pending` for a later pass, permanent rejections become `failed`, and a `sent` row is never re-sent.
 
 ### 8.2 Test strategy
 

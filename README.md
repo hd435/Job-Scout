@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and will alert on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 — local, Palantir-only dry run.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, and read-only `summary`/`status` views are implemented. Telegram delivery, scheduling, deployment, and the other five sources are **not** implemented yet.
+**Current state: M1 + M2.1 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, and an **offline notification pipeline** (queued alerts, formatting, delivery state, duplicate prevention) are implemented. There is **no Telegram transport yet**: M2.1 sends nothing. Scheduling, deployment, and the other five sources are not implemented.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -55,7 +55,21 @@ Exit codes: `0` complete scan, `1` partial scan, `2` failed scan or usage error.
 
 ## State
 
-State lives in SQLite (default `data/jobscout.db`, gitignored): `sources`, `scans`, and `jobs`. Only normalized role fields, hashes, scan counts, and bounded error summaries are stored; raw payloads and HTML are not.
+State lives in SQLite (default `data/jobscout.db`, gitignored): `sources`, `scans`, `jobs`, and `notifications`. Only normalized role fields, hashes, scan counts, delivery state, and bounded error summaries are stored; raw payloads and HTML are not.
+
+## Notifications (M2.1, offline)
+
+Matching new roles are queued as `pending` notification rows, one per `(chat_id, job_id)`, inside the same transaction that records the scan. A `Notifier` formats and delivers them through an injected `Transport` and records every attempt:
+
+| Outcome | Recorded as | Retried? |
+|---|---|---|
+| Delivered | `sent` (with message id and timestamp) | Never |
+| Ambiguous (e.g. timeout after send) | `ambiguous` | Never, by decision (D-024) |
+| Transient (429, 5xx, network) | stays `pending` with attempt count and error | Yes, next delivery pass |
+| Permanent rejection (other 4xx) | `failed` | No |
+
+There is no Telegram transport in M2.1 and no credential is read, so nothing is sent anywhere. Tests drive the pipeline with a recording fake transport. `jobscout status` reports delivery counts and the last delivery error, with chat ids and bot tokens redacted. The real transport, environment-variable credentials, and a CLI delivery switch arrive in M2.2.
+
 
 ## Configuration
 

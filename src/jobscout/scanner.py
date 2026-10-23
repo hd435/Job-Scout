@@ -36,6 +36,7 @@ def run_scan(
     http_client: HttpClient,
     *,
     accept_empty: bool = False,
+    notify_chat_id: str | None = None,
     clock: Clock = utc_now_iso,
 ) -> ScanOutcome:
     """Scan one source and apply every state transition in a single transaction."""
@@ -63,6 +64,7 @@ def run_scan(
         updated_jobs = 0
         reopened_jobs = 0
         needs_review = 0
+        notifications_queued = 0
 
         for job in result.jobs:
             decision = match_job(job)
@@ -83,6 +85,9 @@ def run_scan(
                 new_jobs += 1
                 if eligible and decision.is_match:
                     candidates.append(_candidate(job_id, job, decision))
+                    notifications_queued += _queue_notification(
+                        storage, notify_chat_id, job_id, now=now
+                    )
                 continue
 
             changed = existing.job.content_hash != job.content_hash
@@ -101,6 +106,9 @@ def run_scan(
             newly_eligible = eligible and existing.first_complete_scan_id is None
             if newly_eligible and decision.is_match:
                 candidates.append(_candidate(existing.id, job, decision))
+                notifications_queued += _queue_notification(
+                    storage, notify_chat_id, existing.id, now=now
+                )
 
         closed_jobs = 0
         if result.complete:
@@ -124,7 +132,15 @@ def run_scan(
         needs_review=needs_review,
         candidates=tuple(candidates),
         error_summary=result.error_summary,
+        notifications_queued=notifications_queued,
     )
+
+
+def _queue_notification(storage: Storage, chat_id: str | None, job_id: int, *, now: str) -> int:
+    """Queue one alert per role. Returns 0 when delivery is not configured or already queued."""
+    if not chat_id:
+        return 0
+    return 1 if storage.create_pending_notification(chat_id, job_id, now=now) is not None else 0
 
 
 def _fetch(
