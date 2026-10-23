@@ -155,7 +155,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         if notifier and telegram:
             report = notifier.deliver_pending(storage, telegram.chat_id)
 
-    _print_scan_outcome(outcome, source, db_path)
+    _print_scan_outcome(outcome, source, db_path, delivering=telegram is not None)
     if report is not None:
         _print_delivery_report(report)
 
@@ -244,9 +244,16 @@ def _selected_sources(app: AppConfig, requested: str | None) -> tuple[SourceConf
     return (app.source(requested),) if requested else app.sources
 
 
-def _print_scan_outcome(outcome: ScanOutcome, source: SourceConfig, db_path: Path) -> None:
+def _print_scan_outcome(
+    outcome: ScanOutcome,
+    source: SourceConfig,
+    db_path: Path,
+    *,
+    delivering: bool = False,
+) -> None:
     status_line = "complete" if outcome.complete else "incomplete"
-    print(f"Scan #{outcome.scan_id} - {source.id} ({source.employer}) - dry run, no notifications")
+    mode = "delivering via Telegram" if delivering else "dry run, no notifications"
+    print(f"Scan #{outcome.scan_id} - {source.id} ({source.employer}) - {mode}")
     print(f"Database: {db_path}")
     print(
         f"Status: {outcome.status} ({status_line})"

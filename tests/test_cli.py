@@ -316,6 +316,8 @@ def test_scan_deliver_sends_only_new_matching_roles(
     out = capsys.readouterr().out
 
     assert exit_code == 0
+    assert "delivering via Telegram" in out
+    assert "dry run" not in out
     assert "Notifications queued: 1" in out
     assert "Delivery: sent=1 failed=0 ambiguous=0 retrying=0" in out
     assert len(transport.sent) == 1
