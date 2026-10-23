@@ -57,6 +57,22 @@ python -m jobscout prune
 python -m jobscout summary --current
 python -m jobscout status
 python -m jobscout report --days 7
+
+# Send the roles that already match, once (does not queue alerts or touch the database)
+python -m jobscout digest --dry-run
+python -m jobscout digest
+```
+
+## First usable session
+
+New roles only alert from the moment they are first seen, so a fresh install would stay
+silent until an employer posts something. `jobscout digest` closes that gap: it reads the
+roles that already match and sends them once. It writes nothing, queues no notifications, and
+does not disturb baselining or deduplication ? so the same role can never be alerted twice.
+
+```bash
+python -m jobscout digest --dry-run   # preview the messages
+python -m jobscout digest             # send them to the configured chat
 ```
 
 ## Live validation (one source, one request)

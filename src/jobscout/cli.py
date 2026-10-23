@@ -24,11 +24,20 @@ from .config import (
     load_config,
     load_telegram_config,
 )
+from .digest import build_digest
 from .http import FixtureHttpClient, UrllibHttpClient
 from .matching import MatchingRules
-from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
+from .models import (
+    DeliveryOutcome,
+    DeliveryReport,
+    MatchOutcome,
+    ScanOutcome,
+    ScanStatus,
+    SourceState,
+    StoredJob,
+)
 from .notices import FailureNoticeSender
-from .notifier import Notifier
+from .notifier import Notifier, redact
 from .report import DEFAULT_WINDOW_DAYS, build_trial_report, format_trial_report
 from .retention import RetentionPolicy
 from .scanner import run_scan
@@ -71,6 +80,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_prune(args)
         if args.command == "report":
             return _cmd_report(args)
+        if args.command == "digest":
+            return _cmd_digest(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -249,6 +260,17 @@ def _build_parser() -> argparse.ArgumentParser:
     trial.add_argument("--source", help="limit the report to one configured source id")
     trial.add_argument("--db", type=Path, help="SQLite database path")
     trial.add_argument("--config", type=Path, help="TOML configuration file")
+
+    digest = subparsers.add_parser(
+        "digest",
+        help="send the roles that already match, once (read-only; not the alert pipeline)",
+    )
+    digest.add_argument("--source", help="limit the digest to one configured source id")
+    digest.add_argument(
+        "--dry-run", action="store_true", help="print the messages instead of sending them"
+    )
+    digest.add_argument("--db", type=Path, help="SQLite database path")
+    digest.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -502,6 +524,61 @@ def _cmd_prune(args: argparse.Namespace) -> int:
     if report.dry_run:
         print("Dry run: nothing was changed.")
     return EXIT_OK
+
+
+def _cmd_digest(args: argparse.Namespace) -> int:
+    """Send the roles that already match, once. Reads only; never queues a notification."""
+    app = load_config(args.config)
+    db_path = args.db or app.database_path
+    if not db_path.exists():
+        print(f"error: database not found: {db_path}", file=sys.stderr)
+        return EXIT_FAILED
+
+    sources = (app.source(args.source),) if args.source else app.enabled_sources()
+    generated_at = utc_now_iso()
+    with Storage.open(db_path) as storage:
+        entries = [
+            (
+                source.id,
+                source.employer,
+                storage.list_jobs_by_decision(source.id, MatchOutcome.MATCH),
+            )
+            for source in sources
+        ]
+
+    messages = build_digest(entries, generated_at=generated_at)
+    for source_id, employer, jobs in entries:
+        if not jobs:
+            print(f"{source_id}: no matching roles to send ({employer})")
+    if not messages:
+        print("Nothing to send.")
+        return EXIT_OK
+
+    total = sum(message.role_count for message in messages)
+    print(f"Digest: {len(messages)} message(s) covering {total} role(s)")
+    if args.dry_run:
+        for message in messages:
+            print(f"\n--- {message.source_id} ---")
+            print(message.text)
+        print("\nDry run: nothing was sent and nothing was written.")
+        return EXIT_OK
+
+    telegram = load_telegram_config()
+    transport = TelegramTransport(telegram, poster=UrllibHttpClient())
+    failed = 0
+    for message in messages:
+        result = transport.send(telegram.chat_id, message.text)
+        if result.outcome is DeliveryOutcome.SENT:
+            print(f"{message.source_id}: sent ({message.role_count} role(s))")
+        else:
+            failed += 1
+            print(
+                f"{message.source_id}: not sent ({result.outcome})"
+                f" {redact(result.error, secret_values=(telegram.token,)) or ''}".rstrip(),
+                file=sys.stderr,
+            )
+    print("The digest does not queue alerts; new roles still arrive through normal scans.")
+    return EXIT_OK if failed == 0 else EXIT_DEGRADED
 
 
 def _cmd_report(args: argparse.Namespace) -> int:

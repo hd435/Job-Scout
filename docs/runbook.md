@@ -61,8 +61,59 @@ output". The rehearsal above and the offline tests are the substitute.
 Everything above still assumes the sources you configure are ones you are permitted to call.
 `status`, `report` and `prune --dry-run` are safe because they only read the local database.
 
-## 3. Windows Task Scheduler setup (documented, not created)
+## 2a. Personal-use beta: what is actually running
 
+This section describes the one deployment that exists, rather than what could exist. All of
+it lives outside Git, so a fresh clone is unaffected.
+
+| Piece | Where |
+|---|---|
+| Scope config (Monzo + Lloyds Graduate only) | `data/ops/config.toml` |
+| Recurring wrapper | `data/ops/run-once.cmd` |
+| Pass log | `data/ops/logs/schedule.log` |
+| Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
+
+The task runs `jobscout schedule --once`; each pass scans only sources whose cadence has
+elapsed (30 minutes), delivers any queued alerts, and exits. `MultipleInstancesPolicy` is
+`IgnoreNew`, so an overlapping pass is skipped rather than stacked — and the source claim in
+the database would prevent a duplicate scan anyway.
+
+Common commands:
+
+```powershell
+# Is it running and when did it last fire?  (Last Result 0 = success)
+schtasks /Query /TN "Job-Scout scan" /FO LIST /V | Select-String "Status|Last Run|Last Result|Next Run"
+
+# What happened in the last passes?
+Get-Content data\ops\logs\schedule.log -Tail 20
+
+# Current per-source state: last scan, failures, next run, match counts
+python -m jobscout status --config data\ops\config.toml
+
+# Stop it (keeps the definition, disables it)
+schtasks /Change /TN "Job-Scout scan" /DISABLE
+# Start it again
+schtasks /Change /TN "Job-Scout scan" /ENABLE
+# Remove it entirely
+schtasks /Delete /TN "Job-Scout scan" /F
+
+# Run one pass right now
+schtasks /Run /TN "Job-Scout scan"
+```
+
+Recovery:
+
+- **Nothing is arriving.** Check `Last Result` and the log tail, then `status`. A stale
+  `Last Run` means the task is disabled or the laptop was asleep; `schtasks /Run` proves the
+  wrapper still works. If the log shows `Telegram is not configured`, the `.env` file was
+  moved or the token is invalid.
+- **A source shows a growing failure count.** `status` names the error. Three consecutive
+  failures send one Telegram notice; a completed scan clears it.
+- **Everything looks healthy but no alerts.** Expected unless a genuinely new role appears:
+  baselined roles never re-alert, by design. Use `summary --config data\ops\config.toml
+  --current` to see what is currently matching.
+
+## 3. Windows Task Scheduler setup (documented, not created)
 Two shapes work. **Option B is recommended for a first trial** because supervision comes for
 free from Task Scheduler and each pass is short-lived.
 
