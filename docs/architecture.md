@@ -197,10 +197,12 @@ jobs:
 | **First complete scan** | Source has no `baseline_scan_id` | Record the scan as baseline, set `baseline_scan_id` and `baseline_completed_at`, insert jobs with `first_seen_scan_id = scan` and `first_complete_scan_id = scan`. Send no individual alerts. The optional summary may list matching baseline jobs. |
 | **Later complete scan, new ID** | `source_job_id` not present for this source | Insert with `first_seen_scan_id = scan` and `first_complete_scan_id = scan`. If the matcher returns `match`, the role is alert-eligible. |
 | **Partial scan, new ID** | ID not previously present | Insert with `first_seen_scan_id = scan`, `first_complete_scan_id = NULL`. Store observed fields. Do not alert or close anything. A later complete scan sets `first_complete_scan_id` and may make it alert-eligible. |
+| **Partial scan, existing ID** | ID already present | Update `last_seen_scan_id` and, when the role was refreshed, its fields and `content_hash`. Keep `status`, `closed_at`, and `consecutive_misses` untouched, so a closed role stays closed and an open role keeps its miss count reset. Do not alert. |
 | **Complete scan, existing ID** | ID already present | Update `last_seen_scan_id`, fields, and `content_hash`; reset `consecutive_misses` to zero. A changed hash updates stored details but does not create a new alert. |
 | **Complete scan, existing open ID missing** | ID absent from a complete scan | Increment `consecutive_misses`. At two, set `status = closed` and record `closed_at`. No closure alert in MVP. |
 | **Partial or failed scan, existing ID missing** | ID absent from an incomplete scan | Do not change `consecutive_misses` and do not close. |
-| **Closed job observed again** | ID appears again | Set `status = open` and reset misses. Do not re-announce by default; the existing notification record prevents a duplicate. |
+| **Closed job observed again in a complete scan** | ID appears again | Set `status = open` and reset misses. Do not re-announce by default; the existing notification record prevents a duplicate. |
+| **Closed job observed again in a partial scan** | ID appears again, scan incomplete | Record the observation or refreshed details only. The role stays closed with its `closed_at` and miss count, because closure state changes require a complete scan. |
 | **Repost with new ID** | New `source_job_id` | Treat as a new role and evaluate for alerting. This is an accepted duplicate-like limitation. |
 
 ### 4.2 Invariants
@@ -208,6 +210,7 @@ jobs:
 - A partial or failed scan cannot establish a baseline.
 - A partial or failed scan cannot make a newly discovered role alert-eligible.
 - A partial or failed scan cannot increment closure misses.
+- A partial or failed scan cannot change closure state in either direction: it never closes a role and never reopens one.
 - A complete empty scan can close roles only through the normal two-complete-miss rule and only if the empty result was validated.
 - The baseline scan itself never produces individual alerts.
 - A matching role first observed only in a partial scan is not alerted until a complete scan observes it.

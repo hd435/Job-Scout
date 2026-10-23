@@ -453,45 +453,60 @@ class Storage:
         decision: MatchDecision,
         first_complete_scan_id: int | None,
         now: str,
+        reopen: bool = False,
     ) -> None:
+        """Store refreshed details for a role the database already knows.
+
+        Reopening a closed role is a closure-state change, so it happens only when the
+        caller reports a complete scan (D-014). An incomplete scan still refreshes the
+        details, but keeps the role's status, `closed_at`, and miss count untouched.
+        """
         location = job.location_normalized
         self._conn.execute(
             """
             UPDATE jobs SET
-                employer = ?, title = ?, location_raw = ?, location_normalized_json = ?,
-                city = ?, country = ?, workplace_type = ?, url = ?, description = ?,
-                posted_at = ?, closing_at = ?, salary_text = ?, content_hash = ?,
-                source_revision = ?,
-                first_complete_scan_id = COALESCE(first_complete_scan_id, ?),
-                last_seen_scan_id = ?, status = ?, consecutive_misses = 0,
-                closed_at = NULL, match_decision = ?, match_reason = ?,
-                rules_version = ?, updated_at = ?
-            WHERE id = ?
+                employer = :employer, title = :title, location_raw = :location_raw,
+                location_normalized_json = :location_json, city = :city, country = :country,
+                workplace_type = :workplace_type, url = :url, description = :description,
+                posted_at = :posted_at, closing_at = :closing_at, salary_text = :salary_text,
+                content_hash = :content_hash, source_revision = :source_revision,
+                first_complete_scan_id = COALESCE(first_complete_scan_id, :first_complete_scan),
+                last_seen_scan_id = :scan_id,
+                status = CASE WHEN :reopen = 1 THEN :open_status ELSE status END,
+                consecutive_misses = CASE
+                    WHEN :reopen = 1 OR status = :open_status THEN 0
+                    ELSE consecutive_misses
+                END,
+                closed_at = CASE WHEN :reopen = 1 THEN NULL ELSE closed_at END,
+                match_decision = :match_decision, match_reason = :match_reason,
+                rules_version = :rules_version, updated_at = :now
+            WHERE id = :job_id
             """,
-            (
-                job.employer,
-                job.title,
-                job.location_raw,
-                location.to_json(),
-                location.city,
-                location.country,
-                job.workplace_type,
-                job.url,
-                job.description,
-                job.posted_at.isoformat() if job.posted_at else None,
-                job.closing_at.isoformat() if job.closing_at else None,
-                job.salary_text,
-                job.content_hash,
-                job.source_revision,
-                first_complete_scan_id,
-                scan_id,
-                str(JobStatus.OPEN),
-                str(decision.decision),
-                json.dumps(list(decision.reasons)),
-                decision.rules_version,
-                now,
-                job_id,
-            ),
+            {
+                "employer": job.employer,
+                "title": job.title,
+                "location_raw": job.location_raw,
+                "location_json": location.to_json(),
+                "city": location.city,
+                "country": location.country,
+                "workplace_type": job.workplace_type,
+                "url": job.url,
+                "description": job.description,
+                "posted_at": job.posted_at.isoformat() if job.posted_at else None,
+                "closing_at": job.closing_at.isoformat() if job.closing_at else None,
+                "salary_text": job.salary_text,
+                "content_hash": job.content_hash,
+                "source_revision": job.source_revision,
+                "first_complete_scan": first_complete_scan_id,
+                "scan_id": scan_id,
+                "reopen": int(reopen),
+                "open_status": str(JobStatus.OPEN),
+                "match_decision": str(decision.decision),
+                "match_reason": json.dumps(list(decision.reasons)),
+                "rules_version": decision.rules_version,
+                "now": now,
+                "job_id": job_id,
+            },
         )
 
     def job_revisions(self, source_id: str) -> dict[str, str | None]:

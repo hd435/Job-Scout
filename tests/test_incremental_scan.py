@@ -280,6 +280,70 @@ def test_partial_scan_does_not_reopen_a_closed_role(store: Storage, source) -> N
     assert stored.last_seen_scan_id == outcome.scan_id
 
 
+def test_partial_scan_does_not_reopen_a_refreshed_closed_role(store: Storage, source) -> None:
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of(jobs=(make_job("R1"),))))
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
+    closed = store.get_job(SOURCE_ID, "R1")
+    assert closed.status is JobStatus.CLOSED
+    assert closed.consecutive_misses == 2
+
+    outcome = scripted_scan(
+        store,
+        source,
+        ScriptedAdapter(
+            lambda _known: result_of(
+                jobs=(make_job("R1", description="Rewritten while closed."),),
+                status=ScanStatus.PARTIAL,
+                skipped=(SkipReason("R9", "missing_title"),),
+            )
+        ),
+    )
+
+    assert outcome.status is ScanStatus.PARTIAL
+    assert outcome.reopened_jobs == 0
+    assert outcome.updated_jobs == 1
+    assert outcome.candidates == ()
+    stored = store.get_job(SOURCE_ID, "R1")
+    assert stored.status is JobStatus.CLOSED
+    assert stored.closed_at == closed.closed_at
+    assert stored.consecutive_misses == closed.consecutive_misses
+    assert stored.job.description == "Rewritten while closed."
+    assert stored.last_seen_scan_id == outcome.scan_id
+
+
+def test_complete_scan_reopens_a_refreshed_closed_role(store: Storage, source) -> None:
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of(jobs=(make_job("R1"),))))
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
+
+    scripted_scan(
+        store,
+        source,
+        ScriptedAdapter(
+            lambda _known: result_of(
+                jobs=(make_job("R1", description="Rewritten while closed."),),
+                status=ScanStatus.PARTIAL,
+            )
+        ),
+    )
+    assert store.get_job(SOURCE_ID, "R1").status is JobStatus.CLOSED
+
+    outcome = scripted_scan(
+        store,
+        source,
+        ScriptedAdapter(
+            lambda _known: result_of(jobs=(make_job("R1", description="Rewritten while closed."),))
+        ),
+    )
+
+    stored = store.get_job(SOURCE_ID, "R1")
+    assert outcome.reopened_jobs == 1
+    assert stored.status is JobStatus.OPEN
+    assert stored.closed_at is None
+    assert stored.consecutive_misses == 0
+
+
 def test_complete_scan_after_a_partial_observation_still_reopens(store: Storage, source) -> None:
     scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of(jobs=(make_job("R1"),))))
     scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))

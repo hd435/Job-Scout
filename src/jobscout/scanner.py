@@ -102,6 +102,7 @@ def run_scan(
                 decision=decision,
                 first_complete_scan_id=scan_id if result.complete else None,
                 now=now,
+                reopen=result.complete,
             )
             if changed:
                 updated_jobs += 1
