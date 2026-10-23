@@ -31,6 +31,8 @@ DESCRIPTION_LIMIT = 200
 MAX_DEPTH = 3
 MAX_DICT_ITEMS = 20
 MAX_LIST_ITEMS = 10
+MAX_RECORD_FIELDS = 40
+MAX_KEY_LENGTH = 64
 REQUEST_BUDGET = 1
 
 # Fields the adapter reads, with the type each must have in **live** data. The committed
@@ -197,13 +199,17 @@ def build_sample(
         if not isinstance(record, dict):
             sample.append({"__type__": type(record).__name__})
             continue
+        items = list(record.items())
         trimmed: dict[str, Any] = {}
-        for key, value in record.items():
+        for key, value in items[:MAX_RECORD_FIELDS]:
+            out_key = _bounded_key(key)
             if key == "lists" and isinstance(value, list):
                 # Section bodies carry the full description HTML; only their count matters.
-                trimmed[key] = {"__omitted__": len(value)}
+                trimmed[out_key] = {"__omitted__": len(value)}
             else:
-                trimmed[key] = _bounded(value, depth=MAX_DEPTH)
+                trimmed[out_key] = _bounded(value, depth=MAX_DEPTH)
+        if len(items) > MAX_RECORD_FIELDS:
+            trimmed["__omitted__"] = len(items) - MAX_RECORD_FIELDS
         sample.append(trimmed)
     return {
         "source_id": source_id,
@@ -224,7 +230,7 @@ def _bounded(value: Any, *, depth: int) -> Any:
         if depth <= 0:
             return {"__omitted__": len(value)}
         bounded = {
-            key: _bounded(item, depth=depth - 1)
+            _bounded_key(key): _bounded(item, depth=depth - 1)
             for key, item in list(value.items())[:MAX_DICT_ITEMS]
         }
         if len(value) > MAX_DICT_ITEMS:
@@ -235,6 +241,14 @@ def _bounded(value: Any, *, depth: int) -> Any:
             return {"__omitted__": len(value)}
         return [_bounded(item, depth=depth - 1) for item in value]
     return value
+
+
+def _bounded_key(key: Any) -> str:
+    """Keys are copied too, so an oversized field name cannot inflate the artifact."""
+    text = key if isinstance(key, str) else str(key)
+    if len(text) > MAX_KEY_LENGTH:
+        return text[:MAX_KEY_LENGTH] + "..."
+    return text
 
 
 def run_live_check(

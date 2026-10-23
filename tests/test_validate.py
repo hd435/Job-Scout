@@ -197,6 +197,24 @@ def test_sample_bounds_nested_content() -> None:
     assert len(json.dumps(sample, ensure_ascii=False)) < 4000
 
 
+def test_sample_bounds_top_level_fields_and_key_lengths() -> None:
+    oversized_key = "k" * (validate.MAX_KEY_LENGTH + 50)
+    big_record: dict[str, Any] = {oversized_key: "value"}
+    big_record.update({f"field{index}": index for index in range(60)})
+    payload = [big_record, dict(record("abc-1"), nested_key_holder={oversized_key: 1})]
+
+    sample = validate.build_sample(
+        payload, source_id="palantir", captured_at=CAPTURED_AT, max_records=2
+    )
+    first, second = sample["records"]
+
+    assert len(first) == validate.MAX_RECORD_FIELDS + 1
+    assert first["__omitted__"] == len(big_record) - validate.MAX_RECORD_FIELDS
+    assert all(len(key) <= validate.MAX_KEY_LENGTH + 3 for key in first)
+    assert any(key.endswith("...") for key in first)
+    assert all(len(key) <= validate.MAX_KEY_LENGTH + 3 for key in second["nested_key_holder"])
+
+
 # run_live_check -----------------------------------------------------------
 
 
