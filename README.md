@@ -4,7 +4,7 @@ A personal UK early-career job monitor. It reads **official employer and ATS job
 
 **Current state: M1 + M2.3 + M3 + M4 (offline) — local, all six sources configured.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, **additive-only matching-filter overrides in configuration**, and **adapters for all six intended sources** (Lever for Palantir, Workday for Barclays and Lloyds Graduate, Greenhouse for Monzo, sitemap+HTML for Wise and Arm) are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent. Only Palantir has ever been read with recorded payloads from the live service; **the other five sources have only run against synthetic fixtures**, and no live request has been made for them.
 
-Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
+Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
 
 ## Requirements
 
@@ -212,5 +212,6 @@ Technical reachability, HTTP 200 responses, and permissive `robots.txt` rules do
 - This build is fixture-first and runs no schedule.
 - A manual live smoke test is acceptable only where the source's terms permit it.
 - **No source is currently approved for recurring production polling.** Terms review is required per source before M2/M5.
+- The six-source terms review is in [docs/source-access.md](./docs/source-access.md). It found that Palantir and Wise prohibit automated monitoring or copying without written permission, that Barclays, Lloyds and Arm permit personal use but condition copying or storing their content on written permission, and that Monzo publishes no website-terms document at all.
 
 Job-Scout never bypasses CAPTCHAs, authentication, or bot protection, and it only links to official employer or ATS listings.
