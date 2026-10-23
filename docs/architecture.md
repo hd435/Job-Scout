@@ -329,7 +329,7 @@ This is a proposal for the retention decision, not an approved requirement.
 |---|---|---|---|
 | `LeverAdapter` | Palantir | Full JSON list | HTTP success, valid list, every record mapped or explicitly skipped |
 | `GreenhouseAdapter` | Monzo | Full JSON list | HTTP success, valid jobs list, every record mapped or explicitly skipped |
-| `WorkdayAdapter` | Barclays, Lloyds Graduate | Paginated CXS JSON; sitemap fallback | All pages retrieved or total accounted for; required detail lookups successful |
+| `WorkdayAdapter` | Barclays, Lloyds Graduate | Paginated CXS JSON (listing query POST) plus bounded detail lookups | Every page up to the reported `total` retrieved, no short page before the total, and no required detail lookup failed |
 | `SitemapHtmlAdapter` | Wise, Arm | Sitemap discovery plus source-specific HTML detail parsing | Sitemap retrieved; every new/changed detail page fetched and parsed |
 
 ### 6.2 Adapter responsibilities
@@ -340,8 +340,9 @@ This is a proposal for the retention decision, not an approved requirement.
   - Arm: sitemap and job pages; never the disallowed search-results path.
   - Palantir: respect the requested crawl delay.
   - Workday: respect rate limits and retry guidance.
+  - Lloyds Graduate: the `Graduate_careers` site only; the general LBG careers site is out of scope.
 - Map source fields into `Job`.
-- Resolve multi-location ambiguity where the source provides a detail page.
+- Resolve multi-location ambiguity where the source provides a detail page. Workday only requests a detail page for placeholder locations ("2 Locations"), bounded per scan.
 - Normalize posted dates where possible; use `None` rather than guessing relative dates.
 - Return explicit skip reasons and a precise scan status.
 
@@ -349,7 +350,7 @@ This is a proposal for the retention decision, not an approved requirement.
 
 - One shared HTTP client/session with timeouts.
 - Descriptive user agent.
-- Bounded retries for 429 and 5xx; respect `Retry-After`. GET requests retry inside the client; POST requests never retry internally, because a repeated POST could duplicate an effect. Retry policy for a send therefore belongs to the delivery state machine.
+- Bounded retries for 429 and 5xx; respect `Retry-After`. GET requests retry inside the client; POST requests do not retry by default, because a repeated POST could duplicate an effect. Retry policy for a send therefore belongs to the delivery state machine. The one exception is a POST used as a read-only query with no side effect (the Workday listing search), which opts in explicitly with `post_json(..., retry=True)`.
 - No retry for permanent 4xx.
 - Low per-host concurrency; one request at a time per host unless evidence supports more.
 - Log request failures without secrets or full response bodies.

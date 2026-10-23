@@ -62,7 +62,7 @@ class HttpClient(Protocol):
 
 
 class JsonPoster(Protocol):
-    def post_json(self, url: str, payload: dict[str, Any]) -> Any: ...
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any: ...
 
 
 @dataclass(frozen=True)
@@ -158,14 +158,19 @@ class UrllibHttpClient:
         raw = self._request(HttpRequest("GET", url, headers), retry=True)
         return self._decode(raw, url, "GET")
 
-    def post_json(self, url: str, payload: dict[str, Any]) -> Any:
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
+        """POST JSON. Retries are opt-in and only for idempotent, read-only queries.
+
+        A send that could have side effects (Telegram) must keep the default so a
+        repeated POST cannot duplicate the effect.
+        """
         headers = {
             "User-Agent": USER_AGENT,
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        raw = self._request(HttpRequest("POST", url, headers, body), retry=False)
+        raw = self._request(HttpRequest("POST", url, headers, body), retry=retry)
         return self._decode(raw, url, "POST")
 
     def _request(self, request: HttpRequest, *, retry: bool) -> bytes:
@@ -213,4 +218,20 @@ class FixtureHttpClient:
 
     def get_json(self, url: str) -> Any:
         self.requests.append(url)
+        return self._read()
+
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
+        """Serve the recorded listing page; any later offset is an empty page.
+
+        Fixture files hold one recorded page, so a paginated source stops with a
+        visible partial-scan note instead of re-reading the same payload forever.
+        """
+        self.requests.append(url)
+        recorded = self._read()
+        if not payload.get("offset"):
+            return recorded
+        total = recorded.get("total") if isinstance(recorded, dict) else None
+        return {"total": total, "jobPostings": []}
+
+    def _read(self) -> Any:
         return json.loads(self._path.read_text(encoding="utf-8"))

@@ -1,0 +1,21 @@
+{
+  "total": 2,
+  "jobPostings": [
+    {
+      "title": "Data Science & AI Graduate Scheme",
+      "externalPath": "/job/London/Data-Science-Graduate_LBG200",
+      "locationsText": "London, United Kingdom",
+      "postedOn": "Posted 5 Days Ago",
+      "bulletFields": ["LBG200"],
+      "timeType": "Full time"
+    },
+    {
+      "title": "Software Engineering Graduate Scheme",
+      "externalPath": "/job/Edinburgh/Software-Engineering-Graduate_LBG201",
+      "locationsText": "Edinburgh, United Kingdom",
+      "postedOn": "Posted 7 Days Ago",
+      "bulletFields": ["LBG201"],
+      "timeType": "Full time"
+    }
+  ]
+}

@@ -39,8 +39,24 @@ def test_defaults_are_usable_without_a_config_file(tmp_path: Path, monkeypatch) 
     config = load_config()
 
     assert config.database_path == default_config().database_path
-    assert [source.id for source in config.sources] == ["palantir"]
+    assert [source.id for source in config.sources] == ["palantir", "barclays", "lloyds_graduate"]
     assert config.source("palantir").cadence_minutes == 30
+
+
+def test_default_workday_sources_are_configured() -> None:
+    config = default_config()
+
+    barclays = config.source("barclays")
+    lloyds = config.source("lloyds_graduate")
+
+    assert barclays.adapter == "workday"
+    assert barclays.employer == "Barclays"
+    assert barclays.options["tenant"] == "barclays"
+    assert barclays.options["site"] == "External_Career_Site_Barclays"
+    assert lloyds.adapter == "workday"
+    assert lloyds.employer == "Lloyds Banking Group"
+    assert lloyds.options["tenant"] == "lbg"
+    assert lloyds.options["site"] == "Graduate_careers"
 
 
 def test_config_file_overrides_database_and_sources(tmp_path: Path) -> None:

@@ -66,13 +66,17 @@ def _configure_output() -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="jobscout",
-        description="Personal UK early-career job monitor (Palantir source, Telegram delivery).",
+        description="Personal UK early-career job monitor (Workday and Lever sources, "
+        "Telegram delivery).",
     )
     parser.add_argument("--version", action="version", version=f"jobscout {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     scan = subparsers.add_parser("scan", help="scan one source and persist the result")
-    scan.add_argument("--source", help="configured source id (default: the only source)")
+    scan.add_argument(
+        "--source",
+        help="configured source id (required when more than one source is configured)",
+    )
     mode = scan.add_mutually_exclusive_group()
     mode.add_argument(
         "--dry-run",

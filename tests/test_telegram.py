@@ -23,7 +23,7 @@ class FakePoster:
         self.error = error
         self.calls: list[tuple[str, dict[str, Any]]] = []
 
-    def post_json(self, url: str, payload: dict[str, Any]) -> Any:
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
         self.calls.append((url, payload))
         if self.error is not None:
             raise self.error

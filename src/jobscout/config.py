@@ -68,6 +68,30 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         cadence_minutes=30,
         options={"site": "palantir"},
     ),
+    SourceConfig(
+        id="barclays",
+        employer="Barclays",
+        adapter="workday",
+        cadence_minutes=30,
+        options={
+            "host": "barclays.wd3.myworkdayjobs.com",
+            "tenant": "barclays",
+            "site": "External_Career_Site_Barclays",
+            "locale": "en-US",
+        },
+    ),
+    SourceConfig(
+        id="lloyds_graduate",
+        employer="Lloyds Banking Group",
+        adapter="workday",
+        cadence_minutes=30,
+        options={
+            "host": "lbg.wd3.myworkdayjobs.com",
+            "tenant": "lbg",
+            "site": "Graduate_careers",
+            "locale": "en-US",
+        },
+    ),
 )
 
 

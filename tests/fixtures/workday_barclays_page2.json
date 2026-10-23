@@ -1,0 +1,21 @@
+{
+  "total": 4,
+  "jobPostings": [
+    {
+      "title": "Summer Internship - Technology",
+      "externalPath": "/job/Manchester/Summer-Internship_JR102",
+      "locationsText": "Manchester, United Kingdom",
+      "postedOn": "Posted 30+ Days Ago",
+      "bulletFields": ["JR102"],
+      "timeType": "Full time"
+    },
+    {
+      "title": "Risk Graduate Programme",
+      "externalPath": "/job/Glasgow/Risk-Graduate_JR103",
+      "locationsText": "Glasgow, United Kingdom",
+      "postedOn": "Posted Yesterday",
+      "bulletFields": ["JR103"],
+      "timeType": "Full time"
+    }
+  ]
+}

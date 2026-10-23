@@ -69,6 +69,41 @@ class RecordingTransport:
         return [text for _chat_id, text in self.sent]
 
 
+class FakeWorkdayHttp:
+    """Serves scripted Workday CXS listing pages and detail lookups; no network."""
+
+    def __init__(
+        self,
+        pages: list[Any] | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        self.pages = list(pages or [])
+        self.details = dict(details or {})
+        self.posts: list[tuple[str, dict[str, Any]]] = []
+        self.gets: list[str] = []
+        self.post_error: Exception | None = None
+
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
+        self.posts.append((url, payload))
+        if self.post_error is not None:
+            raise self.post_error
+        if not self.pages:
+            raise AssertionError(f"unexpected listing request: {url}")
+        response = self.pages.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    def get_json(self, url: str) -> Any:
+        self.gets.append(url)
+        for path, response in self.details.items():
+            if url.endswith(path):
+                if isinstance(response, Exception):
+                    raise response
+                return response
+        raise AssertionError(f"unexpected detail request: {url}")
+
+
 def lever_record(
     source_job_id: str,
     title: str,
@@ -133,6 +168,54 @@ def fake_http() -> type[FakeHttp]:
 @pytest.fixture
 def fake_transport() -> type[RecordingTransport]:
     return RecordingTransport
+
+
+@pytest.fixture
+def fake_workday_http() -> type[FakeWorkdayHttp]:
+    return FakeWorkdayHttp
+
+
+@pytest.fixture
+def barclays() -> SourceConfig:
+    return SourceConfig(
+        id="barclays",
+        employer="Barclays",
+        adapter="workday",
+        options={
+            "host": "barclays.wd3.myworkdayjobs.com",
+            "tenant": "barclays",
+            "site": "External_Career_Site_Barclays",
+            "locale": "en-US",
+        },
+    )
+
+
+@pytest.fixture
+def lloyds() -> SourceConfig:
+    return SourceConfig(
+        id="lloyds_graduate",
+        employer="Lloyds Banking Group",
+        adapter="workday",
+        options={
+            "host": "lbg.wd3.myworkdayjobs.com",
+            "tenant": "lbg",
+            "site": "Graduate_careers",
+            "locale": "en-US",
+        },
+    )
+
+
+@pytest.fixture
+def workday_payloads() -> dict[str, Any]:
+    return {
+        name: json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
+        for name in (
+            "workday_barclays_page1",
+            "workday_barclays_page2",
+            "workday_barclays_detail",
+            "workday_lloyds_graduate",
+        )
+    }
 
 
 @pytest.fixture

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from .base import AdapterError, SourceAdapter, build_job
 from .lever import LeverAdapter
+from .workday import WorkdayAdapter
 
-_ADAPTERS: dict[str, SourceAdapter] = {adapter.adapter_id: adapter for adapter in (LeverAdapter(),)}
+_ADAPTERS: dict[str, SourceAdapter] = {
+    adapter.adapter_id: adapter for adapter in (LeverAdapter(), WorkdayAdapter())
+}
 
 
 def get_adapter(adapter_id: str) -> SourceAdapter:

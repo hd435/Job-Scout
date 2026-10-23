@@ -1,7 +1,7 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1 delivered   
-**Last updated:** 2026-10-22  
+**Status:** Approved; M1, M2 and M3 (offline) delivered   
+**Last updated:** 2026-10-23  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
 **Decision log:** [docs/decisions.md](./decisions.md)
@@ -22,7 +22,7 @@ M1 is the first implementation milestone. It is not the completed product.
 |---|---|---|
 | **M1** | Local Palantir scan, SQLite persistence, deterministic matching, baseline, dry-run and status CLI | M1 acceptance criteria in section 3 |
 | **M2** | Palantir Telegram alerts with formatting, dedupe, and failure visibility | M1 accepted; Telegram token and chat ID; notification policy approved; Palantir permission sufficient for live delivery |
-| **M3** | Barclays and Lloyds Graduate added through Workday | M2 accepted; terms review; pagination/429 fixtures; cross-source dedupe |
+| **M3** | Barclays and Lloyds Graduate added through Workday (adapter delivered offline; live validation outstanding) | M2 accepted; pagination/429 fixtures; cross-source dedupe addressed; terms review still open for live use |
 | **M4** | Wise, Arm, and Monzo added; all six sources operational | M3 accepted; terms review; parser fixtures; all six acceptance checks |
 | **M5** | Unattended operation, seven-day run, status and failure notices | M4 accepted; host/deployment chosen; retention approved; reliability threshold met |
 | **M6** | Friend can clone and run an independent deployment | Post-MVP: packaging, licence/visibility, quickstart |
@@ -266,6 +266,32 @@ M2.3 acceptance evidence: `tests/test_matching_overrides.py` (normalisation, val
 - Validate pagination, 429 handling, relative dates, multi-location detail lookup, and partial-scan safety.
 - Require terms review before recurring production use.
 - Confirm expected counts with fixtures and a permitted live smoke test.
+
+**M3 delivery (offline, synthetic fixtures)**
+
+| Item | Status |
+|---|---|
+| Shared `WorkdayAdapter` for `barclays` and `lloyds_graduate`, registered in the adapter registry and added to the default source set | Delivered 2026-10-23 |
+| Listing pagination against the reported `total`, including over-fetch protection, page cap, and short/empty-page detection | Delivered (fixtures) |
+| Requisition-id identity (`bulletFields[0]`), skip reasons for unfixable records, in-scan duplicate suppression | Delivered (fixtures) |
+| Placeholder-location resolution through the detail endpoint, bounded per scan, failing safe to `partial` | Delivered (fixtures) |
+| Relative `postedOn` interpretation for explicit forms only; buckets stay `None` | Delivered (fixtures) |
+| 429/5xx and malformed-payload handling; partial scans cannot close roles or alert | Delivered (fixtures) |
+| Lloyds scope held to the `Graduate_careers` site | Delivered; the general LBG careers site is out of scope |
+| Live validation against real payloads | **Not done**; requires permitted access (D-048) |
+
+M3 decisions: one shared adapter with requisition-id identity, `total`-based completeness, and bounded detail lookups (D-045); the read-only listing POST is the only retried request (D-046); the sitemap fallback is deferred (D-047); fixture-only evidence is recorded as an open validation gap (D-048).
+
+M3 acceptance evidence: `tests/test_adapter_workday.py` (pagination, request shape, retry opt-in, identity, Lloyds site scope, relative dates, multi-location resolution/failure/cap, pagination edge cases, malformed payloads, skips, duplicates, missing options, transport failures, scanner integration for partial-scan safety and new-role alerting, restart dedupe), `tests/test_config.py` (default source set and Workday options), `tests/test_http.py` (POST retries only on explicit opt-in). No live employer request has been made.
+
+M3 cross-source deduplication gate: the only cross-source overlap risk is the same role advertised by two employers, and Barclays and Lloyds are separate employers, so no shared identity exists to deduplicate on. Deduplication therefore stays per `(source_id, source_job_id)` as designed, and no cross-source subsystem is introduced. This is a reasoned no-op, not validated against live listings; revisit only if live data shows duplicated roles across sources.
+
+Live validation still required before these sources can be trusted or run unattended:
+
+1. Confirm the listing and detail response shapes, the requisition-id field, and the locale-prefixed public URL pattern.
+2. Confirm real wording for multi-location placeholders and relative posted dates.
+3. Confirm observed 429/5xx behaviour and whether `total` reflects the full result set.
+4. Complete terms review for recurring automated access (D-027); reachability is not permission.
 
 ### M4 — Wise, Arm, and Monzo
 

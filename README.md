@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.3 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, and **additive-only matching-filter overrides in configuration** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent, and the other five sources are not implemented.
+**Current state: M1 + M2.3 + M3 (offline) — local, Palantir, Barclays, and Lloyds Graduate.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, **additive-only matching-filter overrides in configuration**, and a **shared Workday adapter for Barclays and Lloyds Graduate** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent. The Workday adapter has only ever run against synthetic fixtures: no live Barclays or Lloyds request has been made, and Wise, Arm, and Monzo are not implemented.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -28,6 +28,9 @@ python -m pip install -e ".[dev]"
 # Recorded snapshot, no network access (recommended for a first look)
 python -m jobscout scan --source palantir --dry-run --fixture tests/fixtures/palantir_jobs.json
 
+# Recorded Workday snapshot (synthetic fixture: proves parsing, not live shapes)
+python -m jobscout scan --source lloyds_graduate --dry-run --fixture tests/fixtures/workday_lloyds_graduate.json
+
 # Live scan of the Palantir Lever board (only where the source's terms permit it)
 python -m jobscout scan --source palantir --dry-run
 
@@ -47,6 +50,21 @@ Common options: `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`
 Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery failure, `2` failed scan or usage error.
 
 `--dry-run` and `--deliver` are mutually exclusive, and one of them is required: a scan never sends anything unless you ask it to.
+
+## Sources
+
+| Source id | Employer | Adapter | State |
+|---|---|---|---|
+| `palantir` | Palantir Technologies | `lever` | Implemented; exercised against recorded payloads |
+| `barclays` | Barclays | `workday` | Implemented; synthetic fixtures only |
+| `lloyds_graduate` | Lloyds Banking Group | `workday` | Implemented; synthetic fixtures only; the `Graduate_careers` site only |
+| Wise, Arm, Monzo | — | `sitemap_html`, `greenhouse` | Not implemented (M4) |
+
+`--source` is required while more than one source is configured. The two Workday sources share one adapter: the listing is a read-only POST query that is paginated to the reported `total`, the requisition id is the job identity, and a detail page is fetched only when the listing shows a placeholder location such as "2 Locations".
+
+A `--fixture` file holds one recorded page and no detail payload, so a paginated Workday fixture scan stops as `partial` with a visible note instead of looping on the same page. The full two-page Workday flow is covered by `tests/test_adapter_workday.py`.
+
+**No live Barclays or Lloyds request has been made.** Their fixtures are synthetic, so they prove pagination, identity, failure handling, and scan safety — not that the real service returns those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs permitted live validation.
 
 ## Telegram credentials
 
@@ -98,7 +116,7 @@ Matching new roles are queued as `pending` notification rows, one per `(chat_id,
 | 429, 5xx, or a connection that never opened | stays `pending` with attempt count and error | Yes, next `deliver`/`--deliver` pass |
 | Permanent rejection (other 4xx, `ok: false`) | `failed` | No |
 
-The HTTP client never retries a POST internally, so the state machine is the only retry authority and a retry cannot silently double-send. No `sent` row is ever sent again, which makes `deliver` idempotent.
+The HTTP client does not retry a POST internally, so the state machine is the only retry authority and a retry cannot silently double-send. (The one exception is a read-only query POST with no side effect, such as the Workday listing search, which opts in explicitly.) No `sent` row is ever sent again, which makes `deliver` idempotent.
 
 Known limitation, accepted for the MVP (D-042): if the process dies between Telegram accepting a message and the database recording `sent`, that alert can be sent again later.
 
@@ -107,7 +125,7 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 
 ## Configuration
 
-Built-in defaults cover the Palantir source. An optional `config.toml` can change the database path and source settings:
+Built-in defaults cover the Palantir, Barclays, and Lloyds Graduate sources. An optional `config.toml` can change the database path and source settings:
 
 ```toml
 [jobscout]
@@ -123,6 +141,19 @@ cadence_minutes = 30
 [sources.options]
 site = "palantir"
 
+[[sources]]
+id = "barclays"
+employer = "Barclays"
+adapter = "workday"
+enabled = true
+cadence_minutes = 30
+
+[sources.options]
+host = "barclays.wd3.myworkdayjobs.com"
+tenant = "barclays"
+site = "External_Career_Site_Barclays"
+locale = "en-US"
+
 # Optional, additive-only matching overrides (defaults stay unchanged if omitted)
 [matching]
 extra_exclude_terms = ["unpaid", "commission only"]
@@ -130,6 +161,8 @@ extra_exclude_terms = ["unpaid", "commission only"]
 [matching.extra_family_terms]
 data = ["bioinformatics analyst"]
 ```
+
+Workday sources need `host`, `tenant`, and `site`; `locale` and `page_size` are optional. Listing a `[[sources]]` block replaces the built-in source list, so keep every source you want to run.
 
 Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
 

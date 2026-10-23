@@ -6,6 +6,7 @@ import socket
 import pytest
 
 from jobscout.http import (
+    FixtureHttpClient,
     HttpError,
     HttpRequest,
     HttpResponse,
@@ -85,6 +86,24 @@ def test_post_never_retries_internally() -> None:
     assert seen[0].headers["Content-Type"] == "application/json"
 
 
+def test_post_retries_only_when_the_caller_opts_in() -> None:
+    seen = []
+
+    def transport(request, timeout):
+        seen.append(request)
+        if len(seen) == 1:
+            return HttpResponse(429, b"", {"retry-after": "0"})
+        return ok(b'{"jobPostings": []}')
+
+    client = UrllibHttpClient(transport=transport, sleep=lambda _s: None)
+
+    assert client.post_json("https://example.test/jobs", {"limit": 1}, retry=True) == {
+        "jobPostings": []
+    }
+    assert len(seen) == 2
+    assert seen[1].method == "POST"
+
+
 def test_post_returns_success_payload() -> None:
     def transport(request, timeout):
         return ok(b'{"ok": true, "result": {"message_id": 7}}')
@@ -95,6 +114,22 @@ def test_post_returns_success_payload() -> None:
         "ok": True,
         "result": {"message_id": 7},
     }
+
+
+def test_fixture_client_serves_one_recorded_page_then_an_empty_page(tmp_path) -> None:
+    path = tmp_path / "listing.json"
+    path.write_text(json.dumps({"total": 4, "jobPostings": [{"title": "A"}]}), encoding="utf-8")
+    client = FixtureHttpClient(path)
+
+    assert client.post_json("https://example.test/jobs", {"offset": 0, "limit": 1}) == {
+        "total": 4,
+        "jobPostings": [{"title": "A"}],
+    }
+    assert client.post_json("https://example.test/jobs", {"offset": 1, "limit": 1}) == {
+        "total": 4,
+        "jobPostings": [],
+    }
+    assert client.get_json("https://example.test/jobs")["jobPostings"] == [{"title": "A"}]
 
 
 def test_invalid_json_is_reported_without_echoing_the_url() -> None:

@@ -1,0 +1,21 @@
+{
+  "total": 4,
+  "jobPostings": [
+    {
+      "title": "Graduate Software Engineer",
+      "externalPath": "/job/London/Graduate-Software-Engineer_JR100",
+      "locationsText": "London, United Kingdom",
+      "postedOn": "Posted 3 Days Ago",
+      "bulletFields": ["JR100"],
+      "timeType": "Full time"
+    },
+    {
+      "title": "Graduate Data Analyst",
+      "externalPath": "/job/London/Graduate-Data-Analyst_JR101",
+      "locationsText": "2 Locations",
+      "postedOn": "Posted Today",
+      "bulletFields": ["JR101"],
+      "timeType": "Full time"
+    }
+  ]
+}
