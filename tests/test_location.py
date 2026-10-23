@@ -84,3 +84,62 @@ def test_multi_location_qualifies_when_any_location_is_in_the_uk():
 
     assert result.qualifies is True
     assert result.reason == "london"
+
+
+# UK-employer context (D-065) ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason", "city"),
+    [
+        ("Manchester", "uk_city:manchester", "Manchester"),
+        ("Halifax", "uk_city:halifax", "Halifax"),
+        ("Manchester, West Yorkshire", "uk_city:manchester", "Manchester"),
+    ],
+)
+def test_a_uk_employer_resolves_ambiguous_town_names(raw, reason, city):
+    result = normalize_location(raw, uk_employer=True)
+
+    assert result.qualifies is True
+    assert result.reason == reason
+    assert result.city == city
+    assert result.ambiguous is False
+
+
+@pytest.mark.parametrize("raw", ["Manchester", "Halifax"])
+def test_the_same_town_names_stay_ambiguous_without_the_uk_employer_context(raw):
+    """A board that advertises worldwide keeps the conservative rule."""
+    result = normalize_location(raw)
+
+    assert result.qualifies is False
+    assert result.ambiguous is True
+    assert result.reason.startswith("location_ambiguous:city_country_unclear")
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"),
+    [
+        ("Barcelona", "non_uk_city:barcelona"),
+        ("Manchester, United States", "location_ambiguous:conflicting_country:manchester"),
+        ("Remote", "location_ambiguous:remote_uk_eligibility_unclear"),
+    ],
+)
+def test_the_uk_employer_context_never_makes_a_foreign_location_qualify(raw, reason):
+    result = normalize_location(raw, uk_employer=True)
+
+    assert result.qualifies is False
+    assert result.reason == reason
+
+
+def test_the_uk_employer_context_leaves_an_explicit_uk_location_alone():
+    result = normalize_location("Remote (UK)", uk_employer=True)
+
+    assert result.qualifies is True
+    assert result.reason == "uk_remote"
+
+
+def test_halifax_is_recognised_as_a_uk_town_name():
+    """Regression: 'Halifax' used to be unresolved, so a real role went to review."""
+    result = normalize_location("Halifax")
+
+    assert "halifax" in result.reason

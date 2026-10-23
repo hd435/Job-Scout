@@ -15,7 +15,7 @@ from ..config import SourceConfig
 from ..http import HttpClient, HttpError
 from ..matching import normalize_text
 from ..models import Job, ScanResult, ScanStatus, SkipReason
-from .base import build_job
+from .base import build_job, uk_employer
 
 LEVER_ENDPOINT = "https://api.lever.co/v0/postings/{site}?mode=json"
 
@@ -149,6 +149,7 @@ def _map_record(record: Any, index: int, config: SourceConfig) -> Job | SkipReas
         closing_at=None,
         salary_text=_format_salary(record.get("salaryRange")),
         workplace_type=_as_text(record.get("workplaceType")),
+        uk_employer=uk_employer(config),
     )
 
 

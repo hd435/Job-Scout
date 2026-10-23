@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 import pytest
@@ -627,3 +628,34 @@ def test_workday_dedupe_survives_a_restart(tmp_path, barclays, fake_workday_http
     assert outcome.is_baseline is False
     assert outcome.candidates == ()
     assert outcome.new_jobs == 0
+
+
+def test_uk_employer_context_makes_an_ambiguous_town_alert_eligible(
+    store, lloyds, fake_workday_http
+) -> None:
+    """A UK-only board: 'Manchester' qualifies instead of going to review (D-065)."""
+
+    def run(options, requisition: str):
+        body = page(
+            [posting(requisition, "Graduate Software Engineer", locationsText="Manchester")],
+            total=1,
+        )
+        config = SourceConfig(
+            id="lloyds_graduate",
+            employer="Lloyds Banking Group",
+            adapter="workday",
+            options=options,
+        )
+        return run_workday_scan(
+            store, config, fake_workday_http(pages=[json.loads(json.dumps(body))])
+        )
+
+    conservative = run(dict(lloyds.options), "JR1")  # first scan baselines the board
+    uk_context = run({**lloyds.options, "uk_employer": True}, "JR2")  # a new role later
+
+    assert conservative.needs_review == 1
+    assert conservative.candidates == ()
+    assert uk_context.needs_review == 0
+    assert len(uk_context.candidates) == 1
+    assert "location:uk_city:manchester" in uk_context.candidates[0].decision.reasons
+    assert "early_career:graduate" in uk_context.candidates[0].decision.reasons

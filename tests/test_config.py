@@ -329,3 +329,12 @@ def test_matching_term_types_are_validated(tmp_path) -> None:
 
     with pytest.raises(ConfigError, match="invalid \\[matching\\] configuration"):
         load_config(path)
+
+
+def test_uk_only_employer_boards_are_marked_and_the_global_one_is_not() -> None:
+    """D-065: the flag relaxes town-name collisions only for UK-only boards."""
+    sources = {source.id: source for source in default_config().sources}
+
+    assert sources["palantir"].options.get("uk_employer") is None, "Lever board is global"
+    for source_id in ("barclays", "lloyds_graduate", "monzo", "wise", "arm"):
+        assert sources[source_id].options.get("uk_employer") is True, source_id

@@ -30,7 +30,7 @@ from typing import Any, Protocol
 from ..config import SourceConfig
 from ..http import HttpError
 from ..models import Job, ScanResult, ScanStatus, SkipReason
-from .base import build_job
+from .base import build_job, uk_employer
 from .htmltext import HtmlDocument, strip_html
 
 SITEMAP_MAX_DOCUMENTS = 5
@@ -363,6 +363,7 @@ def _map_page(
                 salary_text=_salary_text(posting.get("baseSalary")),
                 workplace_type=None,
                 source_revision=entry.revision,
+                uk_employer=uk_employer(config),
             ),
             False,
         )

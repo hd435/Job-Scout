@@ -66,6 +66,8 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         employer="Palantir Technologies",
         adapter="lever",
         cadence_minutes=30,
+        # The Lever board advertises roles worldwide, so it keeps the conservative location
+        # rules; `uk_employer` is deliberately not set here.
         options={"site": "palantir"},
     ),
     SourceConfig(
@@ -78,6 +80,7 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
             "tenant": "barclays",
             "site": "External_Career_Site_Barclays",
             "locale": "en-US",
+            "uk_employer": True,
         },
     ),
     SourceConfig(
@@ -90,6 +93,7 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
             "tenant": "lbg",
             "site": "Graduate_careers",
             "locale": "en-US",
+            "uk_employer": True,
         },
     ),
     SourceConfig(
@@ -97,21 +101,21 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         employer="Monzo",
         adapter="greenhouse",
         cadence_minutes=30,
-        options={"board": "monzo"},
+        options={"board": "monzo", "uk_employer": True},
     ),
     SourceConfig(
         id="wise",
         employer="Wise",
         adapter="sitemap_html",
         cadence_minutes=30,
-        options={"profile": "wise"},
+        options={"profile": "wise", "uk_employer": True},
     ),
     SourceConfig(
         id="arm",
         employer="Arm",
         adapter="sitemap_html",
         cadence_minutes=30,
-        options={"profile": "arm"},
+        options={"profile": "arm", "uk_employer": True},
     ),
 )
 

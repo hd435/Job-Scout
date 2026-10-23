@@ -36,7 +36,7 @@ from typing import Any, Protocol
 from ..config import SourceConfig
 from ..http import HttpClient, HttpError
 from ..models import ScanResult, ScanStatus, SkipReason
-from .base import build_job
+from .base import build_job, uk_employer
 
 WORKDAY_PAGE_SIZE = 20
 WORKDAY_MAX_PAGES = 200
@@ -154,6 +154,7 @@ class WorkdayAdapter:
                 description=draft.description,
                 posted_at=draft.posted_at,
                 closing_at=draft.closing_at,
+                uk_employer=uk_employer(config),
             )
             for draft in drafts
         )

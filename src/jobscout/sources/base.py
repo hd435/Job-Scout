@@ -16,6 +16,14 @@ class AdapterError(Exception):
     """Unknown or misconfigured adapter."""
 
 
+def uk_employer(config: SourceConfig) -> bool:
+    """Whether this source's board only advertises UK roles (`options.uk_employer`).
+
+    Defaults to false so an unconfigured source keeps the conservative location rules.
+    """
+    return bool(config.options.get("uk_employer", False))
+
+
 class SourceAdapter(Protocol):
     """Adapters own HTTP access and mapping. They never touch storage or Telegram.
 
@@ -49,8 +57,9 @@ def build_job(
     salary_text: str | None = None,
     workplace_type: str | None = None,
     source_revision: str | None = None,
+    uk_employer: bool = False,
 ) -> Job:
-    location = normalize_location(location_raw, workplace_type)
+    location = normalize_location(location_raw, workplace_type, uk_employer=uk_employer)
     content_hash = compute_content_hash(
         source_id=source_id,
         source_job_id=source_job_id,

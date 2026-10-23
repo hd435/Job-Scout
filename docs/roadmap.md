@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention), M5.4.0 (offline trial preparation), M5.4.1 (Monzo validation scope) and M5.4.2 (Lloyds Graduate validation profile) delivered
+- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention), M5.4.0 (offline trial preparation), M5.4.1 (Monzo validation scope), M5.4.2 (Lloyds Graduate validation profile) and M5.4.3 (UK-employer location context) delivered
 - **Last updated:** 2026-10-23
 - **Product authority:** [docs/prd.md](./prd.md)
 - **Technical design:** [docs/architecture.md](./architecture.md)
@@ -338,6 +338,7 @@ Live validation still required before these sources can be trusted or run unatte
 | **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 with offline tests; the single authorised live run was executed and passed |
 | **M5.4.1** | Validation scope extended to Monzo (Greenhouse envelope): the same one-request check, a per-source shape profile, a synthetic Monzo baseline fixture | Delivered 2026-10-23 with offline tests; the single authorised live Monzo request was executed and passed |
 | **M5.4.2** | Validation scope extended to Lloyds Graduate (Workday): per-profile request budget, POST support, bounded detail lookups | Delivered 2026-10-23 with offline tests; the single authorised live request set was executed and passed |
+| **M5.4.3** | UK-employer location context (D-065): ambiguous UK town names qualify for boards that only advertise UK roles | Delivered 2026-10-23 with offline tests; the live Lloyds board previously left four graduate schemes in review |
 | **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
 | **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four retention horizons remain engineering defaults awaiting explicit Product Owner ratification |
 | **M5.4.0** | Offline reliability preparation for the trial: scheduler failure hardening, restart and duplicate-process behaviour, host operating procedure, trial measurement, retention operations | Delivered 2026-10-23 with offline tests and documentation. No trial started, no scheduled task created |
@@ -425,6 +426,10 @@ Still unverified for Lloyds: that detail lookups resolve real placeholders on th
 M5.4.2 acceptance evidence: `tests/test_validate.py` (the Lloyds profile's budget and options, a single POST with no detail lookups when every location is concrete, exactly one detail lookup for one placeholder, a budget violation refused before the second detail request reaches the network, a resolving profile proving one detail lookup per placeholder, a capped lookup reported as a partial-scan warning rather than a failure, `externalPath` type drift failing, and the CLI resolving the Workday baseline fixture while never opening a database).
 
 
+
+M5.4.3 notes (D-065): the Lloyds baseline scan was complete (33 roles, 0 skipped) and produced 11 alert-eligible graduate schemes, but four more - `Manchester` x3 and `Halifax` - sat in `needs_review` because those town names also exist abroad. Sources that only advertise UK roles can now set `options.uk_employer = true`, which resolves those names as UK while an explicit foreign country or city still excludes. Applied to Barclays, Lloyds, Monzo, Wise and Arm; not to Palantir, whose Lever board advertises worldwide. Known limit: a string like `Manchester, NH` would now qualify on a UK-only board, because US state abbreviations are not modelled as countries; that shape was not observed on any configured board.
+
+Related blind spot, still open: a `partial` scan neither alerts nor counts as a failure, so a source that returned partial every cycle (for example if Lloyds ever exceeded the 10 detail lookups) would look healthy in `status` and silently stop alerting.
 
 M5.1 fixture caveat found during implementation: `tests/fixtures/palantir_jobs.json` is a **synthetic** trimming, not a faithful recording — 12 of 22 records have no `createdAt` and one carries the literal string `"not-a-timestamp"` (a deliberate "never guess a date" case). The fixture therefore serves as a key-shape baseline only; the type contract is enforced on live data. A live sample is what makes the baseline trustworthy.
 

@@ -46,6 +46,7 @@ _UK_CITIES: Mapping[str, str] = MappingProxyType(
     {
         "london": "London",
         "manchester": "Manchester",
+        "halifax": "Halifax",
         "birmingham": "Birmingham",
         "leeds": "Leeds",
         "edinburgh": "Edinburgh",
@@ -89,7 +90,9 @@ _UK_CITIES: Mapping[str, str] = MappingProxyType(
 )
 
 # Cities that exist in more than one country: only resolvable with a country token.
-_AMBIGUOUS_CITIES = frozenset({"cambridge", "birmingham", "oxford", "manchester", "durham"})
+_AMBIGUOUS_CITIES = frozenset(
+    {"cambridge", "birmingham", "oxford", "manchester", "durham", "halifax"}
+)
 
 _NON_UK_COUNTRY_TOKENS = (
     "united states",
@@ -223,12 +226,19 @@ def _first_phrase(text: str, phrases: Mapping[str, str]) -> str | None:
     return None
 
 
-def normalize_location(raw: str | None, workplace_type: str | None = None) -> LocationResult:
+def normalize_location(
+    raw: str | None, workplace_type: str | None = None, *, uk_employer: bool = False
+) -> LocationResult:
     """Classify a raw location string under the approved location rules.
 
     Rules: any London location qualifies; UK remote qualifies only with explicit UK
     eligibility; any other UK location qualifies; non-UK only does not qualify;
     anything unresolvable is ambiguous and never alert-eligible.
+
+    `uk_employer` marks a source whose board only advertises UK roles. It relaxes the
+    name-collision check for towns that also exist abroad (Manchester, Halifax, ...), which
+    would otherwise need review for ever. It never makes a non-UK location qualify: an
+    explicit foreign country or city still excludes.
     """
     text = normalize_text(raw or "")
     segments = [segment.strip() for segment in _SEGMENT_SPLIT.split(text) if segment.strip()]
@@ -244,7 +254,9 @@ def normalize_location(raw: str | None, workplace_type: str | None = None) -> Lo
     ambiguous_reasons: list[str] = []
     non_uk_reasons: list[str] = []
     for segment in segments:
-        kind, reason, city, country = _classify_segment(segment, workplace_type)
+        kind, reason, city, country = _classify_segment(
+            segment, workplace_type, uk_employer=uk_employer
+        )
         if kind == "qualifies":
             return LocationResult(
                 qualifies=True,
@@ -275,7 +287,7 @@ def normalize_location(raw: str | None, workplace_type: str | None = None) -> Lo
 
 
 def _classify_segment(
-    segment: str, workplace_type: str | None
+    segment: str, workplace_type: str | None, *, uk_employer: bool = False
 ) -> tuple[str, str, str | None, str | None]:
     text = segment
     # Northern Ireland is part of the UK, so remove it before the "ireland" check.
@@ -293,7 +305,7 @@ def _classify_segment(
     resolved_workplace = "remote" if is_remote else workplace_type
 
     if is_remote:
-        if uk_country or (uk_city and uk_city not in _AMBIGUOUS_CITIES):
+        if uk_country or (uk_city and (uk_employer or uk_city not in _AMBIGUOUS_CITIES)):
             city = _UK_CITIES.get(uk_city) if uk_city else None
             return "qualifies", "uk_remote", city, "United Kingdom"
         if non_uk_country or non_uk_city:
@@ -303,7 +315,7 @@ def _classify_segment(
 
     if uk_city:
         city_name = _UK_CITIES[uk_city]
-        if uk_city in _AMBIGUOUS_CITIES and not uk_country:
+        if uk_city in _AMBIGUOUS_CITIES and not uk_country and not uk_employer:
             return "ambiguous", f"city_country_unclear:{uk_city}", city_name, None
         if non_uk_country or non_uk_city:
             return "ambiguous", f"conflicting_country:{uk_city}", city_name, None
