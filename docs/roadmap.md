@@ -246,7 +246,7 @@ Known deviations and limitations:
 |---|---|---|
 | **M2.1** | Offline pipeline: `notifications` table, message formatting, delivery state machine, duplicate prevention, recording fake transport, delivery visibility in `status` | Delivered 2026-10-23 |
 | **M2.2** | Real Telegram transport with `.env` or environment credentials, redaction, and delivery CLI paths | Delivered 2026-10-23; live test message still needs explicit approval |
-| **M2.3** | Matching-filter overrides in configuration (FR-12 complete) | Not started |
+| **M2.3** | Matching-filter overrides in configuration (FR-12 complete) | Delivered 2026-10-23 |
 
 M2.1 decisions: ambiguous outcomes are recorded and never retried automatically (D-024); transient failures stay `pending` for a later pass; permanent rejections become `failed`; `sent` rows are never re-sent (D-036); the transport and any CLI delivery switch arrive in M2.2 (D-037); proactive failure notices stay in M5 (D-038).
 
@@ -255,6 +255,10 @@ M2.2 decisions: one POST per alert with no internal HTTP retry and explicit outc
 M2.1 acceptance evidence: `tests/test_notifier.py` (formatting, queueing, dedupe, restart, sent/failed/ambiguous/retry paths, redaction) and `tests/test_cli.py::test_status_reports_delivery_state_without_the_chat_id`.
 
 M2.2 acceptance evidence: `tests/test_telegram.py` (outcome mapping, message id, redaction, transport-to-state-machine integration), `tests/test_http.py` (POST never retries; timeout vs connection failure classification), `tests/test_config.py` (environment-only credentials), and `tests/test_cli.py` (missing configuration, dry-run/`--deliver` exclusivity, delivery reporting, idempotent `deliver`). No live Telegram message has been sent.
+
+M2.3 decisions: additive-only filter overrides with rejected unknown keys and families, and an override digest in the rules version (D-044); FR-12 closed (D-035).
+
+M2.3 acceptance evidence: `tests/test_matching_overrides.py` (normalisation, validation, added family terms, added exclusions, and proof that overrides cannot cancel family, seniority, location, or PhD exclusions) and `tests/test_config.py` (parsing, unknown family, unknown key, type errors), `tests/test_cli.py` (override config changes scan decisions; `status` shows the active rules version).
 
 ### M3 — Workday: Barclays and Lloyds Graduate
 

@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.2 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), and a **Telegram Bot API transport** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). No live Telegram message has been sent yet, scheduling and deployment are absent, and the other five sources are not implemented.
+**Current state: M1 + M2.3 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, and **additive-only matching-filter overrides in configuration** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent, and the other five sources are not implemented.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -122,9 +122,18 @@ cadence_minutes = 30
 
 [sources.options]
 site = "palantir"
+
+# Optional, additive-only matching overrides (defaults stay unchanged if omitted)
+[matching]
+extra_exclude_terms = ["unpaid", "commission only"]
+
+[matching.extra_family_terms]
+data = ["bioinformatics analyst"]
 ```
 
 Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
+
+Filter overrides can only **add**: extra title phrases inside an approved family (`data`, `software`, `quant`, `finance`, `consulting`, `business_analysis`) and extra title exclusions. They cannot invent a family, change seniority or location rules, or cancel an approved exclusion — unknown families and unknown keys are rejected when the config loads, and exclusions are checked before matches. When overrides are active the rules version gains a digest (for example `m1.1+1a2b3c4d`), which is stored with every match decision and shown by `jobscout status`.
 
 ## Development
 

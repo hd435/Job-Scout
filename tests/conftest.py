@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from jobscout.config import SourceConfig  # noqa: E402
 from jobscout.http import HttpError  # noqa: E402
+from jobscout.matching import DEFAULT_RULES, MatchingRules  # noqa: E402
 from jobscout.models import DeliveryOutcome, DeliveryResult, ScanOutcome  # noqa: E402
 from jobscout.notifier import Notifier  # noqa: E402
 from jobscout.scanner import run_scan  # noqa: E402
@@ -170,6 +171,7 @@ def scan(store: Storage, palantir: SourceConfig, clock: FakeClock) -> Callable[.
         error: Exception | None = None,
         accept_empty: bool = False,
         notify_chat_id: str | None = None,
+        rules: MatchingRules = DEFAULT_RULES,
         config: SourceConfig | None = None,
         storage: Storage | None = None,
     ) -> ScanOutcome:
@@ -180,6 +182,7 @@ def scan(store: Storage, palantir: SourceConfig, clock: FakeClock) -> Callable[.
             FakeHttp(payload, error=error),
             accept_empty=accept_empty,
             notify_chat_id=notify_chat_id,
+            rules=rules,
             clock=clock,
         )
 

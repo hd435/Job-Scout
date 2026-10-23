@@ -175,6 +175,100 @@ def test_status_reports_operational_state_without_secrets(db, capsys) -> None:
     assert "chat" not in out.casefold()
 
 
+def test_status_reports_built_in_matching_rules(db, capsys) -> None:
+    exit_code = run_cli("status", "--db", str(db))
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Matching rules: m1.1 (built-in defaults)" in out
+
+
+def write_matching_config(tmp_path: Path) -> Path:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        """
+[matching]
+extra_exclude_terms = ["contract"]
+
+[matching.extra_family_terms]
+data = ["bioinformatics analyst"]
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_matching_overrides_change_scan_decisions(db, capsys, tmp_path) -> None:
+    config_path = write_matching_config(tmp_path)
+    payload = json.loads(PALANTIR_FIXTURE.read_text(encoding="utf-8"))
+    payload.append(
+        {
+            "id": "8a1f4c10-8888-4000-8000-000000000088",
+            "text": "Graduate Bioinformatics Analyst",
+            "categories": {"location": "London, United Kingdom"},
+            "workplaceType": "hybrid",
+            "descriptionPlain": "Data role outside the built-in keyword list.",
+            "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-8888",
+        }
+    )
+    second = tmp_path / "second.json"
+    second.write_text(json.dumps(payload), encoding="utf-8")
+
+    # Default rules on a separate database: the added title is not a target family.
+    default_db = tmp_path / "default.db"
+    run_cli(*scan_command(default_db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    without_config = run_cli(
+        "scan",
+        "--source",
+        "palantir",
+        "--dry-run",
+        "--db",
+        str(default_db),
+        "--fixture",
+        str(second),
+    )
+    without_config_out = capsys.readouterr().out
+
+    # Same snapshot with the override config.
+    run_cli(
+        "scan",
+        "--source",
+        "palantir",
+        "--dry-run",
+        "--db",
+        str(db),
+        "--config",
+        str(config_path),
+        "--fixture",
+        str(PALANTIR_FIXTURE),
+    )
+    capsys.readouterr()
+    with_config = run_cli(
+        "scan",
+        "--source",
+        "palantir",
+        "--dry-run",
+        "--db",
+        str(db),
+        "--config",
+        str(config_path),
+        "--fixture",
+        str(second),
+    )
+    with_config_out = capsys.readouterr().out
+
+    assert without_config == 0
+    assert "Alert candidates: none" in without_config_out
+    assert with_config == 0
+    assert "Alert candidates (1)" in with_config_out
+    assert "Graduate Bioinformatics Analyst" in with_config_out
+
+    run_cli("status", "--db", str(db), "--config", str(config_path))
+    status_out = capsys.readouterr().out
+    assert "config overrides: +1 family term(s), +1 exclusion(s)" in status_out
+
+
 def test_summary_without_any_scan_explains_what_to_run(db, capsys) -> None:
     exit_code = run_cli("summary", "--db", str(db))
     out = capsys.readouterr().out

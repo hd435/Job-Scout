@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from .config import SourceConfig
 from .http import HttpClient
-from .matching import match_job
+from .matching import DEFAULT_RULES, MatchingRules, match_job
 from .models import (
     AlertCandidate,
     Job,
@@ -37,6 +37,7 @@ def run_scan(
     *,
     accept_empty: bool = False,
     notify_chat_id: str | None = None,
+    rules: MatchingRules = DEFAULT_RULES,
     clock: Clock = utc_now_iso,
 ) -> ScanOutcome:
     """Scan one source and apply every state transition in a single transaction."""
@@ -67,7 +68,7 @@ def run_scan(
         notifications_queued = 0
 
         for job in result.jobs:
-            decision = match_job(job)
+            decision = match_job(job, rules)
             if decision.decision is MatchOutcome.NEEDS_REVIEW:
                 needs_review += 1
             seen_ids.add(job.source_job_id)

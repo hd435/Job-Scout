@@ -13,6 +13,7 @@ from jobscout.config import (
     load_telegram_config,
     read_env_file,
 )
+from jobscout.matching import DEFAULT_RULES, RULES_VERSION
 
 BOT_TOKEN = "123456789:AAFakeTokenValueForRedactionTests"
 OTHER_TOKEN = "111111:AAOtherFakeTokenValueForTests"
@@ -236,3 +237,72 @@ def test_env_file_parsing_ignores_noise_and_inline_comments(tmp_path) -> None:
 def test_env_file_read_errors_yield_no_values(tmp_path) -> None:
     assert read_env_file(tmp_path / "missing.env") == {}
     assert read_env_file(tmp_path) == {}
+
+
+MATCHING_CONFIG = """
+[matching]
+extra_exclude_terms = ["contract"]
+
+[matching.extra_family_terms]
+data = ["Bioinformatics Analyst"]
+"""
+
+
+def write_matching_config(tmp_path, body: str):
+    path = tmp_path / "config.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_matching_section_is_optional(tmp_path) -> None:
+    path = write_matching_config(tmp_path, CONFIG)
+
+    assert load_config(path).matching is DEFAULT_RULES
+
+
+def test_matching_overrides_are_loaded(tmp_path) -> None:
+    config = load_config(write_matching_config(tmp_path, MATCHING_CONFIG))
+
+    assert config.matching.extra_family_terms == {"data": ("bioinformatics analyst",)}
+    assert config.matching.extra_exclude_terms == ("contract",)
+    assert config.matching.version.startswith(f"{RULES_VERSION}+")
+    assert config.matching.has_overrides is True
+
+
+def test_unknown_matching_key_is_rejected(tmp_path) -> None:
+    path = write_matching_config(tmp_path, '[matching]\nremove_exclusions = ["sales"]\n')
+
+    with pytest.raises(ConfigError, match="unknown \\[matching\\] key"):
+        load_config(path)
+
+
+def test_unknown_family_in_config_is_rejected(tmp_path) -> None:
+    path = write_matching_config(
+        tmp_path, '[matching.extra_family_terms]\nastrology = ["horoscope"]\n'
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(path)
+
+    assert "unknown role family 'astrology'" in str(exc.value)
+
+
+def test_matching_exclusions_must_be_an_array(tmp_path) -> None:
+    path = write_matching_config(tmp_path, '[matching]\nextra_exclude_terms = "contract"\n')
+
+    with pytest.raises(ConfigError, match="must be an array of strings"):
+        load_config(path)
+
+
+def test_matching_family_terms_must_be_a_table(tmp_path) -> None:
+    path = write_matching_config(tmp_path, '[matching]\nextra_family_terms = ["x"]\n')
+
+    with pytest.raises(ConfigError, match="must be a table"):
+        load_config(path)
+
+
+def test_matching_term_types_are_validated(tmp_path) -> None:
+    path = write_matching_config(tmp_path, "[matching.extra_family_terms]\ndata = [1]\n")
+
+    with pytest.raises(ConfigError, match="invalid \\[matching\\] configuration"):
+        load_config(path)

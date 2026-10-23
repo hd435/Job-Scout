@@ -382,6 +382,7 @@ Rules:
 
 - Role-family categories and seniority exclusions are approved product requirements.
 - Exact keyword and synonym lists are implementation defaults reviewed during M1.
+- Configuration may extend an approved family with extra title phrases (`[matching.extra_family_terms]`) and add title exclusions (`extra_exclude_terms`). Overrides are additive only: unknown family names and unknown keys are rejected, seniority and location rules cannot be changed, and exclusions are evaluated before matches, so configuration can never remove an approved category or exclusion. A rules version carrying an override digest is stored with every decision.
 - Ambiguous cases are `needs_review`; they are not silently broadened into matches.
 - Location parsing is a separate pure function with a small UK city/remote/hybrid alias table. No external geocoding.
 - Multi-location roles qualify if any listed location qualifies.

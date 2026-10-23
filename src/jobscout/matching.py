@@ -17,9 +17,11 @@ output and tests can assert on them:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from .models import Job, LocationResult, MatchDecision, MatchOutcome
@@ -336,7 +338,17 @@ class MatchingRules:
     phd_signals: tuple[str, ...]
     description_early_career_signals: tuple[str, ...]
     sponsorship_signals: tuple[str, ...]
+    extra_family_terms: Mapping[str, tuple[str, ...]] = MappingProxyType({})
+    extra_exclude_terms: tuple[str, ...] = ()
     version: str = RULES_VERSION
+
+    @property
+    def has_overrides(self) -> bool:
+        return bool(self.extra_family_terms) or bool(self.extra_exclude_terms)
+
+    def family_stems(self, family: str) -> tuple[str, ...]:
+        """Approved phrases for a family plus any configured additions."""
+        return self.role_families[family] + self.extra_family_terms.get(family, ())
 
 
 ROLE_FAMILIES: Mapping[str, tuple[str, ...]] = MappingProxyType(
@@ -577,6 +589,66 @@ DEFAULT_RULES = MatchingRules(
 )
 
 
+def build_rules(
+    *,
+    extra_family_terms: Mapping[str, Sequence[str]] | None = None,
+    extra_exclude_terms: Sequence[str] | None = None,
+) -> MatchingRules:
+    """Merge configuration overrides into the approved ruleset.
+
+    Overrides are additive by construction: they may add phrases *inside* an
+    approved role family and add extra title exclusions. Unknown family names are
+    rejected, so overrides cannot invent a category, and exclusions are evaluated
+    before matches, so an added term cannot cancel an approved exclusion.
+    """
+    families: dict[str, tuple[str, ...]] = {}
+    for family, raw_terms in (extra_family_terms or {}).items():
+        if family not in ROLE_FAMILIES:
+            known = ", ".join(sorted(ROLE_FAMILIES))
+            raise ValueError(f"unknown role family '{family}' (approved: {known})")
+        if isinstance(raw_terms, str) or not isinstance(raw_terms, Sequence):
+            raise ValueError(f"extra terms for '{family}' must be an array of strings")
+        terms = _clean_terms(raw_terms, origin=f"extra_family_terms.{family}")
+        if terms:
+            families[family] = terms
+
+    excludes = _clean_terms(extra_exclude_terms or (), origin="extra_exclude_terms")
+    if not families and not excludes:
+        return DEFAULT_RULES
+
+    return replace(
+        DEFAULT_RULES,
+        extra_family_terms=MappingProxyType(families),
+        extra_exclude_terms=excludes,
+        version=f"{RULES_VERSION}+{_override_digest(families, excludes)}",
+    )
+
+
+def _clean_terms(terms: Sequence[object], *, origin: str) -> tuple[str, ...]:
+    cleaned: list[str] = []
+    for term in terms:
+        if not isinstance(term, str):
+            raise ValueError(f"{origin} must contain strings")
+        normalised = normalize_text(term)
+        if not normalised:
+            raise ValueError(f"{origin} contains an empty term")
+        if normalised not in cleaned:
+            cleaned.append(normalised)
+    return tuple(cleaned)
+
+
+def _override_digest(families: Mapping[str, tuple[str, ...]], excludes: Sequence[str]) -> str:
+    payload = json.dumps(
+        {
+            "families": {family: sorted(terms) for family, terms in sorted(families.items())},
+            "excludes": sorted(excludes),
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:8]
+
+
 def match_job(job: Job, rules: MatchingRules = DEFAULT_RULES) -> MatchDecision:
     """Decide whether a role matches the approved early-career/location rules."""
     title = normalize_text(job.title)
@@ -588,14 +660,15 @@ def match_job(job: Job, rules: MatchingRules = DEFAULT_RULES) -> MatchDecision:
 
     families = tuple(
         name
-        for name, stems in rules.role_families.items()
-        if any(_has_stem(title, stem) for stem in stems)
+        for name in rules.role_families
+        if any(_has_stem(title, stem) for stem in rules.family_stems(name))
     )
     blocked = tuple(
         name
         for name, stems in rules.excluded_families.items()
         if any(_has_stem(title, stem) for stem in stems)
     )
+    custom_exclusions = tuple(term for term in rules.extra_exclude_terms if _has_stem(title, term))
 
     notes.extend(f"family:{name}" for name in families)
     if blocked and families:
@@ -604,6 +677,8 @@ def match_job(job: Job, rules: MatchingRules = DEFAULT_RULES) -> MatchDecision:
         hard_exclusions.extend(f"exclude:family:{name}" for name in blocked)
     elif not families:
         hard_exclusions.append("exclude:family:none")
+
+    hard_exclusions.extend(f"exclude:custom:{term}" for term in custom_exclusions)
 
     graduate_programme = any(
         _has_stem(title, signal) for signal in rules.graduate_programme_signals

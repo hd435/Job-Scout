@@ -23,6 +23,7 @@ from .config import (
     load_telegram_config,
 )
 from .http import FixtureHttpClient, UrllibHttpClient
+from .matching import MatchingRules
 from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
 from .notifier import Notifier
 from .scanner import run_scan
@@ -151,6 +152,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
             http_client,
             accept_empty=args.accept_empty,
             notify_chat_id=telegram.chat_id if telegram else None,
+            rules=app.matching,
         )
         if notifier and telegram:
             report = notifier.deliver_pending(storage, telegram.chat_id)
@@ -220,10 +222,21 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
     with Storage.open(db_path) as storage:
         print(f"Database: {db_path}")
+        print(f"Matching rules: {_describe_matching(app.matching)}")
         for source in sources:
             state = storage.get_source_state(source.id)
             _print_status(source, state, storage)
     return EXIT_OK
+
+
+def _describe_matching(rules: MatchingRules) -> str:
+    if not rules.has_overrides:
+        return f"{rules.version} (built-in defaults)"
+    terms = sum(len(value) for value in rules.extra_family_terms.values())
+    return (
+        f"{rules.version} (config overrides: +{terms} family term(s),"
+        f" +{len(rules.extra_exclude_terms)} exclusion(s))"
+    )
 
 
 def _resolve_source(app: AppConfig, requested: str | None) -> SourceConfig:

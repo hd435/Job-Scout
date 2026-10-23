@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .matching import DEFAULT_RULES, MatchingRules, build_rules
+
 DEFAULT_DB_PATH = Path("data") / "jobscout.db"
 DEFAULT_CONFIG_PATH = Path("config.toml")
 DEFAULT_ENV_PATH = Path(".env")
@@ -45,6 +47,7 @@ class AppConfig:
     database_path: Path
     sources: tuple[SourceConfig, ...]
     config_path: Path | None = None
+    matching: MatchingRules = DEFAULT_RULES
 
     def source(self, source_id: str) -> SourceConfig:
         for source in self.sources:
@@ -206,4 +209,43 @@ def load_config(path: Path | str | None = None) -> AppConfig:
 
     if not sources:
         sources = list(DEFAULT_SOURCES)
-    return AppConfig(database_path=database_path, sources=tuple(sources), config_path=config_path)
+    return AppConfig(
+        database_path=database_path,
+        sources=tuple(sources),
+        config_path=config_path,
+        matching=parse_matching(data.get("matching")),
+    )
+
+
+_MATCHING_KEYS = {"extra_family_terms", "extra_exclude_terms"}
+
+
+def parse_matching(section: Any) -> MatchingRules:
+    """Build matching rules from an optional `[matching]` table.
+
+    Only additive overrides are accepted: extra phrases for an approved role
+    family, and extra title exclusions. Unknown keys are rejected so a typo
+    cannot silently weaken the approved rules.
+    """
+    if section is None:
+        return DEFAULT_RULES
+    if not isinstance(section, dict):
+        raise ConfigError("[matching] must be a table")
+    unknown = sorted(set(section) - _MATCHING_KEYS)
+    if unknown:
+        raise ConfigError(
+            f"unknown [matching] key(s): {', '.join(unknown)}"
+            f" (allowed: {', '.join(sorted(_MATCHING_KEYS))})"
+        )
+
+    families = section.get("extra_family_terms", {})
+    if not isinstance(families, dict):
+        raise ConfigError("[matching.extra_family_terms] must be a table of family = [terms]")
+    excludes = section.get("extra_exclude_terms", [])
+    if not isinstance(excludes, list):
+        raise ConfigError("[matching.extra_exclude_terms] must be an array of strings")
+
+    try:
+        return build_rules(extra_family_terms=families, extra_exclude_terms=excludes)
+    except ValueError as exc:
+        raise ConfigError(f"invalid [matching] configuration: {exc}") from exc
