@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "total": 3
+  },
+  "jobs": [
+    {
+      "id": 4102001,
+      "title": "Graduate Software Engineer",
+      "updated_at": "2026-10-20T09:15:00-04:00",
+      "first_published": "2026-10-02T12:00:00-04:00",
+      "absolute_url": "https://job-boards.greenhouse.io/monzo/jobs/4102001",
+      "location": {
+        "name": "London, UK"
+      },
+      "offices": [
+        {
+          "id": 1,
+          "name": "London"
+        }
+      ],
+      "content": "&lt;p&gt;Build the bank of the future with our &lt;strong&gt;graduate&lt;/strong&gt; engineering team.&lt;/p&gt;",
+      "metadata": null
+    },
+    {
+      "id": 4102002,
+      "title": "Graduate Data Analyst",
+      "updated_at": "2026-10-21T11:30:00-04:00",
+      "first_published": "2026-10-05T09:00:00-04:00",
+      "absolute_url": "https://job-boards.greenhouse.io/monzo/jobs/4102002",
+      "location": {
+        "name": "London, UK"
+      },
+      "offices": [
+        {
+          "id": 1,
+          "name": "London"
+        },
+        {
+          "id": 2,
+          "name": "Remote, UK"
+        }
+      ],
+      "content": "&lt;p&gt;Work with the data team on the numbers behind the product.&lt;/p&gt;",
+      "metadata": null
+    },
+    {
+      "id": 4102003,
+      "title": "Junior Product Designer",
+      "updated_at": "2026-10-22T08:05:00-04:00",
+      "first_published": "2026-10-12T10:20:00-04:00",
+      "absolute_url": "https://job-boards.greenhouse.io/monzo/jobs/4102003",
+      "location": {
+        "name": "Cardiff, UK"
+      },
+      "offices": [
+        {
+          "id": 3,
+          "name": "Cardiff"
+        }
+      ],
+      "content": "&lt;p&gt;Design the flows people use to manage their money.&lt;/p&gt;",
+      "metadata": null
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention) and M5.4.0 (offline trial preparation) delivered
+- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention), M5.4.0 (offline trial preparation), M5.4.1 (Monzo validation scope) and M5.4.2 (Lloyds Graduate validation profile) delivered
 - **Last updated:** 2026-10-23
 - **Product authority:** [docs/prd.md](./prd.md)
 - **Technical design:** [docs/architecture.md](./architecture.md)
@@ -335,7 +335,9 @@ Live validation still required before these sources can be trusted or run unatte
 
 | Increment | Outcome | Status |
 |---|---|---|
-| **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
+| **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 with offline tests; the single authorised live run was executed and passed |
+| **M5.4.1** | Validation scope extended to Monzo (Greenhouse envelope): the same one-request check, a per-source shape profile, a synthetic Monzo baseline fixture | Delivered 2026-10-23 with offline tests; the single authorised live Monzo request was executed and passed |
+| **M5.4.2** | Validation scope extended to Lloyds Graduate (Workday): per-profile request budget, POST support, bounded detail lookups | Delivered 2026-10-23 with offline tests; the single live request set awaits approval |
 | **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
 | **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four retention horizons remain engineering defaults awaiting explicit Product Owner ratification |
 | **M5.4.0** | Offline reliability preparation for the trial: scheduler failure hardening, restart and duplicate-process behaviour, host operating procedure, trial measurement, retention operations | Delivered 2026-10-23 with offline tests and documentation. No trial started, no scheduled task created |
@@ -384,6 +386,37 @@ M5.4.0 limits:
 M5.1 decisions: the check makes exactly one read-only request with retries disabled, never opens the database, writes only capped and trimmed artifacts under `data/validation/`, and exits non-zero unless the live payload is shape-compatible **and** the real adapter parses every record with zero skips (D-057). The personal-use risk acceptance for this check is narrow and does not authorise recurring or unattended access to any source (D-058).
 
 M5.1 acceptance evidence: `tests/test_validate.py` (payload comparison, sample trimming, one-request budget, failure-without-artifacts, shape-drift-keeps-evidence, CLI refusal without `--confirm-live`, source-scope rejection, missing fixture, non-positive sample size, and a run that proves the database is never opened). `python -m jobscout validate` without `--confirm-live` exits `2` and constructs no client.
+
+M5.1 live evidence (Palantir, one request, exit 0): 307 live records against the 22-record fixture, 307 parsed, 0 skipped; 10 field names present that the fixture did not model, and `salaryRange` absent from the live payload, which confirms the fixture's salary field was invented. The check therefore proves reachability, envelope shape, and full parsing for that board on that day; it proves nothing about permission, value correctness, or unattended behaviour.
+
+M5.4.1 scope and limits: `validate` gained a `ValidationProfile` per source, so an enveloped payload (roles under `jobs`, as Greenhouse returns them) is compared and sampled by its role records rather than by the envelope. Monzo's baseline is `tests/fixtures/monzo_validation.json`, synthetic and limited to the fields the adapter reads, so a field it omits surfaces as a `WARN` rather than a failure. A `PASS` for Monzo would prove one GET reached `boards-api.greenhouse.io`, the envelope carried a `jobs` array, the watched field types matched, and every role mapped with zero skips. It would **not** prove permission for recurring access, that salary text is extracted correctly (the pay-range and metadata fallbacks remain unvalidated assumptions), that HTML-to-description stripping is faithful, that location names are populated, that matching produces useful alerts for this employer, or anything about scheduling, deduplication, retention, or delivery.
+
+M5.4.1 live evidence (Monzo, one request, exit 0, 2026-10-23T17:08Z): 72 live roles against the 3-record baseline, 72 parsed, 0 skipped, complete scan. Confirmed against the live payload:
+
+- the envelope is `{meta, jobs[]}` as assumed, and every record carried `title`, `absolute_url`, `location.name`, `offices`, `content`, `updated_at`, and `first_published` with the types the adapter expects;
+- `location.name` is populated with real values (`London`, `Barcelona`, `Cardiff, London or Remote (UK)`), and the existing location rules classify them correctly — multi-site UK strings qualify as UK remote, `Barcelona` is excluded as a non-UK city;
+- 10 field names the baseline never modelled are present (`ai_disclaimer`, `ai_opt_out_request_url`, `application_deadline`, `company_name`, `data_compliance`, `departments`, `include_ai_disclaimer`, `internal_job_id`, `language`, `requisition_id`); the adapter ignores them safely;
+- `metadata` is present but **null** in every record, and `application_deadline` was null in all sampled roles, so the salary-from-metadata fallback and any closing-date support are dead ends on this board today;
+- `pay_input_ranges` does **not** appear at all, so Monzo roles carry no structured salary: alerts will omit salary for this source, and the pay-range formatter is unexercised in production;
+- `absolute_url` uses the `job-boards.greenhouse.io` host (the baseline had `boards.greenhouse.io`); the adapter stores whatever it is given, so this was cosmetic, and the baseline now matches.
+
+That run also exposed one diagnostic inaccuracy: a field present with a null value was reported as
+`optional field absent from every live record`. The report now distinguishes `is null in every live
+record` from `absent from every live record`, with a regression test built from the observed shape.
+
+Still unverified for Monzo: permission for recurring automated access (no published website terms),
+faithfulness of HTML-to-text description stripping, whether departments would improve matching, and
+everything about scheduling, deduplication, retention and delivery.
+
+M5.4.1 acceptance evidence: `tests/test_validate.py` (per-source profile resolution and the `jobs` extraction, an enveloped payload passing with a role-level sample rather than the envelope, an envelope without a `jobs` array rejected by the adapter with no artifact, a record missing `absolute_url` failing on the skip count, type drift in `updated_at` failing, an extra live field such as `pay_input_ranges` warning without failing, a null field reported differently from a missing one, and the CLI resolving each source's own default fixture while still never opening a database).
+
+M5.4.2 scope and limits (Lloyds Graduate, Workday): the check gained a per-source request budget, because a Workday scan is one listing POST plus one detail GET per posting whose location is a placeholder. `RecordingClient` now counts POSTs against the same budget and remembers the first response, which is the listing the shape contract describes. `ValidationProfile` carries `request_budget` (Lloyds: 4), `require_complete` (Lloyds: false, because hitting the detail cap leaves the scan `partial` by design) and `adapter_options`, so the check can run the real adapter with a smaller bound than production (`page_size` 20, `max_detail_lookups` 3). A budget violation is refused before the request reaches the network.
+
+What a Lloyds PASS would prove: the listing POST returned `{total, jobPostings[]}`, the watched fields (`title`, `externalPath`, `locationsText`, `postedOn`, `bulletFields`) had the expected types, and every posting mapped with zero skips. It would **not** prove: that real postings use the `Graduate_careers` site rather than the general LBG careers site, that relative `postedOn` strings (`Posted 5 Days Ago`) are parsed as intended on every wording, that the requisition id in `bulletFields[0]` is stable across refreshes, that multi-site placeholders resolve through detail lookups within the cap, that the derived public URL pattern is correct, or permission for recurring access.
+
+M5.4.2 acceptance evidence: `tests/test_validate.py` (the Lloyds profile's budget and options, a single POST with no detail lookups when every location is concrete, exactly one detail lookup for one placeholder, a budget violation refused before the second detail request reaches the network, a capped lookup reported as a partial-scan warning rather than a failure, `externalPath` type drift failing, and the CLI resolving the Workday baseline fixture while never opening a database).
+
+
 
 M5.1 fixture caveat found during implementation: `tests/fixtures/palantir_jobs.json` is a **synthetic** trimming, not a faithful recording — 12 of 22 records have no `createdAt` and one carries the literal string `"not-a-timestamp"` (a deliberate "never guess a date" case). The fixture therefore serves as a key-shape baseline only; the type contract is enforced on live data. A live sample is what makes the baseline trustworthy.
 

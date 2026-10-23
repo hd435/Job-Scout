@@ -1,8 +1,12 @@
-"""Bounded live-validation check for a single list-shaped source (M5.1).
+"""Bounded live-validation check for one source (M5.1, extended for Monzo in M5.4.1).
 
 The check makes **one** read-only request, compares the live payload's shape with the
 recorded fixture, and runs the real adapter over the live payload so parsing is proven
 rather than assumed. It never opens the production database and never touches Telegram.
+
+Two payload families are covered: a bare JSON list (Palantir/Lever) and an enveloped board
+response whose roles live under `jobs` (Monzo/Greenhouse). The differences are expressed as
+a `ValidationProfile`, so the check itself stays source-agnostic.
 
 Design constraints (docs/roadmap.md M5.1):
 
@@ -16,6 +20,7 @@ Design constraints (docs/roadmap.md M5.1):
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,7 +29,8 @@ from typing import Any
 from .config import SourceConfig
 from .http import HttpClient, HttpError
 from .models import ScanResult, ScanStatus
-from .sources import get_adapter
+from .sources import SourceAdapter, get_adapter
+from .sources.workday import WorkdayAdapter
 
 DEFAULT_SAMPLE_RECORDS = 5
 DESCRIPTION_LIMIT = 200
@@ -52,9 +58,83 @@ WATCHED_FIELDS: dict[str, type] = {
 }
 REQUIRED_FIELDS = ("id", "text", "hostedUrl", "categories")
 
-# Fields whose absence is normal (they are optional in the data model) are reported as
-# drift only when the fixture had them; a *type* change is always a failure.
-_OPTIONAL_FIELDS = frozenset(WATCHED_FIELDS) - frozenset(REQUIRED_FIELDS)
+# Greenhouse (Monzo) returns an envelope: roles sit in a `jobs` array beside `meta`. Only
+# fields the adapter actually reads are watched, so a warning means real drift rather than
+# a field we never modelled. `id` is intentionally not type-watched: the adapter coerces
+# strings and integers alike, so its type is not a parsing risk.
+MONZO_WATCHED_FIELDS: dict[str, type] = {
+    "title": str,
+    "absolute_url": str,
+    "location": dict,
+    "offices": list,
+    "content": str,
+    "updated_at": str,
+    "first_published": str,
+    "metadata": list,
+}
+MONZO_REQUIRED_FIELDS = ("id", "title", "absolute_url")
+
+
+@dataclass(frozen=True)
+class ValidationProfile:
+    """What the check knows about one source's payload before it sees live data."""
+
+    watched_fields: Mapping[str, type]
+    required_fields: tuple[str, ...]
+    records_key: str | None = None
+    request_budget: int = 1
+    require_complete: bool = True
+    adapter_options: Mapping[str, Any] = field(default_factory=dict)
+
+    def records(self, payload: Any) -> Any:
+        """The role records inside a payload; `None` when an envelope lacks them."""
+        if self.records_key is None:
+            return payload
+        if isinstance(payload, dict):
+            return payload.get(self.records_key)
+        return None
+
+    def missing_records_note(self, payload: Any) -> str:
+        """Explain an unusable envelope in the source's own terms."""
+        if self.records_key is None:
+            return f"live payload is not a JSON list (found {type(payload).__name__})"
+        return f"live payload has no '{self.records_key}' array"
+
+
+PALANTIR_PROFILE = ValidationProfile(watched_fields=WATCHED_FIELDS, required_fields=REQUIRED_FIELDS)
+MONZO_PROFILE = ValidationProfile(
+    watched_fields=MONZO_WATCHED_FIELDS,
+    required_fields=MONZO_REQUIRED_FIELDS,
+    records_key="jobs",
+)
+
+# Workday's listing is a POST returning `{total, jobPostings[]}`, and a posting whose location
+# is a placeholder ("2 Locations") needs one detail GET. The check therefore allows a small
+# fixed number of requests: one listing plus a capped number of detail lookups.
+# `require_complete` is off because hitting that cap leaves the scan `partial` by design, so
+# incompleteness is reported as a warning rather than treated as a payload failure.
+WORKDAY_WATCHED_FIELDS: dict[str, type] = {
+    "title": str,
+    "externalPath": str,
+    "locationsText": str,
+    "postedOn": str,
+    "bulletFields": list,
+}
+WORKDAY_REQUIRED_FIELDS = ("title", "externalPath")
+LLOYDS_PROFILE = ValidationProfile(
+    watched_fields=WORKDAY_WATCHED_FIELDS,
+    required_fields=WORKDAY_REQUIRED_FIELDS,
+    records_key="jobPostings",
+    request_budget=4,
+    require_complete=False,
+    adapter_options={"page_size": 20, "max_detail_lookups": 3},
+)
+
+VALIDATION_PROFILES: dict[str, ValidationProfile] = {
+    "palantir": PALANTIR_PROFILE,
+    "monzo": MONZO_PROFILE,
+    "lloyds_graduate": LLOYDS_PROFILE,
+}
 
 
 @dataclass(frozen=True)
@@ -95,12 +175,12 @@ class RequestBudgetExceeded(RuntimeError):
 
 
 class RecordingClient:
-    """Wraps a JSON client, enforcing the request budget before delegating.
+    """Wraps an HTTP client, enforcing a request budget before delegating.
 
-    The budget is checked *before* the inner client is called, so a source can never
-    receive a request the check did not intend to make. The exception is deliberately not
-    an `HttpError`: adapters convert those into a failed scan, which would hide the
-    violation.
+    The budget is checked *before* the inner client is called, so a source can never receive
+    a request the check did not intend to make. It counts POSTs as well as GETs, because a
+    Workday listing query is a POST. The exception is deliberately not an `HttpError`:
+    adapters convert those into a failed scan, which would hide the violation.
     """
 
     def __init__(self, client: HttpClient, *, max_requests: int = REQUEST_BUDGET) -> None:
@@ -109,33 +189,55 @@ class RecordingClient:
         self.requests: list[str] = []
         self.payload: Any = None
 
+    @property
+    def max_requests(self) -> int:
+        return self._max_requests
+
     def get_json(self, url: str) -> Any:
+        self._check(url)
+        payload = self._client.get_json(url)
+        self._remember(payload)
+        return payload
+
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
+        self._check(url)
+        response = self._client.post_json(url, payload, retry=retry)
+        self._remember(response)
+        return response
+
+    def _check(self, url: str) -> None:
         if len(self.requests) >= self._max_requests:
             raise RequestBudgetExceeded(
                 f"request budget of {self._max_requests} exceeded; refused a request to {url}"
             )
         self.requests.append(url)
-        payload = self._client.get_json(url)
-        self.payload = payload
-        return payload
+
+    def _remember(self, payload: Any) -> None:
+        # The first response is the one the shape contract describes: a listing page for
+        # paginated sources, the only response for single-request ones.
+        if self.payload is None:
+            self.payload = payload
 
 
-def compare_payloads(live: Any, fixture: Any) -> PayloadComparison:
-    """Compare the live payload with the recorded fixture.
+def compare_payloads(
+    live: Any, fixture: Any, *, profile: ValidationProfile = PALANTIR_PROFILE
+) -> PayloadComparison:
+    """Compare the live payload's records with the recorded fixture. See `ValidationProfile`.
 
     The fixture is a *recorded baseline for shape*: it tells us which keys the source used
     to return and how many records were sampled. It is deliberately not treated as a type
-    oracle, because the committed Palantir fixture is a synthetic trimming that includes
-    records with no `createdAt` and one with a non-date string. The type contract below is
-    therefore enforced on the **live** payload only, where uniform types are expected.
+    oracle, because a committed fixture is a synthetic trimming that can include records
+    with missing or malformed values. The type contract is therefore enforced on the
+    **live** payload only, where uniform types are expected.
     """
     failures: list[str] = []
     warnings: list[str] = []
+    optional_fields = frozenset(profile.watched_fields) - frozenset(profile.required_fields)
 
     if not isinstance(fixture, list):
         failures.append(f"fixture is not a JSON list (found {type(fixture).__name__})")
     if not isinstance(live, list):
-        failures.append(f"live payload is not a JSON list (found {type(live).__name__})")
+        failures.append(profile.missing_records_note(live))
     if failures:
         return PayloadComparison(failures=tuple(failures))
 
@@ -151,13 +253,13 @@ def compare_payloads(live: Any, fixture: Any) -> PayloadComparison:
         for key in sorted(live_keys - fixture_keys):
             warnings.append(f"new field in live payload: {key}")
         for key in sorted(fixture_keys - live_keys):
-            if key in REQUIRED_FIELDS:
+            if key in profile.required_fields:
                 failures.append(f"required field missing from live payload: {key}")
             else:
                 warnings.append(f"field no longer present: {key}")
 
-    for name, expected_type in WATCHED_FIELDS.items():
-        if name in REQUIRED_FIELDS and all(
+    for name, expected_type in profile.watched_fields.items():
+        if name in profile.required_fields and all(
             _resolve(record, name) is None for record in live_records
         ):
             failures.append(f"required field has no value in any live record: {name}")
@@ -174,8 +276,13 @@ def compare_payloads(live: Any, fixture: Any) -> PayloadComparison:
                 f"field {name} has unexpected type(s) {sorted(wrong)};"
                 f" expected {expected_type.__name__}"
             )
-        elif name in _OPTIONAL_FIELDS and not observed:
-            warnings.append(f"optional field absent from every live record: {name}")
+        elif name in optional_fields and not observed:
+            # Distinguish "the source stopped sending it" from "it is present but null",
+            # because the two mean different things to whoever reads the report.
+            if any(_has_key(record, name) for record in live_records):
+                warnings.append(f"optional field is null in every live record: {name}")
+            else:
+                warnings.append(f"optional field absent from every live record: {name}")
 
     return PayloadComparison(
         failures=tuple(failures),
@@ -269,11 +376,19 @@ def run_live_check(
     CLI); the containment check runs before any request is made.
     """
     captured_at = now or _now_iso()
+    profile = VALIDATION_PROFILES.get(source.id)
+    if profile is None:
+        return ValidationOutcome(
+            ok=False,
+            source_id=source.id,
+            error=f"no validation profile for source '{source.id}'",
+            lines=(f"No validation profile for source '{source.id}'",),
+        )
     if sample_dir is not None and allowed_root is not None:
         _ensure_within(sample_dir, allowed_root)
 
-    recording = RecordingClient(client)
-    adapter = get_adapter(source.adapter)
+    recording = RecordingClient(client, max_requests=profile.request_budget)
+    adapter = _build_adapter(source, profile)
 
     try:
         scan = adapter.fetch_scan(source, recording, known={})
@@ -294,13 +409,14 @@ def run_live_check(
             lines=(f"Request failed: {exc.summary()}",),
         )
 
-    if len(recording.requests) != 1:
+    if not 1 <= len(recording.requests) <= profile.request_budget:
         return ValidationOutcome(
             ok=False,
             source_id=source.id,
             request_url=recording.requests[0] if recording.requests else None,
             scan=scan,
-            error=f"expected exactly 1 request, the adapter made {len(recording.requests)}",
+            error=f"expected 1 to {profile.request_budget} request(s), the adapter made"
+            f" {len(recording.requests)}",
             lines=(f"Request budget violated: {len(recording.requests)} request(s)",),
         )
 
@@ -312,21 +428,25 @@ def run_live_check(
             request_url=recording.requests[0],
             scan=scan,
             error=message,
-            lines=(f"Request: GET {recording.requests[0]}", f"Request failed: {message}"),
+            lines=(f"Request: {recording.requests[0]}", f"Request failed: {message}"),
         )
 
-    comparison = compare_payloads(recording.payload, fixture_payload)
-    parse_ok = scan.status in {ScanStatus.SUCCESS, ScanStatus.SUCCESS_EMPTY} and not scan.skipped
+    live_records = profile.records(recording.payload)
+    comparison = compare_payloads(live_records, profile.records(fixture_payload), profile=profile)
+    complete_ok = bool(scan.complete) or not profile.require_complete
+    parse_ok = scan.status is not ScanStatus.FAILED and not scan.skipped and complete_ok
     ok = comparison.ok and parse_ok
 
-    lines = _report_lines(recording.requests[0], comparison, scan, ok)
+    lines = _report_lines(
+        recording.requests, comparison, scan, ok, require_complete=profile.require_complete
+    )
     sample_path = report_path = None
     if sample_dir is not None:
         # A failed request leaves no artifact; a shape or parse failure keeps the evidence.
         sample_path, report_path = _write_artifacts(
             sample_dir,
             source_id=source.id,
-            payload=recording.payload,
+            payload=live_records,
             captured_at=captured_at,
             max_records=max_records,
             lines=lines,
@@ -344,21 +464,46 @@ def run_live_check(
     )
 
 
+def _build_adapter(source: SourceConfig, profile: ValidationProfile) -> SourceAdapter:
+    """Build the real adapter, optionally with a smaller bound than the production default."""
+    if not profile.adapter_options:
+        return get_adapter(source.adapter)
+    if source.adapter == "workday":
+        return WorkdayAdapter(**profile.adapter_options)
+    raise ValueError(f"no bounded adapter builder for '{source.adapter}'")  # pragma: no cover
+
+
 def _report_lines(
-    url: str, comparison: PayloadComparison, scan: ScanResult, ok: bool
+    requests: list[str],
+    comparison: PayloadComparison,
+    scan: ScanResult,
+    ok: bool,
+    *,
+    require_complete: bool,
 ) -> tuple[str, ...]:
     lines = [
-        f"Request: GET {url}",
-        f"Records: live={comparison.live_records} fixture={comparison.fixture_records}",
-        f"Adapter: status={scan.status} complete={'yes' if scan.complete else 'no'}"
-        f" seen={scan.records_seen} parsed={scan.records_parsed} skipped={scan.skipped_count}",
+        f"Request: {requests[0]}" if len(requests) == 1 else f"Requests: {len(requests)}",
     ]
+    if len(requests) > 1:
+        lines.extend(f"  {url}" for url in requests)
+    lines.extend(
+        [
+            f"Records: live={comparison.live_records} fixture={comparison.fixture_records}",
+            f"Adapter: status={scan.status} complete={'yes' if scan.complete else 'no'}"
+            f" seen={scan.records_seen} parsed={scan.records_parsed} skipped={scan.skipped_count}",
+        ]
+    )
     if scan.error_summary:
         lines.append(f"Adapter note: {scan.error_summary}")
     for failure in comparison.failures:
         lines.append(f"FAIL  {failure}")
     for warning in comparison.warnings:
         lines.append(f"WARN  {warning}")
+    if scan.status is not ScanStatus.FAILED and not scan.complete and not require_complete:
+        lines.append(
+            "WARN  scan was partial; incompleteness does not fail this check, but a"
+            " production scan would refuse to baseline or alert on it"
+        )
     if not comparison.failures and not comparison.warnings:
         lines.append("Shape: identical to the recorded fixture")
     elif comparison.shape_ok:
@@ -426,16 +571,31 @@ def _resolve(record: Any, dotted: str) -> Any:
     return current
 
 
+def _has_key(record: Any, dotted: str) -> bool:
+    """True when the final key exists even if its value is null."""
+    current: Any = record
+    *parents, leaf = dotted.split(".")
+    for part in parents:
+        if not isinstance(current, dict):
+            return False
+        current = current.get(part)
+    return isinstance(current, dict) and leaf in current
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 __all__ = [
     "DEFAULT_SAMPLE_RECORDS",
+    "MONZO_PROFILE",
+    "PALANTIR_PROFILE",
     "PayloadComparison",
     "RecordingClient",
     "RequestBudgetExceeded",
+    "VALIDATION_PROFILES",
     "ValidationOutcome",
+    "ValidationProfile",
     "build_sample",
     "compare_payloads",
     "ensure_artifacts_location",

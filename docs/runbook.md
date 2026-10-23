@@ -20,7 +20,7 @@ employer sources the configured adapters already call, and Telegram if credentia
 | `jobscout report --days 7` | Trial scorecard | No data; applies pending schema migrations if the file is from an older version |
 | `jobscout prune --dry-run` | Predict one cleanup pass | No |
 | `jobscout prune` | Apply retention | Yes: deletes/strips history |
-| `jobscout validate --confirm-live` | One bounded Palantir request | Only capped artifacts under `data/validation/` |
+| `jobscout validate --source <id> --confirm-live` | One bounded request set to one source (palantir, monzo = 1 request; lloyds_graduate = 1 listing + up to 3 details) | Only capped artifacts under `data/validation/` |
 
 Credentials come from `JOBSCOUT_TELEGRAM_TOKEN` and `JOBSCOUT_TELEGRAM_CHAT_ID`, from the
 environment or from `.env` (gitignored). Without them, `schedule` and `scan` still run but

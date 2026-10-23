@@ -70,19 +70,43 @@ python -m jobscout validate
 
 # One GET to api.lever.co, retries disabled, sample written under data/validation/
 python -m jobscout validate --confirm-live
+
+# The same bounded check for Monzo's Greenhouse board
+python -m jobscout validate --source monzo --confirm-live
+
+# Lloyds Graduate: one listing POST plus up to three detail lookups (Workday)
+python -m jobscout validate --source lloyds_graduate --confirm-live
 ```
 
 It prints the request, the live-versus-fixture record counts, the adapter's parse outcome,
 and `PASS`/`FAIL` per check, then exits `0` only when the payload is shape-compatible and
 every record parsed with no skips. Artifacts are capped at five records with descriptions
-truncated, and `data/` is gitignored. Validation is defined for `palantir` only in this
-increment; other sources still need their own scope and permission decision.
+truncated, and `data/` is gitignored. A `--fixture` is chosen per source by default
+(Palantir's list-shaped Lever payload, Monzo's enveloped Greenhouse board, or Workday's
+`{total, jobPostings[]}` listing); override it with `--fixture PATH`.
+
+Three payload families are supported: a bare JSON list (Lever), an envelope whose roles sit
+in a `jobs` array (Greenhouse), and Workday's `{total, jobPostings[]}` listing response.
+Each source has a `ValidationProfile` naming the fields to watch, the array that holds the
+roles, and how many requests the check may make. Palantir and Monzo use one request; Lloyds
+Graduate allows one listing POST plus up to three detail lookups, because Workday reports a
+placeholder like "2 Locations" for multi-site roles. A budget violation is reported before
+the extra request reaches the network.
 
 The committed Palantir fixture is a synthetic trimming (some records have no `createdAt`,
 one carries a deliberately unusable timestamp), so it supplies a key-shape baseline while
-the type contract is enforced on the live payload.
+the type contract is enforced on the live payload. The Monzo fixture
+(`tests/fixtures/monzo_validation.json`) is synthetic too and covers only the fields the
+adapter reads, so a field it omits appears as a `WARN`, not a failure.
 
-Common options: `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
+What a `PASS` proves: the request(s) reached the board, the payload had the expected envelope
+and field types, and every role mapped without a skip. What it does **not** prove:
+permission for recurring automated access, the correctness of extracted values, matching
+quality on that employer's titles, or anything about scheduling, deduplication or delivery.
+A Workday `PASS` can still show `complete=no`: hitting the detail-lookup cap is our bound,
+not a payload defect, so it is reported as a warning.
+
+Common options: `--source ID`, `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
 
 Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery failure, `2` failed scan or usage error.
 

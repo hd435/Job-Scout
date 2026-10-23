@@ -46,6 +46,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION_ARTIFACT_ROOT = PROJECT_ROOT / "data"
 DEFAULT_VALIDATION_FIXTURES = {
     "palantir": PROJECT_ROOT / "tests" / "fixtures" / "palantir_jobs.json",
+    "monzo": PROJECT_ROOT / "tests" / "fixtures" / "monzo_validation.json",
+    "lloyds_graduate": PROJECT_ROOT / "tests" / "fixtures" / "workday_lloyds_graduate.json",
 }
 VALIDATION_SOURCES = frozenset(DEFAULT_VALIDATION_FIXTURES)
 
@@ -148,7 +150,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "validate",
         help="one bounded live request to compare a source with its fixture (no database)",
     )
-    validate.add_argument("--source", default="palantir", help="source id (default: palantir)")
+    validate.add_argument(
+        "--source",
+        default="palantir",
+        help="source id to validate: palantir, monzo or lloyds_graduate (default: palantir)",
+    )
     validate.add_argument(
         "--confirm-live",
         action="store_true",
@@ -157,8 +163,7 @@ def _build_parser() -> argparse.ArgumentParser:
     validate.add_argument(
         "--fixture",
         type=Path,
-        default=DEFAULT_VALIDATION_FIXTURES.get("palantir"),
-        help="recorded payload to compare against (default: the palantir fixture)",
+        help="recorded payload to compare against (default: the fixture for --source)",
     )
     validate.add_argument(
         "--sample-out",
@@ -333,8 +338,8 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         return EXIT_FAILED
     if args.source not in VALIDATION_SOURCES:
         print(
-            f"error: validation is defined for {sorted(VALIDATION_SOURCES)} only"
-            f" (M5.1 scope); asked for '{args.source}'",
+            f"error: validation is supported for {sorted(VALIDATION_SOURCES)} only;"
+            f" asked for '{args.source}'",
             file=sys.stderr,
         )
         return EXIT_FAILED
