@@ -178,7 +178,7 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 
 ## Data retention
 
-`jobscout prune` applies the approved retention policy (D-025). It never runs during a scan or from the scheduler: you run it, or later a scheduled job does.
+`jobscout prune` applies the retention policy in D-025. It never runs during a scan or from the scheduler: you run it, or later a scheduled job does. The horizons below are engineering defaults that the Product Owner has not yet ratified.
 
 | Data | Kept | Why |
 |---|---|---|
@@ -188,7 +188,7 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 | Unreferenced scan history | 90 days | Diagnostic only; referenced scans are always kept |
 | Delivery error text | 90 days, then cleared | Outcome and attempt count stay for diagnosis |
 
-`--dry-run` reports exactly what would be removed and writes nothing. Runs are batched, idempotent, and safe to interrupt: a second run continues where the first stopped. Override the horizons with `--closed-content-days`, `--closed-job-days`, `--scan-days`, `--notification-error-days`.
+`--dry-run` reports exactly what one real run would remove under the same limits and writes nothing; it also prints whether work remains (`truncated`). Runs are batched, idempotent, and safe to interrupt: a second run continues where the first stopped. Override the horizons with `--closed-content-days`, `--closed-job-days`, `--scan-days`, `--notification-error-days`.
 
 ## Configuration
 

@@ -337,7 +337,7 @@ Live validation still required before these sources can be trusted or run unatte
 |---|---|---|
 | **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
 | **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
-| **M5.3** | Retention policy approval (D-025) and enforcement | Delivered 2026-10-23 with offline tests; policy approved and implemented as an explicit command |
+| **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four retention horizons remain engineering defaults awaiting explicit Product Owner ratification |
 | **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on the per-source permission decisions |
 
 M5.2 decisions: `sources.next_run_at` is the only schedule state, a missed cycle is never replayed as a burst, and each source runs and reschedules in isolation (D-059). A source that fails three consecutive scans triggers exactly one notice per failure episode, claimed before sending, with a single send attempt and no retry on an ambiguous outcome; a completed scan ends the episode (D-060).
@@ -347,17 +347,18 @@ M5.2 acceptance evidence: `tests/test_scheduler.py` (due-ness, cadence, jitter, 
 Blockers and limits for M5.2:
 
 - **Unattended polling is not started.** `schedule` without `--once` runs a loop, but nothing runs it in the background and no deployment exists.
-- **Retention (D-025) is still unapproved**, so the seven-day run cannot be judged against a retention policy yet.
+- **The retention horizons (D-025) are implemented but not ratified**, so the seven-day run cannot yet be judged against an agreed retention policy.
 - **Per-source permission decisions (D-027) are unresolved**; AC-19 still blocks deployment of Palantir and any other source.
 - The loop is single-process and single-threaded by design; there is no supervisor, restart-on-crash, or alerting if the process itself dies. That belongs to M5.4's reliability gate.
 
-M5.3 decisions: the retention policy in D-025 follows the shape already proposed in architecture 5.3, and pruning is an explicit, bounded, idempotent command that never runs during a scan (D-061).
+M5.3 decisions: the retention policy in D-025 follows the shape already proposed in architecture 5.3, and pruning is an explicit, bounded, idempotent command that never runs during a scan (D-061). Batches advance in a deterministic order, notification error text ages from the latest delivery attempt, a dry run predicts exactly one real invocation, and `truncated` reports remaining work in every phase (D-062). Implementation status is not approval: the 30 / 365 / 90 / 90-day horizons are engineering defaults that the Product Owner has not yet ratified.
 
-M5.3 acceptance evidence: `tests/test_retention.py` (open jobs never pruned or stripped; closed content cleared only past 30 days while identity stays; closed identity and its notifications deleted past 12 months; referenced scans — first-seen and baseline — preserved while unreferenced old scans are deleted; delivery error text cleared with the outcome retained; idempotent second run; batch limits with truncation reporting; dry run changes nothing; invalid policies rejected; a retained closed role and a retained open role both avoid re-alerting after pruning; a scan never prunes; CLI dry-run, apply, and invalid-policy paths).
+M5.3 acceptance evidence: `tests/test_retention.py` (open jobs never pruned or stripped; closed content cleared only past 30 days while identity stays; closed identity and its notifications deleted past 12 months; referenced scans — first-seen and baseline — preserved while unreferenced old scans are deleted; delivery error text cleared with the outcome retained; idempotent second run; batch limits with truncation reporting; dry run changes nothing; invalid policies rejected; a retained closed role and a retained open role both avoid re-alerting after pruning; a scan never prunes; CLI dry-run, apply, and invalid-policy paths). The D-062 corrective pass adds: batches advancing past roles that never had notifications (the case that previously stopped early); a batch limit stopping between batches with `PRAGMA foreign_key_check` clean; seven expiring roles converging over repeated bounded runs; a recent error on an old notification retained while an old error is cleared and a NULL `last_attempt_at` falling back to creation time; dry-run counts equal to the same real run with nothing written; and `truncated` true then false in each of the four cleanup phases.
 
 M5.3 limits:
 
-- Pruning commits batch by batch rather than in one transaction, so an interrupted run leaves partial progress — idempotent and resumable by design.
+- Pruning commits batch by batch rather than in one transaction, so an interrupted run leaves partial progress — idempotent and resumable by design. A bounded run reports `truncated`; repeat the command until it reports completion.
+- `--dry-run` predicts one real invocation under the current limits, not the whole backlog, so a large backlog needs either one dry run per pass or a larger `--max-batches`.
 - Open jobs from a disabled source are never pruned and never auto-closed. Closing them would change product behaviour and is left as a decision.
 - A closed role reposted more than 12 months after closure can alert again; that is the accepted cost of purging its identity.
 - Nothing schedules `prune`; running it periodically (e.g. alongside the seven-day trial) is an operational decision for M5.4.

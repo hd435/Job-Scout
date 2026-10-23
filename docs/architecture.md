@@ -322,7 +322,7 @@ UNIQUE(chat_id, job_id)
 - `notifications(status)` for later outbox processing.
 - Status queries should expose `baseline_completed_at`, last scan status/completeness, records seen/parsed, consecutive failures, and recent notification states.
 
-### 5.3 Retention policy (approved, D-025)
+### 5.3 Retention policy (implemented, D-025; horizons awaiting Product Owner ratification)
 
 Active data is never pruned, however old it is: source rows, open jobs, and any scan that a
 job or a source still points at. Everything else ages out:
@@ -343,6 +343,15 @@ in bounded batches, idempotent, and never triggered by a scan or the scheduler. 
 removed child-first (notification errors, job content, notifications, jobs, scans) so foreign
 keys stay satisfied, and each batch commits on its own, so an interrupted run resumes from
 where it stopped instead of rolling back a long transaction.
+
+Batches are selected in a deterministic order (`closed_at`, then `id`), so repeated runs
+advance through the backlog instead of re-selecting the same rows; a batch's notifications are
+deleted before its jobs, and a job is never deleted while any notification still references it.
+`--dry-run` executes the same statements inside one transaction and rolls it back, so its
+counts predict a *single* real invocation under the same batch limits, not the whole backlog.
+The report sets `truncated` whenever eligible work remains in any phase, so a partial run is
+never reported as completion. Notification error text ages from the most recent delivery
+attempt (`last_attempt_at`, falling back to `created_at`), not from row creation.
 
 Accepted consequences, stated rather than implied: a closed role reposted more than 12 months
 after closure alerts again; a scan that an open job or the baseline points at is kept even

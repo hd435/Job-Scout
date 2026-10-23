@@ -416,6 +416,269 @@ def test_prune_never_runs_as_part_of_a_scan(seeded: Storage) -> None:
     assert stale.job.description == "A role description."
 
 
+def assert_fk_clean(storage: Storage) -> None:
+    violations = list(storage.connection.execute("PRAGMA foreign_key_check"))
+    assert violations == [], f"foreign key violations: {violations}"
+
+
+def seed_expiring_job(
+    storage: Storage,
+    job_id: str,
+    *,
+    closed_days_ago: int,
+    notification_days_ago: int | None = None,
+) -> int:
+    scan_id = seed_scan(storage, iso_days_ago(closed_days_ago + 10))
+    job_id_value = seed_job(
+        storage,
+        job_id=job_id,
+        scan_id=scan_id,
+        created_at=iso_days_ago(closed_days_ago + 10),
+        closed_at=iso_days_ago(closed_days_ago),
+    )
+    if notification_days_ago is not None:
+        seed_notification(storage, job_id_value, created_at=iso_days_ago(notification_days_ago))
+    return job_id_value
+
+
+# batching across notifications and jobs -----------------------------------
+
+
+def test_batches_advance_past_jobs_that_never_had_notifications(seeded: Storage) -> None:
+    """The old code re-selected the same first batch and stopped when it had no notifications."""
+    seed_expiring_job(seeded, "A", closed_days_ago=420)
+    seed_expiring_job(seeded, "B", closed_days_ago=410)
+    seed_expiring_job(seeded, "C", closed_days_ago=400, notification_days_ago=390)
+    seed_expiring_job(seeded, "D", closed_days_ago=390, notification_days_ago=380)
+    policy = RetentionPolicy(batch_size=2, max_batches=2)
+
+    report = seeded.prune(policy, now=NOW)
+
+    assert report.deleted_jobs == 4
+    assert report.deleted_notifications == 2
+    assert report.truncated is False
+    assert rows(seeded, "SELECT * FROM jobs WHERE status = 'closed'") == []
+    assert rows(seeded, "SELECT * FROM notifications") == []
+    assert_fk_clean(seeded)
+
+
+def test_a_batch_limit_stops_between_batches_rather_than_mid_batch(seeded: Storage) -> None:
+    seed_expiring_job(seeded, "A", closed_days_ago=420)
+    seed_expiring_job(seeded, "B", closed_days_ago=410, notification_days_ago=400)
+    seed_expiring_job(seeded, "C", closed_days_ago=400, notification_days_ago=390)
+    policy = RetentionPolicy(batch_size=2, max_batches=1)
+
+    first = seeded.prune(policy, now=NOW)
+
+    assert first.deleted_jobs == 2
+    assert first.deleted_notifications == 1
+    assert first.truncated is True
+    assert [row["source_job_id"] for row in rows(seeded, "SELECT source_job_id FROM jobs")] == ["C"]
+    assert len(rows(seeded, "SELECT * FROM notifications")) == 1
+    assert_fk_clean(seeded)
+
+    second = seeded.prune(policy, now=NOW)
+
+    assert second.deleted_jobs == 1
+    assert second.deleted_notifications == 1
+    assert second.truncated is False
+    assert rows(seeded, "SELECT * FROM jobs") == []
+    assert_fk_clean(seeded)
+
+
+def test_many_expiring_jobs_need_several_runs_and_converge(seeded: Storage) -> None:
+    for index in range(7):
+        seed_expiring_job(
+            seeded,
+            f"R{index}",
+            closed_days_ago=400 + index,
+            notification_days_ago=390 + index if index % 2 else None,
+        )
+    policy = RetentionPolicy(batch_size=2, max_batches=1)
+
+    runs = []
+    for _ in range(10):
+        report = seeded.prune(policy, now=NOW)
+        runs.append(report)
+        assert_fk_clean(seeded)
+        if not report.truncated:
+            break
+
+    assert [report.deleted_jobs for report in runs] == [2, 2, 2, 1]
+    assert sum(report.deleted_notifications for report in runs) == 3
+    assert rows(seeded, "SELECT * FROM jobs") == []
+    assert rows(seeded, "SELECT * FROM notifications") == []
+    assert seeded.prune(policy, now=NOW).total_changes == 0
+
+
+# notification error age ---------------------------------------------------
+
+
+def test_recent_error_on_an_old_notification_is_kept(seeded: Storage) -> None:
+    scan_id = seed_scan(seeded, iso_days_ago(300))
+    job_id = seed_job(seeded, scan_id=scan_id, created_at=iso_days_ago(300))
+    notification_id = seed_notification(seeded, job_id, created_at=iso_days_ago(200))
+    seeded.record_notification_failed(notification_id, error="recent failure", now=iso_days_ago(5))
+
+    report = seeded.prune(RetentionPolicy(), now=NOW)
+
+    row = rows(seeded, "SELECT * FROM notifications WHERE id = ?", (notification_id,))[0]
+    assert row["last_error"] == "recent failure"
+    assert report.cleared_notification_errors == 0
+
+
+def test_old_error_on_an_old_notification_is_cleared(seeded: Storage) -> None:
+    scan_id = seed_scan(seeded, iso_days_ago(400))
+    job_id = seed_job(seeded, scan_id=scan_id, created_at=iso_days_ago(400))
+    notification_id = seed_notification(seeded, job_id, created_at=iso_days_ago(300))
+    seeded.record_notification_failed(notification_id, error="stale failure", now=iso_days_ago(200))
+
+    report = seeded.prune(RetentionPolicy(), now=NOW)
+
+    row = rows(seeded, "SELECT * FROM notifications WHERE id = ?", (notification_id,))[0]
+    assert row["last_error"] is None
+    assert row["status"] == "failed"
+    assert report.cleared_notification_errors == 1
+
+
+def test_error_clearing_falls_back_to_creation_time_when_never_attempted(seeded: Storage) -> None:
+    scan_id = seed_scan(seeded, iso_days_ago(400))
+    job_id = seed_job(seeded, scan_id=scan_id, created_at=iso_days_ago(400))
+    notification_id = seed_notification(seeded, job_id, created_at=iso_days_ago(200))
+    seeded.connection.execute(
+        "UPDATE notifications SET last_error = ?, last_attempt_at = NULL WHERE id = ?",
+        ("unattempted failure", notification_id),
+    )
+
+    report = seeded.prune(RetentionPolicy(), now=NOW)
+
+    row = rows(seeded, "SELECT * FROM notifications WHERE id = ?", (notification_id,))[0]
+    assert row["last_error"] is None
+    assert report.cleared_notification_errors == 1
+
+
+# dry run versus real run --------------------------------------------------
+
+
+def test_dry_run_predicts_a_single_real_run_under_the_same_limits(seeded: Storage) -> None:
+    for index in range(5):
+        seed_expiring_job(
+            seeded,
+            f"R{index}",
+            closed_days_ago=400 + index,
+            notification_days_ago=390 + index if index % 2 == 0 else None,
+        )
+    seed_scan(seeded, iso_days_ago(400))
+    for index in range(3):
+        notification_scan = seed_scan(seeded, iso_days_ago(300))
+        job_id = seed_job(
+            seeded, job_id=f"E{index}", scan_id=notification_scan, created_at=iso_days_ago(300)
+        )
+        notification_id = seed_notification(seeded, job_id, created_at=iso_days_ago(200))
+        seeded.record_notification_failed(
+            notification_id, error=f"error {index}", now=iso_days_ago(150)
+        )
+    policy = RetentionPolicy(batch_size=2, max_batches=1)
+
+    before = {
+        table: rows(seeded, f"SELECT COUNT(*) AS total FROM {table}")[0]["total"]
+        for table in ("jobs", "notifications", "scans")
+    }
+    dry = seeded.prune(policy, now=NOW, dry_run=True)
+    after_dry = {
+        table: rows(seeded, f"SELECT COUNT(*) AS total FROM {table}")[0]["total"]
+        for table in ("jobs", "notifications", "scans")
+    }
+    real = seeded.prune(policy, now=NOW)
+
+    assert dry.dry_run is True
+    assert before == after_dry  # nothing written
+    assert (dry.cleared_job_content, dry.deleted_jobs, dry.deleted_notifications) == (
+        real.cleared_job_content,
+        real.deleted_jobs,
+        real.deleted_notifications,
+    )
+    assert dry.cleared_notification_errors == real.cleared_notification_errors
+    assert dry.deleted_scans == real.deleted_scans
+    assert dry.truncated == real.truncated is True
+    assert_fk_clean(seeded)
+
+
+def test_dry_run_reports_truncation_when_the_backlog_exceeds_the_cap(seeded: Storage) -> None:
+    for index in range(4):
+        seed_expiring_job(seeded, f"R{index}", closed_days_ago=400 + index)
+    policy = RetentionPolicy(batch_size=1, max_batches=2)
+
+    report = seeded.prune(policy, now=NOW, dry_run=True)
+
+    assert report.deleted_jobs == 2
+    assert report.truncated is True
+    assert len(rows(seeded, "SELECT * FROM jobs")) == 4
+
+
+# truncation in every phase ------------------------------------------------
+
+
+def test_content_clearing_reports_truncation(seeded: Storage) -> None:
+    for index in range(3):
+        seed_expiring_job(seeded, f"R{index}", closed_days_ago=40 + index)
+    policy = RetentionPolicy(batch_size=1, max_batches=1)
+
+    first = seeded.prune(policy, now=NOW)
+    second = seeded.prune(policy, now=NOW)
+
+    assert first.cleared_job_content == 1
+    assert first.truncated is True
+    assert second.cleared_job_content == 1
+    assert second.truncated is True
+    third = seeded.prune(policy, now=NOW)
+    assert third.cleared_job_content == 1
+    assert third.truncated is False
+
+
+def test_error_clearing_reports_truncation(seeded: Storage) -> None:
+    scan_id = seed_scan(seeded, iso_days_ago(400))
+    for index in range(3):
+        other_job = seed_job(
+            seeded,
+            job_id=f"E{index}",
+            scan_id=scan_id,
+            created_at=iso_days_ago(400),
+        )
+        notification_id = seed_notification(seeded, other_job, created_at=iso_days_ago(300))
+        seeded.record_notification_failed(
+            notification_id, error=f"error {index}", now=iso_days_ago(200)
+        )
+    policy = RetentionPolicy(batch_size=1, max_batches=1)
+
+    first = seeded.prune(policy, now=NOW)
+
+    assert first.cleared_notification_errors == 1
+    assert first.truncated is True
+
+    second = seeded.prune(policy, now=NOW)
+    assert second.cleared_notification_errors == 1
+    assert second.truncated is True
+
+    third = seeded.prune(policy, now=NOW)
+    assert third.cleared_notification_errors == 1
+    assert third.truncated is False
+
+
+def test_scan_deletion_reports_truncation(seeded: Storage) -> None:
+    for _ in range(3):
+        seed_scan(seeded, iso_days_ago(200))
+    policy = RetentionPolicy(batch_size=1, max_batches=1)
+
+    first = seeded.prune(policy, now=NOW)
+    second = seeded.prune(policy, now=NOW)
+    third = seeded.prune(policy, now=NOW)
+
+    assert (first.deleted_scans, first.truncated) == (1, True)
+    assert (second.deleted_scans, second.truncated) == (1, True)
+    assert (third.deleted_scans, third.truncated) == (1, False)
+
+
 # CLI ----------------------------------------------------------------------
 
 
