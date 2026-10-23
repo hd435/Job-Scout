@@ -49,6 +49,10 @@ python -m jobscout schedule --once
 # Run the scheduler loop (M5.4 owns running this unattended)
 python -m jobscout schedule --max-iterations 1
 
+# Inspect what retention would remove, then remove it (never runs automatically)
+python -m jobscout prune --dry-run
+python -m jobscout prune
+
 # Read-only views of stored state
 python -m jobscout summary --current
 python -m jobscout status
@@ -171,6 +175,20 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 
 **Failure notices (D-010, D-038):** a source that fails three consecutive scans produces exactly one message — employer, consecutive failure count, last error, and a pointer to `jobscout status`. The notice is claimed in the database before sending, so a long outage cannot spam you; a completed scan ends the episode, and a later outage notifies again. A partial scan is not a failure. One send attempt is made, and an ambiguous outcome is recorded rather than retried. `jobscout status` shows the next run and the failure-notice outcome per source.
 
+
+## Data retention
+
+`jobscout prune` applies the approved retention policy (D-025). It never runs during a scan or from the scheduler: you run it, or later a scheduled job does.
+
+| Data | Kept | Why |
+|---|---|---|
+| Sources, open roles, and any scan a role or source points at | Forever | Needed for deduplication, reopening, closure, and status |
+| Closed role description and salary | 30 days after closure | Source-derived text is the bulkiest, least useful data; title, location, dates, URL, and the match decision stay |
+| Closed role identity row (and its notifications) | 12 months after closure | Stops a reposted role re-alerting too soon; after that a repost can alert once |
+| Unreferenced scan history | 90 days | Diagnostic only; referenced scans are always kept |
+| Delivery error text | 90 days, then cleared | Outcome and attempt count stay for diagnosis |
+
+`--dry-run` reports exactly what would be removed and writes nothing. Runs are batched, idempotent, and safe to interrupt: a second run continues where the first stopped. Override the horizons with `--closed-content-days`, `--closed-job-days`, `--scan-days`, `--notification-error-days`.
 
 ## Configuration
 

@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation) and M5.2 (scheduler) delivered   
+**Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler) and M5.3 (retention) delivered   
 **Last updated:** 2026-10-23  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
@@ -337,8 +337,8 @@ Live validation still required before these sources can be trusted or run unatte
 |---|---|---|
 | **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
 | **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
-| **M5.3** | Retention policy approval (D-025) and enforcement | Not started |
-| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on M5.3 and the per-source permission decisions |
+| **M5.3** | Retention policy approval (D-025) and enforcement | Delivered 2026-10-23 with offline tests; policy approved and implemented as an explicit command |
+| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on the per-source permission decisions |
 
 M5.2 decisions: `sources.next_run_at` is the only schedule state, a missed cycle is never replayed as a burst, and each source runs and reschedules in isolation (D-059). A source that fails three consecutive scans triggers exactly one notice per failure episode, claimed before sending, with a single send attempt and no retry on an ambiguous outcome; a completed scan ends the episode (D-060).
 
@@ -350,6 +350,18 @@ Blockers and limits for M5.2:
 - **Retention (D-025) is still unapproved**, so the seven-day run cannot be judged against a retention policy yet.
 - **Per-source permission decisions (D-027) are unresolved**; AC-19 still blocks deployment of Palantir and any other source.
 - The loop is single-process and single-threaded by design; there is no supervisor, restart-on-crash, or alerting if the process itself dies. That belongs to M5.4's reliability gate.
+
+M5.3 decisions: the retention policy in D-025 follows the shape already proposed in architecture 5.3, and pruning is an explicit, bounded, idempotent command that never runs during a scan (D-061).
+
+M5.3 acceptance evidence: `tests/test_retention.py` (open jobs never pruned or stripped; closed content cleared only past 30 days while identity stays; closed identity and its notifications deleted past 12 months; referenced scans — first-seen and baseline — preserved while unreferenced old scans are deleted; delivery error text cleared with the outcome retained; idempotent second run; batch limits with truncation reporting; dry run changes nothing; invalid policies rejected; a retained closed role and a retained open role both avoid re-alerting after pruning; a scan never prunes; CLI dry-run, apply, and invalid-policy paths).
+
+M5.3 limits:
+
+- Pruning commits batch by batch rather than in one transaction, so an interrupted run leaves partial progress — idempotent and resumable by design.
+- Open jobs from a disabled source are never pruned and never auto-closed. Closing them would change product behaviour and is left as a decision.
+- A closed role reposted more than 12 months after closure can alert again; that is the accepted cost of purging its identity.
+- Nothing schedules `prune`; running it periodically (e.g. alongside the seven-day trial) is an operational decision for M5.4.
+
 
 M5.1 decisions: the check makes exactly one read-only request with retries disabled, never opens the database, writes only capped and trimmed artifacts under `data/validation/`, and exits non-zero unless the live payload is shape-compatible **and** the real adapter parses every record with zero skips (D-057). The personal-use risk acceptance for this check is narrow and does not authorise recurring or unattended access to any source (D-058).
 

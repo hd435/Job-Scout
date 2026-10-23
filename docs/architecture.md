@@ -322,17 +322,34 @@ UNIQUE(chat_id, job_id)
 - `notifications(status)` for later outbox processing.
 - Status queries should expose `baseline_completed_at`, last scan status/completeness, records seen/parsed, consecutive failures, and recent notification states.
 
-### 5.3 Retention proposal (not yet approved)
+### 5.3 Retention policy (approved, D-025)
 
-The approved principle is data minimisation. A concrete retention policy must be approved before unattended production. Proposed starting point:
+Active data is never pruned, however old it is: source rows, open jobs, and any scan that a
+job or a source still points at. Everything else ages out:
 
-- `scans`: 90 days.
-- `jobs`: retain minimal identity and status while open; retain minimal closed identity for 12 months to prevent re-alerting, then purge.
-- Job descriptions and salary/closing details: delete 30 days after closure.
-- `notifications`: retain delivery status and message metadata for 12 months; purge error text after 90 days.
-- Logs: 14 to 30 days, subject to host logging configuration.
+| Data | Retention | Rationale |
+|---|---|---|
+| `sources` rows | Forever | One row per configured source; needed for scheduling, status, and the baseline reference |
+| Open jobs (and the scans they reference) | Forever | Needed for deduplication, reopening, closure accounting, and matching |
+| Closed job *content* (`description`, `salary_text`) | 30 days after `closed_at` | Data minimisation: the bulky, source-derived text goes first; identity, title, location, dates, and match decision stay |
+| Closed job *identity* row | 12 months after `closed_at` | Prevents re-alerting a reposted role for a year; deleting the row also deletes its notifications, so a role reposted after a year can alert once more (accepted) |
+| `notifications` | With their job | Deleted when the job is purged; delivery state and message ids are the audit trail while the job exists |
+| Notification error text (`last_error`) | 90 days, then cleared | Outcome and attempt count stay; error strings are the most likely place for incidental content |
+| `scans` | 90 days, and only when unreferenced | Operational history for `status` and troubleshooting; a scan referenced by `first_seen_scan_id`, `first_complete_scan_id`, `last_seen_scan_id`, or `sources.baseline_scan_id` is always kept |
+| Failure-notice state | Lives on the source row | It is an episode marker, not history |
 
-This is a proposal for the retention decision, not an approved requirement.
+Mechanics: pruning is an explicit `jobscout prune` command (add `--dry-run` to inspect), run
+in bounded batches, idempotent, and never triggered by a scan or the scheduler. Rows are
+removed child-first (notification errors, job content, notifications, jobs, scans) so foreign
+keys stay satisfied, and each batch commits on its own, so an interrupted run resumes from
+where it stopped instead of rolling back a long transaction.
+
+Accepted consequences, stated rather than implied: a closed role reposted more than 12 months
+after closure alerts again; a scan that an open job or the baseline points at is kept even
+when it is older than 90 days; open jobs whose source was disabled are never pruned and never
+closed automatically (closing them would be a product decision, not cleanup).
+
+Logs are outside the database; host log rotation (14 to 30 days) remains a deployment concern.
 
 ### 5.4 Storage principles
 

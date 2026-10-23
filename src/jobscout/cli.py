@@ -29,10 +29,11 @@ from .matching import MatchingRules
 from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
 from .notices import FailureNoticeSender
 from .notifier import Notifier
+from .retention import RetentionPolicy
 from .scanner import run_scan
 from .scheduler import Scheduler, SourceRun
 from .sources import AdapterError, get_adapter
-from .storage import Storage
+from .storage import Storage, utc_now_iso
 from .telegram import TelegramTransport
 from .validate import DEFAULT_SAMPLE_RECORDS, ensure_artifacts_location, run_live_check
 
@@ -63,6 +64,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_validate(args)
         if args.command == "schedule":
             return _cmd_schedule(args)
+        if args.command == "prune":
+            return _cmd_prune(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -189,6 +192,41 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     schedule.add_argument("--db", type=Path, help="SQLite database path")
     schedule.add_argument("--config", type=Path, help="TOML configuration file")
+
+    prune = subparsers.add_parser(
+        "prune",
+        help="delete or strip historical data according to the retention policy",
+    )
+    prune.add_argument(
+        "--dry-run", action="store_true", help="report what would change, delete nothing"
+    )
+    prune.add_argument(
+        "--closed-content-days",
+        type=int,
+        default=RetentionPolicy.closed_content_days,
+        help="days after closure before description and salary are cleared",
+    )
+    prune.add_argument(
+        "--closed-job-days",
+        type=int,
+        default=RetentionPolicy.closed_job_days,
+        help="days after closure before a closed role's identity is deleted",
+    )
+    prune.add_argument(
+        "--scan-days",
+        type=int,
+        default=RetentionPolicy.scan_days,
+        help="days before unreferenced scan history is deleted",
+    )
+    prune.add_argument(
+        "--notification-error-days",
+        type=int,
+        default=RetentionPolicy.notification_error_days,
+        help="days before stored delivery error text is cleared",
+    )
+    prune.add_argument("--batch-size", type=int, help="rows handled per batch")
+    prune.add_argument("--db", type=Path, help="SQLite database path")
+    prune.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -400,6 +438,45 @@ def _build_notice_sender(telegram: TelegramConfig) -> FailureNoticeSender:
     """Single seam for tests: the only place a real notice transport is created."""
     transport = TelegramTransport(telegram, poster=UrllibHttpClient())
     return FailureNoticeSender(transport, secret_values=(telegram.token,))
+
+
+def _cmd_prune(args: argparse.Namespace) -> int:
+    """Explicit, bounded cleanup. Never called from scans or the scheduler."""
+    try:
+        policy = RetentionPolicy(
+            closed_content_days=args.closed_content_days,
+            closed_job_days=args.closed_job_days,
+            scan_days=args.scan_days,
+            notification_error_days=args.notification_error_days,
+            **({"batch_size": args.batch_size} if args.batch_size else {}),
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+
+    app = load_config(args.config)
+    db_path = args.db or app.database_path
+    with Storage.open(db_path) as storage:
+        report = storage.prune(policy, now=utc_now_iso(), dry_run=args.dry_run)
+
+    prefix = "Would" if report.dry_run else "Pruned"
+    print(f"Database: {db_path}")
+    print(
+        f"Policy: closed content {policy.closed_content_days}d,"
+        f" closed identity {policy.closed_job_days}d,"
+        f" scans {policy.scan_days}d,"
+        f" notification errors {policy.notification_error_days}d"
+    )
+    print(f"{prefix} clear {report.cleared_job_content} closed role(s) of description/salary")
+    print(f"{prefix} clear {report.cleared_notification_errors} delivery error message(s)")
+    print(f"{prefix} delete {report.deleted_notifications} notification(s)")
+    print(f"{prefix} delete {report.deleted_jobs} closed role(s)")
+    print(f"{prefix} delete {report.deleted_scans} scan record(s)")
+    if report.truncated:
+        print("More historical data remains; run prune again to continue.")
+    if report.dry_run:
+        print("Dry run: nothing was changed.")
+    return EXIT_OK
 
 
 def _cmd_summary(args: argparse.Namespace) -> int:

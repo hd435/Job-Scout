@@ -28,6 +28,7 @@ from .models import (
     SourceState,
     StoredJob,
 )
+from .retention import PruneReport, RetentionPolicy, cutoff
 
 _MISSING_LOCATION = LocationResult(qualifies=False, reason="location_missing", ambiguous=True)
 
@@ -364,6 +365,152 @@ class Storage:
         self._conn.execute(
             "UPDATE sources SET failure_notice_outcome = ? WHERE id = ?", (outcome, source_id)
         )
+
+    # retention -------------------------------------------------------------
+
+    def prune(self, policy: RetentionPolicy, *, now: str, dry_run: bool = False) -> PruneReport:
+        """Delete or strip historical data, bounded and idempotent.
+
+        Order matters: notifications reference jobs and jobs reference scans, so rows are
+        removed child-first. A scan is kept whenever a job or a source still points at it,
+        which protects the baseline, first-seen, and last-seen history that the lifecycle
+        depends on. Open jobs are never touched.
+        """
+        content_cutoff = cutoff(now, policy.closed_content_days)
+        job_cutoff = cutoff(now, policy.closed_job_days)
+        scan_cutoff = cutoff(now, policy.scan_days)
+        error_cutoff = cutoff(now, policy.notification_error_days)
+
+        cleared_content = self._prune_job_content(content_cutoff, policy, dry_run)
+        cleared_errors = self._prune_notification_errors(error_cutoff, policy, dry_run)
+        deleted_notifications = self._prune_notifications_of_expiring_jobs(
+            job_cutoff, policy, dry_run
+        )
+        deleted_jobs, jobs_truncated = self._prune_jobs(job_cutoff, policy, dry_run)
+        deleted_scans, scans_truncated = self._prune_scans(scan_cutoff, policy, dry_run)
+
+        return PruneReport(
+            cleared_job_content=cleared_content,
+            cleared_notification_errors=cleared_errors,
+            deleted_notifications=deleted_notifications,
+            deleted_jobs=deleted_jobs,
+            deleted_scans=deleted_scans,
+            truncated=jobs_truncated or scans_truncated,
+            dry_run=dry_run,
+        )
+
+    def _prune_job_content(self, boundary: str, policy: RetentionPolicy, dry_run: bool) -> int:
+        where = """
+            status = ? AND closed_at IS NOT NULL AND closed_at <= ?
+            AND (description IS NOT NULL OR salary_text IS NOT NULL)
+        """
+        params = (str(JobStatus.CLOSED), boundary)
+        if dry_run:
+            return self._count_where("jobs", where, params)
+        total = 0
+        for _ in range(policy.max_batches):
+            cursor = self._conn.execute(
+                f"""
+                UPDATE jobs SET description = NULL, salary_text = NULL
+                WHERE id IN (SELECT id FROM jobs WHERE {where} LIMIT ?)
+                """,
+                (*params, policy.batch_size),
+            )
+            total += cursor.rowcount
+            if cursor.rowcount < policy.batch_size:
+                break
+        return total
+
+    def _prune_notification_errors(
+        self, boundary: str, policy: RetentionPolicy, dry_run: bool
+    ) -> int:
+        where = "last_error IS NOT NULL AND created_at <= ?"
+        if dry_run:
+            return self._count_where("notifications", where, (boundary,))
+        total = 0
+        for _ in range(policy.max_batches):
+            cursor = self._conn.execute(
+                f"""
+                UPDATE notifications SET last_error = NULL
+                WHERE id IN (SELECT id FROM notifications WHERE {where} LIMIT ?)
+                """,
+                (boundary, policy.batch_size),
+            )
+            total += cursor.rowcount
+            if cursor.rowcount < policy.batch_size:
+                break
+        return total
+
+    def _prune_notifications_of_expiring_jobs(
+        self, boundary: str, policy: RetentionPolicy, dry_run: bool
+    ) -> int:
+        subquery = """
+            SELECT id FROM jobs
+            WHERE status = ? AND closed_at IS NOT NULL AND closed_at <= ?
+            LIMIT ?
+        """
+        params = (str(JobStatus.CLOSED), boundary, policy.batch_size)
+        if dry_run:
+            return self._count_where("notifications", f"job_id IN ({subquery})", params)
+        total = 0
+        for _ in range(policy.max_batches):
+            cursor = self._conn.execute(
+                f"DELETE FROM notifications WHERE job_id IN ({subquery})", params
+            )
+            total += cursor.rowcount
+            if cursor.rowcount == 0:
+                break
+        return total
+
+    def _prune_jobs(
+        self, boundary: str, policy: RetentionPolicy, dry_run: bool
+    ) -> tuple[int, bool]:
+        where = "status = ? AND closed_at IS NOT NULL AND closed_at <= ?"
+        params = (str(JobStatus.CLOSED), boundary)
+        if dry_run:
+            return self._count_where("jobs", where, params), False
+        total = 0
+        for _ in range(policy.max_batches):
+            cursor = self._conn.execute(
+                f"DELETE FROM jobs WHERE id IN (SELECT id FROM jobs WHERE {where} LIMIT ?)",
+                (*params, policy.batch_size),
+            )
+            total += cursor.rowcount
+            if cursor.rowcount < policy.batch_size:
+                return total, False
+        return total, True
+
+    def _prune_scans(
+        self, boundary: str, policy: RetentionPolicy, dry_run: bool
+    ) -> tuple[int, bool]:
+        where = """
+            started_at <= ?
+            AND id NOT IN (SELECT first_seen_scan_id FROM jobs WHERE first_seen_scan_id IS NOT NULL)
+            AND id NOT IN (
+                SELECT first_complete_scan_id FROM jobs WHERE first_complete_scan_id IS NOT NULL
+            )
+            AND id NOT IN (SELECT last_seen_scan_id FROM jobs WHERE last_seen_scan_id IS NOT NULL)
+            AND id NOT IN (SELECT baseline_scan_id FROM sources WHERE baseline_scan_id IS NOT NULL)
+        """
+        params: tuple[object, ...] = (boundary,)
+        if dry_run:
+            return self._count_where("scans", where, params), False
+        total = 0
+        for _ in range(policy.max_batches):
+            cursor = self._conn.execute(
+                f"DELETE FROM scans WHERE id IN (SELECT id FROM scans WHERE {where} LIMIT ?)",
+                (*params, policy.batch_size),
+            )
+            total += cursor.rowcount
+            if cursor.rowcount < policy.batch_size:
+                return total, False
+        return total, True
+
+    def _count_where(self, table: str, where: str, params: tuple[object, ...]) -> int:
+        row = self._conn.execute(
+            f"SELECT COUNT(*) AS total FROM {table} WHERE {where}", params
+        ).fetchone()
+        return int(row["total"])
 
     def record_scan(self, result: ScanResult, *, is_baseline: bool) -> int:
         cursor = self._conn.execute(
