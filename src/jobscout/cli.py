@@ -1,7 +1,8 @@
 """Command-line interface.
 
-M1 supports local dry runs only: no Telegram delivery, no scheduling, and no
-source other than the configured Palantir Lever board.
+`scan --dry-run` records findings without contacting anyone. `scan --deliver`
+(and the standalone `deliver` command) send queued alerts through the Telegram
+Bot API. There is still no scheduler and only the configured Palantir source.
 """
 
 from __future__ import annotations
@@ -13,12 +14,21 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from . import __version__
-from .config import AppConfig, ConfigError, SourceConfig, load_config
+from .config import (
+    AppConfig,
+    ConfigError,
+    SourceConfig,
+    TelegramConfig,
+    load_config,
+    load_telegram_config,
+)
 from .http import FixtureHttpClient, UrllibHttpClient
-from .models import MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
+from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
+from .notifier import Notifier
 from .scanner import run_scan
 from .sources import AdapterError, get_adapter
 from .storage import Storage
+from .telegram import TelegramTransport
 
 EXIT_OK = 0
 EXIT_DEGRADED = 1
@@ -34,6 +44,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_scan(args)
         if args.command == "summary":
             return _cmd_summary(args)
+        if args.command == "deliver":
+            return _cmd_deliver(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -53,17 +65,23 @@ def _configure_output() -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="jobscout",
-        description="Personal UK early-career job monitor (M1: local Palantir dry run).",
+        description="Personal UK early-career job monitor (Palantir source, Telegram delivery).",
     )
     parser.add_argument("--version", action="version", version=f"jobscout {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     scan = subparsers.add_parser("scan", help="scan one source and persist the result")
     scan.add_argument("--source", help="configured source id (default: the only source)")
-    scan.add_argument(
+    mode = scan.add_mutually_exclusive_group()
+    mode.add_argument(
         "--dry-run",
         action="store_true",
-        help="required in M1: record findings without sending notifications",
+        help="record findings without sending notifications",
+    )
+    mode.add_argument(
+        "--deliver",
+        action="store_true",
+        help="queue and deliver alerts for new matching roles via Telegram",
     )
     scan.add_argument("--db", type=Path, help="SQLite database path")
     scan.add_argument("--config", type=Path, help="TOML configuration file")
@@ -88,6 +106,12 @@ def _build_parser() -> argparse.ArgumentParser:
     summary.add_argument("--db", type=Path, help="SQLite database path")
     summary.add_argument("--config", type=Path, help="TOML configuration file")
 
+    deliver = subparsers.add_parser(
+        "deliver", help="retry delivery of already-queued alerts (no scan)"
+    )
+    deliver.add_argument("--db", type=Path, help="SQLite database path")
+    deliver.add_argument("--config", type=Path, help="TOML configuration file")
+
     status = subparsers.add_parser("status", help="show source and scan status")
     status.add_argument("--source", help="configured source id (default: all sources)")
     status.add_argument("--db", type=Path, help="SQLite database path")
@@ -96,29 +120,77 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _build_notifier(telegram: TelegramConfig) -> Notifier:
+    """Single seam for tests: the only place a real Telegram transport is created."""
+    transport = TelegramTransport(telegram, poster=UrllibHttpClient())
+    return Notifier(transport, secret_values=(telegram.token,))
+
+
 def _cmd_scan(args: argparse.Namespace) -> int:
-    if not args.dry_run:
+    if not args.dry_run and not args.deliver:
         print(
-            "error: M1 has no notification delivery; re-run with --dry-run",
+            "error: choose --dry-run to record findings or --deliver to send alerts",
             file=sys.stderr,
         )
         return EXIT_FAILED
 
+    telegram = load_telegram_config() if args.deliver else None
     app = load_config(args.config)
     source = _resolve_source(app, args.source)
     adapter = get_adapter(source.adapter)
     http_client = FixtureHttpClient(args.fixture) if args.fixture else UrllibHttpClient()
     db_path = args.db or app.database_path
+    notifier = _build_notifier(telegram) if telegram else None
 
+    report = None
     with Storage.open(db_path) as storage:
-        outcome = run_scan(storage, adapter, source, http_client, accept_empty=args.accept_empty)
+        outcome = run_scan(
+            storage,
+            adapter,
+            source,
+            http_client,
+            accept_empty=args.accept_empty,
+            notify_chat_id=telegram.chat_id if telegram else None,
+        )
+        if notifier and telegram:
+            report = notifier.deliver_pending(storage, telegram.chat_id)
 
     _print_scan_outcome(outcome, source, db_path)
+    if report is not None:
+        _print_delivery_report(report)
+
     if outcome.status is ScanStatus.FAILED:
         return EXIT_FAILED
     if outcome.status is ScanStatus.PARTIAL:
         return EXIT_DEGRADED
+    if report is not None and (report.failed or report.ambiguous):
+        return EXIT_DEGRADED
     return EXIT_OK
+
+
+def _cmd_deliver(args: argparse.Namespace) -> int:
+    telegram = load_telegram_config()
+    app = load_config(args.config)
+    db_path = args.db or app.database_path
+
+    with Storage.open(db_path) as storage:
+        report = _build_notifier(telegram).deliver_pending(storage, telegram.chat_id)
+
+    _print_delivery_report(report)
+    return EXIT_DEGRADED if report.failed or report.ambiguous else EXIT_OK
+
+
+def _print_delivery_report(report: DeliveryReport) -> None:
+    print(
+        f"Delivery: sent={report.sent} failed={report.failed}"
+        f" ambiguous={report.ambiguous} retrying={report.retrying}"
+    )
+    if report.failed:
+        print("  Some alerts failed permanently; see: jobscout status")
+    if report.ambiguous:
+        print("  Some delivery outcomes were ambiguous and are not retried automatically.")
+    if report.retrying:
+        print("  Transient failures remain queued; run: jobscout deliver")
 
 
 def _cmd_summary(args: argparse.Namespace) -> int:

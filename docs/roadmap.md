@@ -245,12 +245,16 @@ Known deviations and limitations:
 | Increment | Outcome | Status |
 |---|---|---|
 | **M2.1** | Offline pipeline: `notifications` table, message formatting, delivery state machine, duplicate prevention, recording fake transport, delivery visibility in `status` | Delivered 2026-10-23 |
-| **M2.2** | Real Telegram transport with environment-variable credentials, redaction, and one test message | Not started: needs credentials and explicit approval to send |
+| **M2.2** | Real Telegram transport with environment-variable credentials, redaction, and delivery CLI paths | Delivered 2026-10-23; live test message still needs explicit approval |
 | **M2.3** | Matching-filter overrides in configuration (FR-12 complete) | Not started |
 
 M2.1 decisions: ambiguous outcomes are recorded and never retried automatically (D-024); transient failures stay `pending` for a later pass; permanent rejections become `failed`; `sent` rows are never re-sent (D-036); the transport and any CLI delivery switch arrive in M2.2 (D-037); proactive failure notices stay in M5 (D-038).
 
+M2.2 decisions: one POST per alert with no internal HTTP retry and explicit outcome mapping (D-039); credentials only from environment variables, with shape checking and full redaction (D-040); `scan --deliver` and `deliver` as the only sending paths (D-041); the send-then-record crash window is accepted (D-042).
+
 M2.1 acceptance evidence: `tests/test_notifier.py` (formatting, queueing, dedupe, restart, sent/failed/ambiguous/retry paths, redaction) and `tests/test_cli.py::test_status_reports_delivery_state_without_the_chat_id`.
+
+M2.2 acceptance evidence: `tests/test_telegram.py` (outcome mapping, message id, redaction, transport-to-state-machine integration), `tests/test_http.py` (POST never retries; timeout vs connection failure classification), `tests/test_config.py` (environment-only credentials), and `tests/test_cli.py` (missing configuration, dry-run/`--deliver` exclusivity, delivery reporting, idempotent `deliver`). No live Telegram message has been sent.
 
 ### M3 — Workday: Barclays and Lloyds Graduate
 

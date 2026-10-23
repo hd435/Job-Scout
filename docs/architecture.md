@@ -50,7 +50,7 @@ Boundaries:
 - **The scan orchestrator** invokes one adapter, persists the scan and observed jobs, and applies baseline/closure rules. It lives in the CLI in M1 and in the scheduler later.
 - **The matcher** is a pure decision layer. It does not fetch, persist, or notify.
 - **SQLite** is the only durable state. It holds source status, scan history, job identity, baseline state, match decisions, and later notification history.
-- **The notifier** (M2.1) reads queued notification rows from state, formats them, delivers them through an injected `Transport`, and records the outcome of every attempt. It is never called by adapters, and it does not decide what is new — the scan orchestrator queues work inside its own transaction.
+- **The notifier** (M2.1) reads queued notification rows from state, formats them, delivers them through an injected `Transport`, and records the outcome of every attempt. It is never called by adapters, and it does not decide what is new — the scan orchestrator queues work inside its own transaction. The production transport (M2.2) is the Telegram Bot API: one POST per alert, no internal HTTP retry, with ambiguous outcomes left untouched.
 - There is no public inbound interface and no multi-user service boundary.
 
 ## 3. Contracts
@@ -349,7 +349,7 @@ This is a proposal for the retention decision, not an approved requirement.
 
 - One shared HTTP client/session with timeouts.
 - Descriptive user agent.
-- Bounded retries for 429 and 5xx; respect `Retry-After`.
+- Bounded retries for 429 and 5xx; respect `Retry-After`. GET requests retry inside the client; POST requests never retry internally, because a repeated POST could duplicate an effect. Retry policy for a send therefore belongs to the delivery state machine.
 - No retry for permanent 4xx.
 - Low per-host concurrency; one request at a time per host unless evidence supports more.
 - Log request failures without secrets or full response bodies.

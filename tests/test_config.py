@@ -4,7 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from jobscout.config import ConfigError, default_config, load_config
+from jobscout.config import (
+    TELEGRAM_CHAT_ID_ENV,
+    TELEGRAM_TOKEN_ENV,
+    ConfigError,
+    default_config,
+    load_config,
+    load_telegram_config,
+)
+
+BOT_TOKEN = "123456789:AAFakeTokenValueForRedactionTests"
 
 CONFIG = """
 [jobscout]
@@ -95,3 +104,46 @@ def test_incomplete_source_is_rejected(tmp_path: Path) -> None:
 def test_unknown_source_is_reported() -> None:
     with pytest.raises(ConfigError, match="unknown source 'monzo'"):
         default_config().source("monzo")
+
+
+def test_telegram_configuration_comes_from_the_environment() -> None:
+    config = load_telegram_config(
+        {TELEGRAM_TOKEN_ENV: BOT_TOKEN, TELEGRAM_CHAT_ID_ENV: "555000111"}
+    )
+
+    assert config.token == BOT_TOKEN
+    assert config.chat_id == "555000111"
+
+
+def test_missing_telegram_configuration_names_the_variables() -> None:
+    with pytest.raises(ConfigError) as exc:
+        load_telegram_config({TELEGRAM_CHAT_ID_ENV: "555000111"})
+
+    assert TELEGRAM_TOKEN_ENV in str(exc.value)
+    assert "--dry-run" in str(exc.value)
+
+
+def test_missing_chat_id_is_reported() -> None:
+    with pytest.raises(ConfigError) as exc:
+        load_telegram_config({TELEGRAM_TOKEN_ENV: BOT_TOKEN})
+
+    assert TELEGRAM_CHAT_ID_ENV in str(exc.value)
+
+
+def test_malformed_token_is_rejected_without_echoing_it() -> None:
+    with pytest.raises(ConfigError) as exc:
+        load_telegram_config(
+            {TELEGRAM_TOKEN_ENV: "not-a-real-token", TELEGRAM_CHAT_ID_ENV: "555000111"}
+        )
+
+    assert "not-a-real-token" not in str(exc.value)
+    assert "does not look like" in str(exc.value)
+
+
+def test_telegram_config_repr_hides_the_token() -> None:
+    config = load_telegram_config(
+        {TELEGRAM_TOKEN_ENV: BOT_TOKEN, TELEGRAM_CHAT_ID_ENV: "555000111"}
+    )
+
+    assert BOT_TOKEN not in repr(config)
+    assert "redacted" in repr(config)

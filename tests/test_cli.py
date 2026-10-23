@@ -6,11 +6,16 @@ from pathlib import Path
 import pytest
 
 from jobscout.cli import main
+from jobscout.config import TELEGRAM_CHAT_ID_ENV, TELEGRAM_TOKEN_ENV
 from jobscout.models import DeliveryOutcome, DeliveryResult, MatchOutcome
+from jobscout.notifier import Notifier
 from jobscout.storage import Storage
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PALANTIR_FIXTURE = FIXTURES / "palantir_jobs.json"
+
+BOT_TOKEN = "123456789:AAFakeTokenValueForRedactionTests"
+CHAT_ID = "555000111"
 
 
 def run_cli(*args: str) -> int:
@@ -215,3 +220,167 @@ def test_status_reports_delivery_state_without_the_chat_id(
 @pytest.fixture
 def db(tmp_path: Path) -> Path:
     return tmp_path / "cli.db"
+
+
+def use_telegram_env(monkeypatch) -> None:
+    monkeypatch.setenv(TELEGRAM_TOKEN_ENV, BOT_TOKEN)
+    monkeypatch.setenv(TELEGRAM_CHAT_ID_ENV, CHAT_ID)
+
+
+def forbid_network(monkeypatch) -> None:
+    def fail(*_args, **_kwargs):  # pragma: no cover - must never run
+        raise AssertionError("network access attempted")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail)
+
+
+def patched_notifier(monkeypatch, transport) -> None:
+    monkeypatch.setattr(
+        "jobscout.cli._build_notifier",
+        lambda _telegram: Notifier(transport, sleep=lambda _seconds: None),
+    )
+
+
+def scan_with_new_role(tmp_path: Path) -> Path:
+    payload = json.loads(PALANTIR_FIXTURE.read_text(encoding="utf-8"))
+    payload.append(
+        {
+            "id": "8a1f4c10-9999-4000-8000-000000000099",
+            "text": "Graduate Machine Learning Engineer",
+            "categories": {"location": "London, United Kingdom"},
+            "workplaceType": "hybrid",
+            "descriptionPlain": "New graduate role.",
+            "hostedUrl": "https://jobs.lever.co/palantir/8a1f4c10-9999",
+        }
+    )
+    second = tmp_path / "second.json"
+    second.write_text(json.dumps(payload), encoding="utf-8")
+    return second
+
+
+def test_scan_deliver_requires_telegram_configuration(db, capsys, monkeypatch) -> None:
+    monkeypatch.delenv(TELEGRAM_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(TELEGRAM_CHAT_ID_ENV, raising=False)
+    forbid_network(monkeypatch)
+
+    exit_code = run_cli(
+        "scan",
+        "--source",
+        "palantir",
+        "--deliver",
+        "--db",
+        str(db),
+        "--fixture",
+        str(PALANTIR_FIXTURE),
+    )
+    err = capsys.readouterr().err
+
+    assert exit_code == 2
+    assert TELEGRAM_TOKEN_ENV in err
+    assert TELEGRAM_CHAT_ID_ENV in err
+
+
+def test_scan_rejects_dry_run_with_deliver(db) -> None:
+    with pytest.raises(SystemExit) as exc:
+        run_cli("scan", "--source", "palantir", "--dry-run", "--deliver", "--db", str(db))
+
+    assert exc.value.code == 2
+
+
+def test_scan_deliver_sends_only_new_matching_roles(
+    db, capsys, monkeypatch, tmp_path, fake_transport
+) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    second = scan_with_new_role(tmp_path)
+    use_telegram_env(monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport()
+    patched_notifier(monkeypatch, transport)
+
+    exit_code = run_cli(
+        "scan", "--source", "palantir", "--deliver", "--db", str(db), "--fixture", str(second)
+    )
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Notifications queued: 1" in out
+    assert "Delivery: sent=1 failed=0 ambiguous=0 retrying=0" in out
+    assert len(transport.sent) == 1
+    assert transport.sent[0][0] == CHAT_ID
+    assert BOT_TOKEN not in out
+    assert CHAT_ID not in out
+
+
+def test_scan_deliver_reports_permanent_failure(db, capsys, monkeypatch, tmp_path, fake_transport):
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    second = scan_with_new_role(tmp_path)
+    use_telegram_env(monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport(
+        [DeliveryResult(DeliveryOutcome.PERMANENT, error="400 Bad Request: chat not found")]
+    )
+    patched_notifier(monkeypatch, transport)
+
+    exit_code = run_cli(
+        "scan", "--source", "palantir", "--deliver", "--db", str(db), "--fixture", str(second)
+    )
+    out = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "Delivery: sent=0 failed=1 ambiguous=0 retrying=0" in out
+    assert "failed permanently" in out
+
+
+def test_deliver_command_retries_pending_alerts(db, capsys, monkeypatch, fake_transport) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    with Storage.open(db) as storage:
+        job = storage.list_jobs_by_decision("palantir", MatchOutcome.MATCH)[0]
+        storage.create_pending_notification(CHAT_ID, job.id, now="2026-10-23T00:00:00Z")
+    use_telegram_env(monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport()
+    patched_notifier(monkeypatch, transport)
+
+    exit_code = run_cli("deliver", "--db", str(db))
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Delivery: sent=1 failed=0 ambiguous=0 retrying=0" in out
+    assert len(transport.sent) == 1
+    assert BOT_TOKEN not in out
+    assert CHAT_ID not in out
+
+
+def test_deliver_command_requires_configuration(db, capsys, monkeypatch) -> None:
+    monkeypatch.delenv(TELEGRAM_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(TELEGRAM_CHAT_ID_ENV, raising=False)
+
+    exit_code = run_cli("deliver", "--db", str(db))
+    err = capsys.readouterr().err
+
+    assert exit_code == 2
+    assert TELEGRAM_TOKEN_ENV in err
+
+
+def test_deliver_command_is_idempotent(db, capsys, monkeypatch, fake_transport) -> None:
+    run_cli(*scan_command(db, PALANTIR_FIXTURE))
+    capsys.readouterr()
+    with Storage.open(db) as storage:
+        job = storage.list_jobs_by_decision("palantir", MatchOutcome.MATCH)[0]
+        storage.create_pending_notification(CHAT_ID, job.id, now="2026-10-23T00:00:00Z")
+    use_telegram_env(monkeypatch)
+    forbid_network(monkeypatch)
+    transport = fake_transport()
+    patched_notifier(monkeypatch, transport)
+
+    run_cli("deliver", "--db", str(db))
+    capsys.readouterr()
+    exit_code = run_cli("deliver", "--db", str(db))
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "Delivery: sent=0 failed=0 ambiguous=0 retrying=0" in out
+    assert len(transport.sent) == 1

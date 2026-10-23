@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and will alert on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.1 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, and an **offline notification pipeline** (queued alerts, formatting, delivery state, duplicate prevention) are implemented. There is **no Telegram transport yet**: M2.1 sends nothing. Scheduling, deployment, and the other five sources are not implemented.
+**Current state: M1 + M2.2 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), and a **Telegram Bot API transport** are implemented. Delivery is opt-in via `--deliver` and needs credentials in environment variables. No live Telegram message has been sent yet, scheduling and deployment are absent, and the other five sources are not implemented.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -31,6 +31,12 @@ python -m jobscout scan --source palantir --dry-run --fixture tests/fixtures/pal
 # Live scan of the Palantir Lever board (only where the source's terms permit it)
 python -m jobscout scan --source palantir --dry-run
 
+# Scan and deliver alerts for new matching roles via Telegram
+python -m jobscout scan --source palantir --deliver
+
+# Retry alerts that are still queued (no scan, no source request)
+python -m jobscout deliver
+
 # Read-only views of stored state
 python -m jobscout summary --current
 python -m jobscout status
@@ -38,9 +44,25 @@ python -m jobscout status
 
 Common options: `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
 
-Exit codes: `0` complete scan, `1` partial scan, `2` failed scan or usage error.
+Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery failure, `2` failed scan or usage error.
 
-`--dry-run` is mandatory in M1: it records scan and role state but sends nothing anywhere. There is no notifier yet.
+`--dry-run` and `--deliver` are mutually exclusive, and one of them is required: a scan never sends anything unless you ask it to.
+
+## Telegram credentials
+
+Delivery reads two environment variables and nothing else:
+
+```bash
+# Windows PowerShell
+$env:JOBSCOUT_TELEGRAM_TOKEN = "123456789:AA..."
+$env:JOBSCOUT_TELEGRAM_CHAT_ID = "555000111"
+
+# macOS / Linux
+export JOBSCOUT_TELEGRAM_TOKEN="123456789:AA..."
+export JOBSCOUT_TELEGRAM_CHAT_ID="555000111"
+```
+
+They are never read from `config.toml`, never committed, and never printed. The token is shape-checked before use, and every delivery error stored or displayed has the token and chat id replaced with `[redacted]`.
 
 ## How a scan behaves
 
@@ -57,18 +79,22 @@ Exit codes: `0` complete scan, `1` partial scan, `2` failed scan or usage error.
 
 State lives in SQLite (default `data/jobscout.db`, gitignored): `sources`, `scans`, `jobs`, and `notifications`. Only normalized role fields, hashes, scan counts, delivery state, and bounded error summaries are stored; raw payloads and HTML are not.
 
-## Notifications (M2.1, offline)
+## Notifications
 
-Matching new roles are queued as `pending` notification rows, one per `(chat_id, job_id)`, inside the same transaction that records the scan. A `Notifier` formats and delivers them through an injected `Transport` and records every attempt:
+Matching new roles are queued as `pending` notification rows, one per `(chat_id, job_id)`, inside the same transaction that records the scan. A `Notifier` formats and delivers them through a `Transport` and records every attempt. `TelegramTransport` sends one POST per alert to the Bot API and classifies the result:
 
 | Outcome | Recorded as | Retried? |
 |---|---|---|
-| Delivered | `sent` (with message id and timestamp) | Never |
-| Ambiguous (e.g. timeout after send) | `ambiguous` | Never, by decision (D-024) |
-| Transient (429, 5xx, network) | stays `pending` with attempt count and error | Yes, next delivery pass |
-| Permanent rejection (other 4xx) | `failed` | No |
+| Delivered (`ok: true`) | `sent` (with Telegram message id and timestamp) | Never |
+| Timeout after send | `ambiguous` | Never, by decision (D-024): the outcome is unknowable |
+| 429, 5xx, or a connection that never opened | stays `pending` with attempt count and error | Yes, next `deliver`/`--deliver` pass |
+| Permanent rejection (other 4xx, `ok: false`) | `failed` | No |
 
-There is no Telegram transport in M2.1 and no credential is read, so nothing is sent anywhere. Tests drive the pipeline with a recording fake transport. `jobscout status` reports delivery counts and the last delivery error, with chat ids and bot tokens redacted. The real transport, environment-variable credentials, and a CLI delivery switch arrive in M2.2.
+The HTTP client never retries a POST internally, so the state machine is the only retry authority and a retry cannot silently double-send. No `sent` row is ever sent again, which makes `deliver` idempotent.
+
+Known limitation, accepted for the MVP (D-042): if the process dies between Telegram accepting a message and the database recording `sent`, that alert can be sent again later.
+
+`jobscout status` reports delivery counts and the last delivery error, with the chat id and bot token redacted. No notification is sent unless you pass `--deliver` or run `deliver`.
 
 
 ## Configuration

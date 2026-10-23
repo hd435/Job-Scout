@@ -8,13 +8,21 @@ changes (PRD FR-12). Matching keywords stay in code for M1 and are versioned by
 
 from __future__ import annotations
 
+import os
+import re
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path("data") / "jobscout.db"
 DEFAULT_CONFIG_PATH = Path("config.toml")
+
+TELEGRAM_TOKEN_ENV = "JOBSCOUT_TELEGRAM_TOKEN"
+TELEGRAM_CHAT_ID_ENV = "JOBSCOUT_TELEGRAM_CHAT_ID"
+
+_BOT_TOKEN_SHAPE = re.compile(r"^\d{6,}:[A-Za-z0-9_-]{20,}$")
 
 
 class ConfigError(Exception):
@@ -61,6 +69,42 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
 
 def default_config() -> AppConfig:
     return AppConfig(database_path=DEFAULT_DB_PATH, sources=DEFAULT_SOURCES)
+
+
+@dataclass(frozen=True)
+class TelegramConfig:
+    """Telegram destination, supplied by environment variables only."""
+
+    token: str
+    chat_id: str
+
+    def __repr__(self) -> str:  # keep the token out of tracebacks and debug output
+        return f"TelegramConfig(chat_id={self.chat_id!r}, token=<redacted>)"
+
+
+def load_telegram_config(environ: Mapping[str, str] | None = None) -> TelegramConfig:
+    """Read Telegram credentials from the environment; never from the repository."""
+    env = os.environ if environ is None else environ
+    token = (env.get(TELEGRAM_TOKEN_ENV) or "").strip()
+    chat_id = (env.get(TELEGRAM_CHAT_ID_ENV) or "").strip()
+
+    missing = [
+        name
+        for name, value in ((TELEGRAM_TOKEN_ENV, token), (TELEGRAM_CHAT_ID_ENV, chat_id))
+        if not value
+    ]
+    if missing:
+        raise ConfigError(
+            "missing Telegram configuration: set "
+            + " and ".join(missing)
+            + " (or re-run with --dry-run)"
+        )
+    if not _BOT_TOKEN_SHAPE.match(token):
+        raise ConfigError(
+            f"{TELEGRAM_TOKEN_ENV} does not look like a Telegram bot token "
+            "(expected '<bot id>:<secret>'); the value is not echoed here"
+        )
+    return TelegramConfig(token=token, chat_id=chat_id)
 
 
 def load_config(path: Path | str | None = None) -> AppConfig:
