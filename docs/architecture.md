@@ -245,7 +245,7 @@ last_scan_complete INTEGER NULL
 last_error_at TEXT NULL
 last_error_summary TEXT NULL
 consecutive_failures INTEGER NOT NULL DEFAULT 0
-next_run_at TEXT NULL
+next_run_at TEXT NULL        -- claimed (advanced) before a run starts, D-063
 ```
 
 **scans**
@@ -446,11 +446,14 @@ Rules:
 ### 8.1 Failure handling
 
 - A source failure is isolated; other sources continue.
+- A scheduled turn claims the source by advancing `next_run_at` before scanning (D-063), so two scheduler processes cannot scan the same source in one cycle, and a process killed mid-scan is retried at the next cadence rather than immediately. A claim that fails is backed off in memory for one cadence as well as best-effort in the database, so a failing write cannot make every source look due and spin the loop.
+- An exception raised outside the adapter's own error handling is recorded as a failed scan with a `scheduler error:` summary, so the failure streak, the three-failure notice, and `status` all reflect it. Delivery and failure-notice work is wrapped per source, so a delivery or notice problem cannot abort the pass.
 - A failed or partial scan never establishes baseline, alerts new roles, or increments closure misses.
 - Bounded retries run inside a scan; exhausted retries produce a failed scan and a source failure count.
 - Three consecutive source failures trigger one failure notice in M2, with no repeated spam until recovery.
 - The status command must distinguish success, empty success, partial, and failed.
 - Notification failures are handled by a persisted state machine (`pending`, `sent`, `ambiguous`, `failed`). Exactly-once external delivery is not assumed: an ambiguous outcome is recorded and not retried automatically (D-024), transient failures stay `pending` for a later pass, permanent rejections become `failed`, and a `sent` row is never re-sent.
+- Trial measurement is a read-only projection over `scans`, `sources`, and `notifications` (`jobscout report`, D-064). No heartbeat or measurement-only state is recorded, so "availability" means "scans appeared when the cadence said they should".
 
 ### 8.2 Test strategy
 

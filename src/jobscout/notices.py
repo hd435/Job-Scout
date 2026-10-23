@@ -8,7 +8,9 @@ defaults:
   produce repeated spam (D-010);
 - a completed scan clears the episode, so a later streak notifies again;
 - one send attempt only. An ambiguous outcome is recorded and never retried, matching the
-  delivery policy for alerts (D-024); a notice is not worth risking a duplicate for.
+  delivery policy for alerts (D-024); a notice is not worth risking a duplicate for. If a
+  transport raises instead of returning a failed result, the episode is recorded as `failed`
+  rather than left `pending`, and it is still not retried.
 """
 
 from __future__ import annotations
@@ -82,7 +84,18 @@ class FailureNoticeSender:
             return NoticeOutcome(state.id, attempted=False)
 
         text = format_failure_notice(state)
-        result: DeliveryResult = self._transport.send(chat_id, text)
+        try:
+            result: DeliveryResult = self._transport.send(chat_id, text)
+        except Exception as exc:  # noqa: BLE001 - transports must not raise, but if one does
+            # The claim is already made and there is no retry (D-060), so record the
+            # episode as failed rather than leaving it pending for ever.
+            error = redact(
+                f"{type(exc).__name__}: {exc}",
+                secret_values=(chat_id, *self._secret_values),
+            )
+            storage.record_failure_notice_outcome(state.id, outcome="failed")
+            return NoticeOutcome(state.id, attempted=True, outcome="failed", error=error)
+
         outcome = _outcome_name(result.outcome)
         error = redact(result.error, secret_values=(chat_id, *self._secret_values))
         storage.record_failure_notice_outcome(state.id, outcome=outcome)

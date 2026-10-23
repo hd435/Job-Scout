@@ -356,6 +356,16 @@ class SourceState:
 
 
 @dataclass(frozen=True)
+class ScanFacts:
+    """The fields trial measurement needs from one recorded scan."""
+
+    source_id: str
+    started_at: str
+    status: str
+    complete: bool
+
+
+@dataclass(frozen=True)
 class DeliveryResult:
     """Outcome of one send attempt, as reported by a transport."""
 

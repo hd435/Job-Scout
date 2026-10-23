@@ -56,6 +56,7 @@ python -m jobscout prune
 # Read-only views of stored state
 python -m jobscout summary --current
 python -m jobscout status
+python -m jobscout report --days 7
 ```
 
 ## Live validation (one source, one request)
@@ -169,16 +170,20 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 - Each source keeps its own `cadence_minutes` (default 30) plus optional `--jitter-seconds`, so sources do not align on the same second.
 - A missed cycle is not replayed: a source that was due hours ago runs once and is rescheduled from now, so downtime never produces a burst.
 - Sources are scanned one at a time and isolated: a broken adapter is reported for that source and the others still run.
-- Alerts queued before a restart are delivered on the next pass; `sent` rows are never re-sent.
+- Alerts queued before a restart are delivered on the next pass — including when the scan itself fails; `sent` rows are never re-sent.
+- Every turn is claimed in the database *before* the scan starts, so two scheduler processes cannot scan the same source in one cycle, and a process killed mid-scan retries at the next cadence instead of spinning.
+- An exception raised outside an adapter's own error handling (a broken adapter factory, a storage error) is recorded as a failed scan, so the failure streak, the three-failure notice, and `status` still see it.
 - Telegram is optional here. Without credentials the scheduler scans and reports, and says so; with credentials it also delivers alerts and sends failure notices.
 - `--once` runs one pass and exits; without it the command loops until interrupted. Nothing runs in the background on its own, and `schedule` is not deployed anywhere.
 
 **Failure notices (D-010, D-038):** a source that fails three consecutive scans produces exactly one message — employer, consecutive failure count, last error, and a pointer to `jobscout status`. The notice is claimed in the database before sending, so a long outage cannot spam you; a completed scan ends the episode, and a later outage notifies again. A partial scan is not a failure. One send attempt is made, and an ambiguous outcome is recorded rather than retried. `jobscout status` shows the next run and the failure-notice outcome per source.
 
+**Trial measurement:** `jobscout report --days 7` reads the database and prints a scorecard per source — scans against the cycles its cadence implies, complete/partial/failed counts, longest gap and missed episodes, mean scheduling delay, consecutive failures, and delivery outcomes for the window. It writes nothing and contacts nothing. Availability is inferred from scans per expected cycle; nothing records a process heartbeat, so the report says so rather than claiming the process was up. See [docs/runbook.md](docs/runbook.md) for the operating procedure and the Windows Task Scheduler preparation.
+
 
 ## Data retention
 
-`jobscout prune` applies the retention policy in D-025. It never runs during a scan or from the scheduler: you run it, or later a scheduled job does. The horizons below are engineering defaults that the Product Owner has not yet ratified.
+`jobscout prune` applies the retention policy in D-025. It never runs during a scan or from the scheduler: you run it. The horizons below are engineering defaults that the Product Owner has not yet ratified, so it is deliberately not scheduled; see [docs/runbook.md](docs/runbook.md) for the dry-run-first workflow.
 
 | Data | Kept | Why |
 |---|---|---|

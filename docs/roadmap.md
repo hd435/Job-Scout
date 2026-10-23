@@ -1,10 +1,10 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler) and M5.3 (retention) delivered   
-**Last updated:** 2026-10-23  
-**Product authority:** [docs/prd.md](./prd.md)  
-**Technical design:** [docs/architecture.md](./architecture.md)  
-**Decision log:** [docs/decisions.md](./decisions.md)
+- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention) and M5.4.0 (offline trial preparation) delivered
+- **Last updated:** 2026-10-23
+- **Product authority:** [docs/prd.md](./prd.md)
+- **Technical design:** [docs/architecture.md](./architecture.md)
+- **Decision log:** [docs/decisions.md](./decisions.md)
 
 ## 1. Release definitions
 
@@ -338,6 +338,7 @@ Live validation still required before these sources can be trusted or run unatte
 | **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
 | **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
 | **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four retention horizons remain engineering defaults awaiting explicit Product Owner ratification |
+| **M5.4.0** | Offline reliability preparation for the trial: scheduler failure hardening, restart and duplicate-process behaviour, host operating procedure, trial measurement, retention operations | Delivered 2026-10-23 with offline tests and documentation. No trial started, no scheduled task created |
 | **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on the per-source permission decisions |
 
 M5.2 decisions: `sources.next_run_at` is the only schedule state, a missed cycle is never replayed as a burst, and each source runs and reschedules in isolation (D-059). A source that fails three consecutive scans triggers exactly one notice per failure episode, claimed before sending, with a single send attempt and no retry on an ambiguous outcome; a completed scan ends the episode (D-060).
@@ -363,6 +364,22 @@ M5.3 limits:
 - A closed role reposted more than 12 months after closure can alert again; that is the accepted cost of purging its identity.
 - Nothing schedules `prune`; running it periodically (e.g. alongside the seven-day trial) is an operational decision for M5.4.
 
+
+Blockers and limits for M5.3:
+
+- The four horizons (30 / 365 / 90 / 90 days) are implemented defaults, not a ratified product decision (D-025).
+- Nothing schedules `prune`; that stays an operator action.
+
+M5.4.0 decisions: a scheduled turn claims the source by advancing `next_run_at` before the scan (compare-and-swap that also requires the value to be due), an exception raised outside the adapter's error handling is recorded as a failed scan with a `scheduler error:` summary, and delivery plus failure-notice work is wrapped per source so neither can abort a pass (D-063). Trial measurement is a read-only scorecard over persisted scans and notifications with no heartbeat state (D-064). The operating procedure lives in [docs/runbook.md](./runbook.md) and is documentation only.
+
+M5.4.0 acceptance evidence: `tests/test_scheduler.py` (an unexpected exception recorded as a failed scan with the streak, error summary, and scan row it implies; three such failures producing exactly one notice and a fourth producing none; a success ending the streak and clearing the episode; a source claimed by another process skipped rather than scanned; a claim error isolated to its source; queued alerts delivered even when the scan raises; delivery and notice errors reported as `post_run_error` without aborting the pass; a run interrupted after claiming retried at the next cadence with no burst) and `tests/test_report.py` (window filtering, expected cycles from cadence, coverage capped at 1, status split, gaps and missed episodes, mean delay, single-scan case, current source state, delivery tallies inside and outside the window, per-source filter, empty database, non-positive window rejected, no writes, text format, CLI success, invalid window, missing database).
+
+M5.4.0 limits:
+
+- The claim guards against duplicate *scans*, not duplicate *processes*: two schedulers still both exist, and each simply skips what the other claimed.
+- Availability in the report is a proxy derived from scans per expected cycle; a process that was up but silently idle is indistinguishable from one that was down.
+- The Task Scheduler procedure is untested on a real scheduled task, because creating one is out of scope until the trial is approved.
+- `prune` remains opt-in: it is documented in the runbook and deliberately not scheduled.
 
 M5.1 decisions: the check makes exactly one read-only request with retries disabled, never opens the database, writes only capped and trimmed artifacts under `data/validation/`, and exits non-zero unless the live payload is shape-compatible **and** the real adapter parses every record with zero skips (D-057). The personal-use risk acceptance for this check is narrow and does not authorise recurring or unattended access to any source (D-058).
 

@@ -29,6 +29,7 @@ from .matching import MatchingRules
 from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
 from .notices import FailureNoticeSender
 from .notifier import Notifier
+from .report import DEFAULT_WINDOW_DAYS, build_trial_report, format_trial_report
 from .retention import RetentionPolicy
 from .scanner import run_scan
 from .scheduler import Scheduler, SourceRun
@@ -66,6 +67,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_schedule(args)
         if args.command == "prune":
             return _cmd_prune(args)
+        if args.command == "report":
+            return _cmd_report(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -227,6 +230,20 @@ def _build_parser() -> argparse.ArgumentParser:
     prune.add_argument("--batch-size", type=int, help="rows handled per batch")
     prune.add_argument("--db", type=Path, help="SQLite database path")
     prune.add_argument("--config", type=Path, help="TOML configuration file")
+
+    trial = subparsers.add_parser(
+        "report",
+        help="offline trial scorecard: scans, gaps, failures and delivery outcomes (read-only)",
+    )
+    trial.add_argument(
+        "--days",
+        type=int,
+        default=DEFAULT_WINDOW_DAYS,
+        help="measurement window in days (default: 7)",
+    )
+    trial.add_argument("--source", help="limit the report to one configured source id")
+    trial.add_argument("--db", type=Path, help="SQLite database path")
+    trial.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -407,7 +424,8 @@ def _print_source_runs(runs: Sequence[SourceRun]) -> None:
         return
     for run in runs:
         if not run.scanned:
-            print(f"{run.source_id}: skipped ({run.error or 'not attempted'})")
+            reason = run.error or run.skipped_reason or "not attempted"
+            print(f"{run.source_id}: skipped ({reason})")
         else:
             print(
                 f"{run.source_id}: {run.status}"
@@ -415,6 +433,8 @@ def _print_source_runs(runs: Sequence[SourceRun]) -> None:
                 f" new={run.outcome.new_jobs if run.outcome else 0}"
                 f" alerts={run.outcome.notifications_queued if run.outcome else 0}"
             )
+        if run.post_run_error:
+            print(f"  warning: {run.post_run_error}")
         if run.delivery is not None:
             print(
                 f"  delivery: sent={run.delivery.sent} failed={run.delivery.failed}"
@@ -476,6 +496,32 @@ def _cmd_prune(args: argparse.Namespace) -> int:
         print("More historical data remains; run prune again to continue.")
     if report.dry_run:
         print("Dry run: nothing was changed.")
+    return EXIT_OK
+
+
+def _cmd_report(args: argparse.Namespace) -> int:
+    """Read-only trial scorecard: no data changes, no network.
+
+    Opening the database still applies pending schema migrations, so an older file is
+    upgraded on first read; nothing else is written.
+    """
+    if args.days < 1:
+        print("error: days must be at least 1", file=sys.stderr)
+        return EXIT_FAILED
+    app = load_config(args.config)
+    db_path = args.db or app.database_path
+    if not db_path.exists():
+        # Never create an empty database just to print a report about it.
+        print(f"error: database not found: {db_path}", file=sys.stderr)
+        return EXIT_FAILED
+
+    with Storage.open(db_path) as storage:
+        report = build_trial_report(
+            storage, days=args.days, source_id=args.source, now=utc_now_iso()
+        )
+
+    print(f"Database: {db_path}")
+    print(format_trial_report(report))
     return EXIT_OK
 
 

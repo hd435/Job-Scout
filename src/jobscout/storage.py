@@ -23,6 +23,7 @@ from .models import (
     MatchOutcome,
     NotificationStatus,
     PendingNotification,
+    ScanFacts,
     ScanResult,
     ScanStatus,
     SourceState,
@@ -295,6 +296,41 @@ class Storage:
             failure_notice_outcome=row["failure_notice_outcome"],
         )
 
+    def list_source_states(self) -> list[SourceState]:
+        """Every persisted source, ordered by id. Reporting uses the DB, not the config."""
+        ids = [row["id"] for row in self._conn.execute("SELECT id FROM sources ORDER BY id")]
+        states = [self.get_source_state(source_id) for source_id in ids]
+        return [state for state in states if state is not None]
+
+    def list_scan_facts(self, *, since: str) -> list[ScanFacts]:
+        rows = self._conn.execute(
+            """
+            SELECT source_id, started_at, status, complete
+            FROM scans WHERE started_at >= ?
+            ORDER BY source_id, started_at
+            """,
+            (since,),
+        )
+        return [
+            ScanFacts(
+                source_id=row["source_id"],
+                started_at=row["started_at"],
+                status=row["status"],
+                complete=bool(row["complete"]),
+            )
+            for row in rows
+        ]
+
+    def count_notifications_by_status(self, *, since: str) -> dict[str, int]:
+        rows = self._conn.execute(
+            """
+            SELECT status, COUNT(*) AS total FROM notifications
+            WHERE created_at >= ? GROUP BY status
+            """,
+            (since,),
+        )
+        return {row["status"]: int(row["total"]) for row in rows}
+
     def update_source_after_scan(
         self,
         source_id: str,
@@ -341,10 +377,52 @@ class Storage:
 
     # scans -----------------------------------------------------------------
 
-    def schedule_next_run(self, source_id: str, *, next_run_at: str) -> None:
-        self._conn.execute(
-            "UPDATE sources SET next_run_at = ? WHERE id = ?", (next_run_at, source_id)
+    def claim_source_run(
+        self,
+        source_id: str,
+        *,
+        expected_next_run_at: str | None,
+        next_run_at: str,
+        now: str,
+    ) -> bool:
+        """Claim one scheduled turn by advancing `next_run_at` (compare-and-swap).
+
+        Returns True only for the caller whose read value still matched *and* was itself
+        due, so two scheduler processes cannot scan the same source in one cycle (D-063).
+        Claiming before the run also means a process killed mid-scan is retried at the next
+        cadence rather than immediately, so a crash cannot produce a retry storm (D-059).
+
+        The "was due" half of the guard matters when both processes tick on the same
+        instant: the loser reads the value the winner just wrote, which equals its own
+        target, so comparing values alone would let both run. It assumes a cadence of at
+        least one minute, which configuration validation enforces.
+        """
+        cursor = self._conn.execute(
+            """
+            UPDATE sources SET next_run_at = ?
+            WHERE id = ? AND next_run_at IS ?
+              AND (next_run_at IS NULL OR next_run_at <= ?)
+            """,
+            (next_run_at, source_id, expected_next_run_at, now),
         )
+        return cursor.rowcount == 1
+
+    def defer_source_run(
+        self, source_id: str, *, expected_next_run_at: str | None, next_run_at: str
+    ) -> bool:
+        """Best-effort move of the next run forward after a claim failed (D-063).
+
+        Claiming can fail for a transient reason (a busy write lock, a failing disk) while
+        the source stays due. Advancing the schedule is what keeps the loop's sleep
+        meaningful: without it a repeatedly failing claim makes every source look due and
+        the loop spins. It only rewrites the value this process last read, so it cannot
+        overwrite another process's claim.
+        """
+        cursor = self._conn.execute(
+            "UPDATE sources SET next_run_at = ? WHERE id = ? AND next_run_at IS ?",
+            (next_run_at, source_id, expected_next_run_at),
+        )
+        return cursor.rowcount == 1
 
     def claim_failure_notice(self, source_id: str, *, now: str, threshold: int) -> bool:
         """Reserve the single failure notice for a source's current failure episode.
