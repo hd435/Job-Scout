@@ -119,7 +119,11 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_status ON notifications(status);
 """
 
-_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2)
+_MIGRATION_3 = """
+ALTER TABLE jobs ADD COLUMN source_revision TEXT NULL;
+"""
+
+_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2, _MIGRATION_3)
 
 
 def utc_now_iso() -> str:
@@ -151,6 +155,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         closing_at=_parse_date(row["closing_at"]),
         salary_text=row["salary_text"],
         workplace_type=row["workplace_type"],
+        source_revision=row["source_revision"],
     )
 
 
@@ -403,10 +408,11 @@ class Storage:
                 source_id, source_job_id, employer, title, location_raw,
                 location_normalized_json, city, country, workplace_type, url,
                 description, posted_at, closing_at, salary_text, content_hash,
+                source_revision,
                 first_seen_scan_id, first_complete_scan_id, last_seen_scan_id,
                 status, consecutive_misses, match_decision, match_reason,
                 rules_version, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
             """,
             (
                 job.source_id,
@@ -424,6 +430,7 @@ class Storage:
                 job.closing_at.isoformat() if job.closing_at else None,
                 job.salary_text,
                 job.content_hash,
+                job.source_revision,
                 scan_id,
                 first_complete_scan_id,
                 scan_id,
@@ -454,6 +461,7 @@ class Storage:
                 employer = ?, title = ?, location_raw = ?, location_normalized_json = ?,
                 city = ?, country = ?, workplace_type = ?, url = ?, description = ?,
                 posted_at = ?, closing_at = ?, salary_text = ?, content_hash = ?,
+                source_revision = ?,
                 first_complete_scan_id = COALESCE(first_complete_scan_id, ?),
                 last_seen_scan_id = ?, status = ?, consecutive_misses = 0,
                 closed_at = NULL, match_decision = ?, match_reason = ?,
@@ -474,6 +482,7 @@ class Storage:
                 job.closing_at.isoformat() if job.closing_at else None,
                 job.salary_text,
                 job.content_hash,
+                job.source_revision,
                 first_complete_scan_id,
                 scan_id,
                 str(JobStatus.OPEN),
@@ -483,6 +492,29 @@ class Storage:
                 now,
                 job_id,
             ),
+        )
+
+    def job_revisions(self, source_id: str) -> dict[str, str | None]:
+        """Stored revision marker per role, so an adapter can skip unchanged pages."""
+        rows = self._conn.execute(
+            "SELECT source_job_id, source_revision FROM jobs WHERE source_id = ?",
+            (source_id,),
+        )
+        return {row["source_job_id"]: row["source_revision"] for row in rows}
+
+    def mark_job_observed(self, job_id: int, *, scan_id: int) -> None:
+        """Record that a role was still listed, without re-reading its details.
+
+        Only the observation bookkeeping changes, so stored descriptions, dates, and
+        the match decision are left untouched.
+        """
+        self._conn.execute(
+            """
+            UPDATE jobs SET
+                last_seen_scan_id = ?, status = ?, consecutive_misses = 0, closed_at = NULL
+            WHERE id = ?
+            """,
+            (scan_id, str(JobStatus.OPEN), job_id),
         )
 
     def list_open_jobs(self, source_id: str) -> list[StoredJob]:

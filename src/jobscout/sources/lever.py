@@ -7,6 +7,7 @@ adapter makes exactly one request per scan.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -31,7 +32,14 @@ _SALARY_INTERVALS = {
 class LeverAdapter:
     adapter_id = "lever"
 
-    def fetch_scan(self, config: SourceConfig, http_client: HttpClient) -> ScanResult:
+    def fetch_scan(
+        self,
+        config: SourceConfig,
+        http_client: HttpClient,
+        *,
+        known: Mapping[str, str | None] | None = None,
+    ) -> ScanResult:
+        """Lever returns every posting in one response, so `known` is unused."""
         started_at = _now_iso()
         site = str(config.options.get("site") or config.id)
         url = LEVER_ENDPOINT.format(site=site)

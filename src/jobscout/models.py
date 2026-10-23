@@ -170,6 +170,7 @@ class Job:
     closing_at: date | None = None
     salary_text: str | None = None
     workplace_type: str | None = None
+    source_revision: str | None = None
 
     @property
     def location_display(self) -> str:
@@ -195,7 +196,13 @@ class SkipReason:
 
 @dataclass(frozen=True)
 class ScanResult:
-    """Raw adapter output for one source scan."""
+    """Raw adapter output for one source scan.
+
+    `jobs` holds the roles whose details were (re)read in this scan. `observed_ids` holds
+    roles the source advertised without a detail refresh, because the adapter fetches a
+    detail page only when a role is new or its source revision changed. The scan merge
+    treats both sets as observed, so an unchanged role is never mistaken for a closure.
+    """
 
     source_id: str
     started_at: str
@@ -207,6 +214,7 @@ class ScanResult:
     skipped: tuple[SkipReason, ...] = ()
     source_reported_total: int | None = None
     error_summary: str | None = None
+    observed_ids: tuple[str, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -215,6 +223,18 @@ class ScanResult:
     @property
     def skipped_count(self) -> int:
         return len(self.skipped)
+
+    @property
+    def observed_only_ids(self) -> tuple[str, ...]:
+        """Roles observed without a detail refresh in this scan."""
+        refreshed = {job.source_job_id for job in self.jobs}
+        return tuple(
+            dict.fromkeys(
+                source_job_id
+                for source_job_id in self.observed_ids
+                if source_job_id not in refreshed
+            )
+        )
 
     def downgraded_to_partial(self, reason: str) -> ScanResult:
         """Guard against treating a suspicious empty result as a complete scan."""
@@ -299,6 +319,7 @@ class ScanOutcome:
     candidates: tuple[AlertCandidate, ...]
     error_summary: str | None = None
     notifications_queued: int = 0
+    observed_only_jobs: int = 0
 
     @property
     def skipped_count(self) -> int:

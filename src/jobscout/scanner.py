@@ -45,7 +45,7 @@ def run_scan(
     state = storage.get_source_state(config.id)
     baseline_existed = bool(state and state.baseline_scan_id is not None)
 
-    result = _fetch(adapter, config, http_client, clock())
+    result = _fetch(adapter, config, http_client, clock(), storage.job_revisions(config.id))
     if result.status is ScanStatus.SUCCESS_EMPTY and not accept_empty:
         previous_parsed = storage.last_complete_scan_records_parsed(config.id)
         if previous_parsed:
@@ -66,6 +66,7 @@ def run_scan(
         reopened_jobs = 0
         needs_review = 0
         notifications_queued = 0
+        observed_only_jobs = 0
 
         for job in result.jobs:
             decision = match_job(job, rules)
@@ -111,6 +112,18 @@ def run_scan(
                     storage, notify_chat_id, existing.id, now=now
                 )
 
+        for source_job_id in result.observed_only_ids:
+            existing = storage.get_job(config.id, source_job_id)
+            if existing is None:
+                # The adapter reported an unknown role as observed; it cannot be alert
+                # eligible without details, and it stays a miss for closure purposes.
+                continue
+            seen_ids.add(source_job_id)
+            observed_only_jobs += 1
+            if result.complete and existing.status is JobStatus.CLOSED:
+                reopened_jobs += 1
+            storage.mark_job_observed(existing.id, scan_id=scan_id)
+
         closed_jobs = 0
         if result.complete:
             closed_jobs = _apply_closure(storage, config.id, seen_ids, now=now)
@@ -134,6 +147,7 @@ def run_scan(
         candidates=tuple(candidates),
         error_summary=result.error_summary,
         notifications_queued=notifications_queued,
+        observed_only_jobs=observed_only_jobs,
     )
 
 
@@ -149,10 +163,11 @@ def _fetch(
     config: SourceConfig,
     http_client: HttpClient,
     started_at: str,
+    known: dict[str, str | None],
 ) -> ScanResult:
     """Adapters report their own failures; this is the last line of defence."""
     try:
-        return adapter.fetch_scan(config, http_client)
+        return adapter.fetch_scan(config, http_client, known=known)
     except Exception as exc:  # noqa: BLE001 - one bad scan must not stop the process
         return ScanResult(
             source_id=config.id,

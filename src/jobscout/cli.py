@@ -279,6 +279,8 @@ def _print_scan_outcome(
     )
     if outcome.error_summary:
         print(f"Note: {outcome.error_summary}")
+    if outcome.observed_only_jobs:
+        print(f"Unchanged roles: {outcome.observed_only_jobs} observed without re-reading details")
 
     if outcome.is_baseline:
         print(

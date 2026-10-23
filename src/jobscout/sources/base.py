@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date
 from typing import Protocol
 
@@ -16,11 +17,22 @@ class AdapterError(Exception):
 
 
 class SourceAdapter(Protocol):
-    """Adapters own HTTP access and mapping. They never touch storage or Telegram."""
+    """Adapters own HTTP access and mapping. They never touch storage or Telegram.
+
+    `known` maps source job ids to the revision marker stored for that role, so a
+    sitemap-driven adapter can refresh only new or changed detail pages. Adapters that
+    read the whole source in one response ignore it.
+    """
 
     adapter_id: str
 
-    def fetch_scan(self, config: SourceConfig, http_client: HttpClient) -> ScanResult: ...
+    def fetch_scan(
+        self,
+        config: SourceConfig,
+        http_client: HttpClient,
+        *,
+        known: Mapping[str, str | None] | None = None,
+    ) -> ScanResult: ...
 
 
 def build_job(
@@ -36,6 +48,7 @@ def build_job(
     closing_at: date | None = None,
     salary_text: str | None = None,
     workplace_type: str | None = None,
+    source_revision: str | None = None,
 ) -> Job:
     location = normalize_location(location_raw, workplace_type)
     content_hash = compute_content_hash(
@@ -65,6 +78,7 @@ def build_job(
         closing_at=closing_at,
         salary_text=salary_text,
         workplace_type=workplace_type,
+        source_revision=source_revision,
     )
 
 

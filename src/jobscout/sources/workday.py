@@ -28,6 +28,7 @@ exercised only against synthetic fixtures; no live request has been made.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
@@ -103,7 +104,14 @@ class WorkdayAdapter:
         self._max_pages = max_pages
         self._max_detail_lookups = max_detail_lookups
 
-    def fetch_scan(self, config: SourceConfig, http_client: WorkdayHttpClient) -> ScanResult:
+    def fetch_scan(
+        self,
+        config: SourceConfig,
+        http_client: WorkdayHttpClient,
+        *,
+        known: Mapping[str, str | None] | None = None,
+    ) -> ScanResult:
+        """The listing is complete on its own, so `known` is unused here."""
         started_at = _now_iso()
         reference = _date_of(started_at)
         try:
