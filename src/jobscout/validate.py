@@ -28,6 +28,10 @@ from .sources import get_adapter
 
 DEFAULT_SAMPLE_RECORDS = 5
 DESCRIPTION_LIMIT = 200
+MAX_DEPTH = 3
+MAX_DICT_ITEMS = 20
+MAX_LIST_ITEMS = 10
+REQUEST_BUDGET = 1
 
 # Fields the adapter reads, with the type each must have in **live** data. The committed
 # fixture is synthetic and intentionally contains missing and malformed values, so the
@@ -84,15 +88,30 @@ class ValidationOutcome:
     lines: tuple[str, ...] = field(default_factory=tuple)
 
 
-class RecordingClient:
-    """Wraps a JSON client, counting requests and keeping the one payload returned."""
+class RequestBudgetExceeded(RuntimeError):
+    """Raised before a second request could reach the network."""
 
-    def __init__(self, client: HttpClient) -> None:
+
+class RecordingClient:
+    """Wraps a JSON client, enforcing the request budget before delegating.
+
+    The budget is checked *before* the inner client is called, so a source can never
+    receive a request the check did not intend to make. The exception is deliberately not
+    an `HttpError`: adapters convert those into a failed scan, which would hide the
+    violation.
+    """
+
+    def __init__(self, client: HttpClient, *, max_requests: int = REQUEST_BUDGET) -> None:
         self._client = client
+        self._max_requests = max_requests
         self.requests: list[str] = []
         self.payload: Any = None
 
     def get_json(self, url: str) -> Any:
+        if len(self.requests) >= self._max_requests:
+            raise RequestBudgetExceeded(
+                f"request budget of {self._max_requests} exceeded; refused a request to {url}"
+            )
         self.requests.append(url)
         payload = self._client.get_json(url)
         self.payload = payload
@@ -181,11 +200,10 @@ def build_sample(
         trimmed: dict[str, Any] = {}
         for key, value in record.items():
             if key == "lists" and isinstance(value, list):
+                # Section bodies carry the full description HTML; only their count matters.
                 trimmed[key] = {"__omitted__": len(value)}
-            elif isinstance(value, str):
-                trimmed[key] = value[:DESCRIPTION_LIMIT]
             else:
-                trimmed[key] = value
+                trimmed[key] = _bounded(value, depth=MAX_DEPTH)
         sample.append(trimmed)
     return {
         "source_id": source_id,
@@ -196,12 +214,36 @@ def build_sample(
     }
 
 
+def _bounded(value: Any, *, depth: int) -> Any:
+    """Copy a value with hard limits on string length, container size, and nesting."""
+    if isinstance(value, str):
+        if len(value) > DESCRIPTION_LIMIT:
+            return value[:DESCRIPTION_LIMIT] + "..."
+        return value
+    if isinstance(value, dict):
+        if depth <= 0:
+            return {"__omitted__": len(value)}
+        bounded = {
+            key: _bounded(item, depth=depth - 1)
+            for key, item in list(value.items())[:MAX_DICT_ITEMS]
+        }
+        if len(value) > MAX_DICT_ITEMS:
+            bounded["__omitted__"] = len(value) - MAX_DICT_ITEMS
+        return bounded
+    if isinstance(value, list):
+        if depth <= 0 or len(value) > MAX_LIST_ITEMS:
+            return {"__omitted__": len(value)}
+        return [_bounded(item, depth=depth - 1) for item in value]
+    return value
+
+
 def run_live_check(
     source: SourceConfig,
     *,
     fixture_payload: Any,
     client: HttpClient,
     sample_dir: Path | None = None,
+    allowed_root: Path | None = None,
     max_records: int = DEFAULT_SAMPLE_RECORDS,
     now: str | None = None,
 ) -> ValidationOutcome:
@@ -209,13 +251,26 @@ def run_live_check(
 
     `client` is injected so tests can prove the whole path offline; the caller decides
     the retry policy of the underlying client (the CLI builds it with no retries).
+    `allowed_root` confines artifacts to one directory (the gitignored `data/` tree in the
+    CLI); the containment check runs before any request is made.
     """
     captured_at = now or _now_iso()
+    if sample_dir is not None and allowed_root is not None:
+        _ensure_within(sample_dir, allowed_root)
+
     recording = RecordingClient(client)
     adapter = get_adapter(source.adapter)
 
     try:
         scan = adapter.fetch_scan(source, recording, known={})
+    except RequestBudgetExceeded as exc:
+        return ValidationOutcome(
+            ok=False,
+            source_id=source.id,
+            request_url=recording.requests[0] if recording.requests else None,
+            error=str(exc),
+            lines=(f"Request budget violated: {exc}",),
+        )
     except HttpError as exc:
         return ValidationOutcome(
             ok=False,
@@ -298,6 +353,12 @@ def _report_lines(
     return tuple(lines)
 
 
+def ensure_artifacts_location(directory: Path, root: Path) -> Path:
+    """Public seam: validate an artifact directory before any work happens."""
+    _ensure_within(directory, root)
+    return directory
+
+
 def _write_artifacts(
     directory: Path,
     *,
@@ -309,14 +370,35 @@ def _write_artifacts(
 ) -> tuple[Path, Path]:
     directory.mkdir(parents=True, exist_ok=True)
     stamp = captured_at.replace(":", "").replace("-", "")
-    sample_path = directory / f"{source_id}-live-{stamp}.json"
-    report_path = directory / f"{source_id}-validation-{stamp}.txt"
+    sample_path = _free_path(directory / f"{source_id}-live-{stamp}.json")
+    report_path = _free_path(directory / f"{source_id}-validation-{stamp}.txt")
     sample = build_sample(
         payload, source_id=source_id, captured_at=captured_at, max_records=max_records
     )
     sample_path.write_text(json.dumps(sample, indent=2, ensure_ascii=False), encoding="utf-8")
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return sample_path, report_path
+
+
+def _free_path(path: Path) -> Path:
+    """Never overwrite an earlier artifact: append a counter instead."""
+    if not path.exists():
+        return path
+    for index in range(2, 100):
+        candidate = path.with_name(f"{path.stem}-{index}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+    raise ValueError(f"too many validation artifacts in {path.parent}")  # pragma: no cover
+
+
+def _ensure_within(directory: Path, root: Path) -> None:
+    """Refuse to write artifacts outside the intended (gitignored) directory."""
+    resolved_dir = directory.expanduser().resolve()
+    resolved_root = root.expanduser().resolve()
+    if resolved_dir != resolved_root and resolved_root not in resolved_dir.parents:
+        raise ValueError(
+            f"validation artifacts must stay inside {resolved_root}; got {resolved_dir}"
+        )
 
 
 def _resolve(record: Any, dotted: str) -> Any:
@@ -338,8 +420,10 @@ __all__ = [
     "DEFAULT_SAMPLE_RECORDS",
     "PayloadComparison",
     "RecordingClient",
+    "RequestBudgetExceeded",
     "ValidationOutcome",
     "build_sample",
     "compare_payloads",
+    "ensure_artifacts_location",
     "run_live_check",
 ]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -173,8 +174,27 @@ def test_sample_is_capped_and_trimmed() -> None:
     assert sample["total_records"] == 8
     assert sample["sample_truncated_to"] == 2
     assert len(sample["records"]) == 2
-    assert len(sample["records"][0]["descriptionPlain"]) == validate.DESCRIPTION_LIMIT
+    assert len(sample["records"][0]["descriptionPlain"]) == validate.DESCRIPTION_LIMIT + 3
     assert sample["records"][0]["lists"] == {"__omitted__": 1}
+
+
+def test_sample_bounds_nested_content() -> None:
+    deep = {"level1": {"level2": {"level3": {"level4": "x" * 1000}}}}
+    wide = {"values": list(range(50)), "texts": ["y" * 500 for _ in range(3)]}
+    payload = [dict(record("abc-1"), nested=deep, wide=wide, many={f"k{i}": i for i in range(40)})]
+
+    sample = validate.build_sample(
+        payload, source_id="palantir", captured_at=CAPTURED_AT, max_records=1
+    )
+    bounded_record = sample["records"][0]
+
+    assert bounded_record["nested"]["level1"]["level2"]["level3"] == {"__omitted__": 1}
+    assert bounded_record["wide"]["values"] == {"__omitted__": 50}
+    assert all(
+        len(text) <= validate.DESCRIPTION_LIMIT + 3 for text in bounded_record["wide"]["texts"]
+    )
+    assert bounded_record["many"]["__omitted__"] == 40 - validate.MAX_DICT_ITEMS
+    assert len(json.dumps(sample, ensure_ascii=False)) < 4000
 
 
 # run_live_check -----------------------------------------------------------
@@ -245,9 +265,19 @@ def test_shape_drift_fails_but_keeps_the_evidence(
     assert "Result: FAIL" in outcome.report_path.read_text(encoding="utf-8")
 
 
-def test_more_than_one_request_is_a_budget_violation(
-    monkeypatch, palantir, palantir_payload, fake_http
+def test_second_request_is_blocked_before_it_reaches_the_network(
+    monkeypatch, palantir, palantir_payload
 ) -> None:
+    """The budget is enforced at the client boundary, not after the fact."""
+
+    class CountingClient:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def get_json(self, url: str) -> Any:
+            self.calls.append(url)
+            return palantir_payload
+
     class ChattyAdapter:
         adapter_id = "chatty"
 
@@ -264,11 +294,71 @@ def test_more_than_one_request_is_a_budget_violation(
             )
 
     monkeypatch.setattr(validate, "get_adapter", lambda _adapter_id: ChattyAdapter())
+    client = CountingClient()
 
-    outcome = run_live_check(palantir, fixture_payload=palantir_payload, client=fake_http([]))
+    outcome = run_live_check(palantir, fixture_payload=palantir_payload, client=client)
 
     assert outcome.ok is False
-    assert outcome.error is not None and "expected exactly 1 request" in outcome.error
+    assert client.calls == ["https://example.test/one"]
+    assert outcome.error is not None and "request budget of 1 exceeded" in outcome.error
+
+
+def test_contains_artifacts_inside_the_allowed_root_before_requesting(
+    tmp_path: Path, palantir, palantir_payload
+) -> None:
+    class NeverCalled:
+        def get_json(self, url: str) -> Any:  # pragma: no cover - must not run
+            raise AssertionError("no request may be made when the artifact path is rejected")
+
+    with pytest.raises(ValueError, match="must stay inside"):
+        run_live_check(
+            palantir,
+            fixture_payload=palantir_payload,
+            client=NeverCalled(),
+            sample_dir=tmp_path / "elsewhere",
+            allowed_root=tmp_path / "data",
+        )
+
+
+def test_traversal_out_of_the_allowed_root_is_rejected(
+    tmp_path: Path, palantir, palantir_payload
+) -> None:
+    root = tmp_path / "data"
+    root.mkdir()
+
+    with pytest.raises(ValueError, match="must stay inside"):
+        run_live_check(
+            palantir,
+            fixture_payload=palantir_payload,
+            client=object(),  # type: ignore[arg-type]
+            sample_dir=root / ".." / ".." / "escape",
+            allowed_root=root,
+        )
+
+
+def test_artifacts_do_not_overwrite_an_earlier_run(
+    tmp_path: Path, palantir, palantir_payload, clean_live_payload, fake_http
+) -> None:
+    sample_dir = tmp_path / "validation"
+
+    first = run_live_check(
+        palantir,
+        fixture_payload=palantir_payload,
+        client=fake_http(clean_live_payload),
+        sample_dir=sample_dir,
+        now=CAPTURED_AT,
+    )
+    second = run_live_check(
+        palantir,
+        fixture_payload=palantir_payload,
+        client=fake_http(clean_live_payload),
+        sample_dir=sample_dir,
+        now=CAPTURED_AT,
+    )
+
+    assert first.sample_path != second.sample_path
+    assert first.sample_path.exists() and second.sample_path.exists()
+    assert len(list(sample_dir.glob("*.json"))) == 2
 
 
 # CLI wiring ---------------------------------------------------------------
@@ -295,6 +385,7 @@ def test_cli_runs_the_check_without_opening_a_database(
     tmp_path: Path, monkeypatch, capsys, palantir_payload, clean_live_payload, fake_http
 ) -> None:
     monkeypatch.setattr(cli, "UrllibHttpClient", lambda **_kwargs: fake_http(clean_live_payload))
+    monkeypatch.setattr(cli, "VALIDATION_ARTIFACT_ROOT", tmp_path)
 
     def explode(*_args, **_kwargs):  # pragma: no cover - must never run
         raise AssertionError("validate must not open the database")
@@ -320,6 +411,7 @@ def test_cli_returns_degraded_when_the_shape_drifted(
     drifted = [dict(palantir_payload[0])]
     drifted[0].pop("hostedUrl")
     monkeypatch.setattr(cli, "UrllibHttpClient", lambda **_kwargs: fake_http(drifted))
+    monkeypatch.setattr(cli, "VALIDATION_ARTIFACT_ROOT", tmp_path)
 
     exit_code = cli.main(
         ["validate", "--confirm-live", "--sample-out", str(tmp_path / "validation")]
@@ -327,6 +419,23 @@ def test_cli_returns_degraded_when_the_shape_drifted(
 
     assert exit_code == cli.EXIT_DEGRADED
     assert "Result: FAIL" in capsys.readouterr().out
+
+
+def test_cli_rejects_an_artifact_directory_outside_data(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """The artifact path is checked before any request is made."""
+    monkeypatch.setattr(cli, "UrllibHttpClient", lambda **_kwargs: pytest.fail("no client"))
+    monkeypatch.setattr(cli, "VALIDATION_ARTIFACT_ROOT", tmp_path / "data")
+
+    exit_code = cli.main(
+        ["validate", "--confirm-live", "--sample-out", str(tmp_path / "elsewhere")]
+    )
+    err = capsys.readouterr().err
+
+    assert exit_code == cli.EXIT_FAILED
+    assert "must stay inside" in err
+    assert not (tmp_path / "elsewhere").exists()
 
 
 def test_cli_rejects_a_missing_fixture(tmp_path: Path, monkeypatch, capsys) -> None:

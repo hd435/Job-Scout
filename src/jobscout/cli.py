@@ -31,13 +31,14 @@ from .scanner import run_scan
 from .sources import AdapterError, get_adapter
 from .storage import Storage
 from .telegram import TelegramTransport
-from .validate import DEFAULT_SAMPLE_RECORDS, run_live_check
+from .validate import DEFAULT_SAMPLE_RECORDS, ensure_artifacts_location, run_live_check
 
 EXIT_OK = 0
 EXIT_DEGRADED = 1
 EXIT_FAILED = 2
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+VALIDATION_ARTIFACT_ROOT = PROJECT_ROOT / "data"
 DEFAULT_VALIDATION_FIXTURES = {
     "palantir": PROJECT_ROOT / "tests" / "fixtures" / "palantir_jobs.json",
 }
@@ -266,16 +267,26 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         return EXIT_FAILED
 
     source = load_config(args.config).source(args.source)
-    sample_dir = args.sample_out or PROJECT_ROOT / "data" / "validation"
+    sample_dir = args.sample_out or VALIDATION_ARTIFACT_ROOT / "validation"
+    try:
+        ensure_artifacts_location(sample_dir, VALIDATION_ARTIFACT_ROOT)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
     client = UrllibHttpClient(max_attempts=1)
 
-    outcome = run_live_check(
-        source,
-        fixture_payload=fixture_payload,
-        client=client,
-        sample_dir=sample_dir,
-        max_records=args.max_records,
-    )
+    try:
+        outcome = run_live_check(
+            source,
+            fixture_payload=fixture_payload,
+            client=client,
+            sample_dir=sample_dir,
+            allowed_root=VALIDATION_ARTIFACT_ROOT,
+            max_records=args.max_records,
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
 
     print(f"Live validation: {source.id} ({source.employer})")
     for line in outcome.lines:
