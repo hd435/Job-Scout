@@ -593,15 +593,6 @@ class Storage:
             (str(JobStatus.CLOSED), now, now, job_id),
         )
 
-    def reopen_job(self, job_id: int, *, now: str) -> None:
-        self._conn.execute(
-            """
-            UPDATE jobs SET status = ?, consecutive_misses = 0, closed_at = NULL, updated_at = ?
-            WHERE id = ?
-            """,
-            (str(JobStatus.OPEN), now, job_id),
-        )
-
     def count_scans(self, source_id: str) -> int:
         row = self._conn.execute(
             "SELECT COUNT(*) AS total FROM scans WHERE source_id = ?", (source_id,)
