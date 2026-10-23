@@ -1,8 +1,8 @@
 # Job-Scout
 
-A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and will alert on Telegram when a **new** role matches the target role families and locations.
+A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.2 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), and a **Telegram Bot API transport** are implemented. Delivery is opt-in via `--deliver` and needs credentials in environment variables. No live Telegram message has been sent yet, scheduling and deployment are absent, and the other five sources are not implemented.
+**Current state: M1 + M2.2 — local, Palantir-only.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), and a **Telegram Bot API transport** are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). No live Telegram message has been sent yet, scheduling and deployment are absent, and the other five sources are not implemented.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md).
 
@@ -64,6 +64,7 @@ JOBSCOUT_TELEGRAM_CHAT_ID=555000111
 ```
 
 - `.env` is gitignored; only `.env.example`, with placeholders, is committed. Never commit real values.
+- The file is read from the **current working directory**, so run the CLI from the project root (or wherever your `.env` lives).
 - Real environment variables override `.env`, so a host or CI can inject secrets without a file.
 - Credentials are never read from `config.toml`.
 - The token is shape-checked before use; values are never printed, and every stored or displayed delivery error has the token and chat id replaced with `[redacted]`.
@@ -123,7 +124,7 @@ cadence_minutes = 30
 site = "palantir"
 ```
 
-Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is part of the M1 dry-run review.
+Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
 
 ## Development
 
@@ -133,13 +134,13 @@ python -m ruff check .
 python -m ruff format --check .
 ```
 
-Tests use temporary databases and a fake HTTP client only.
+Tests use temporary databases, a fake HTTP client, and a fake Telegram transport; nothing is sent and no network call is made. An autouse fixture also keeps the suite away from your real `.env`.
 
 ## Access and compliance
 
 Technical reachability, HTTP 200 responses, and permissive `robots.txt` rules do **not** establish permission for recurring automated access.
 
-- M1 is fixture-first and must not run a schedule.
+- This build is fixture-first and runs no schedule.
 - A manual live smoke test is acceptable only where the source's terms permit it.
 - **No source is currently approved for recurring production polling.** Terms review is required per source before M2/M5.
 
