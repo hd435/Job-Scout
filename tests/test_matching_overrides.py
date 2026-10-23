@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
+import jobscout
 from jobscout.matching import DEFAULT_RULES, RULES_VERSION, build_rules, match_job
 from jobscout.models import Job, MatchOutcome
 from jobscout.sources.base import build_job
@@ -63,6 +69,12 @@ def test_empty_or_non_string_terms_are_rejected() -> None:
         build_rules(extra_exclude_terms=[1])
 
 
+@pytest.mark.parametrize("term", ["-", "a", "-- ", "?"])
+def test_unusable_terms_are_rejected(term) -> None:
+    with pytest.raises(ValueError, match="unusable term"):
+        build_rules(extra_exclude_terms=[term])
+
+
 def test_version_tracks_the_override_content() -> None:
     a = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
     b = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
@@ -72,6 +84,71 @@ def test_version_tracks_the_override_content() -> None:
     assert a.version == b.version
     assert a.version != c.version
     assert match_job(make_job("Graduate Bioinformatics Analyst"), a).rules_version == a.version
+
+
+def test_version_is_independent_of_input_order() -> None:
+    a = build_rules(
+        extra_family_terms={
+            "data": ["clinical data scientist", "bioinformatics analyst"],
+            "software": ["developer experience engineer"],
+        },
+        extra_exclude_terms=["unpaid", "commission only"],
+    )
+    b = build_rules(
+        extra_family_terms={
+            "software": ["developer experience engineer"],
+            "data": ["bioinformatics analyst", "clinical data scientist"],
+        },
+        extra_exclude_terms=["commission only", "unpaid"],
+    )
+
+    assert a.version == b.version
+
+
+def test_version_is_stable_across_processes() -> None:
+    src = str(Path(jobscout.__file__).resolve().parents[1])
+    code = (
+        "from jobscout.matching import build_rules;"
+        "print(build_rules("
+        "extra_family_terms={'data': ['clinical data scientist', 'bioinformatics analyst']},"
+        " extra_exclude_terms=['unpaid']).version)"
+    )
+    expected = build_rules(
+        extra_family_terms={"data": ["clinical data scientist", "bioinformatics analyst"]},
+        extra_exclude_terms=["unpaid"],
+    ).version
+
+    versions = set()
+    for seed in ("0", "1", "12345"):
+        completed = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            check=True,
+            env=dict(os.environ, PYTHONPATH=src, PYTHONHASHSEED=seed),
+        )
+        versions.add(completed.stdout.strip())
+
+    assert versions == {expected}
+
+
+def test_neutral_override_keeps_default_decisions() -> None:
+    # 'data engineer' is already a built-in phrase, so this override changes nothing.
+    rules = build_rules(extra_family_terms={"data": ["data engineer"]})
+    titles = [
+        "Graduate Data Engineer",
+        "Data Engineer",
+        "Senior Data Engineer",
+        "Software Engineer",
+        "Account Executive",
+        "Marketing Data Analyst",
+        "Graduate Bioinformatics Analyst",
+    ]
+
+    for title in titles:
+        job = make_job(title)
+        assert match_job(job, rules).decision is match_job(job).decision
+        assert match_job(job, rules).reasons == match_job(job).reasons
 
 
 # matching behaviour -------------------------------------------------------
@@ -109,6 +186,23 @@ def test_extra_exclusion_removes_a_role_that_would_otherwise_match() -> None:
 
     assert decision.decision is MatchOutcome.NO_MATCH
     assert "exclude:custom:contract" in decision.reasons
+
+
+def test_extra_exclusion_leaves_other_titles_alone() -> None:
+    rules = build_rules(extra_exclude_terms=["contract"])
+
+    assert match_job(make_job("Graduate Data Engineer"), rules).decision is MatchOutcome.MATCH
+
+
+def test_extra_exclusion_beats_a_needs_review_outcome() -> None:
+    job = make_job("Software Engineer")
+
+    assert match_job(job).decision is MatchOutcome.NEEDS_REVIEW
+
+    decision = match_job(job, build_rules(extra_exclude_terms=["software engineer"]))
+
+    assert decision.decision is MatchOutcome.NO_MATCH
+    assert "exclude:custom:software engineer" in decision.reasons
 
 
 def test_added_terms_cannot_neutralise_an_approved_family_exclusion() -> None:

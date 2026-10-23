@@ -133,7 +133,7 @@ data = ["bioinformatics analyst"]
 
 Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
 
-Filter overrides can only **add**: extra title phrases inside an approved family (`data`, `software`, `quant`, `finance`, `consulting`, `business_analysis`) and extra title exclusions. They cannot invent a family, change seniority or location rules, or cancel an approved exclusion — unknown families and unknown keys are rejected when the config loads, and exclusions are checked before matches. When overrides are active the rules version gains a digest (for example `m1.1+1a2b3c4d`), which is stored with every match decision and shown by `jobscout status`.
+Filter overrides can only **add**: extra title phrases inside an approved family (`data`, `software`, `quant`, `finance`, `consulting`, `business_analysis`) and extra title exclusions. Terms must be at least two characters and contain a letter or digit. Overrides cannot invent a family, change seniority or location rules, or cancel an approved exclusion — unknown families and unknown keys are rejected when the config loads, and exclusions are checked before matches. When overrides are active the rules version gains a digest (for example `m1.1+1a2b3c4d`), which is stored with every match decision and shown by `jobscout status`.
 
 ## Development
 

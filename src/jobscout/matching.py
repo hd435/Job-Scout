@@ -632,6 +632,11 @@ def _clean_terms(terms: Sequence[object], *, origin: str) -> tuple[str, ...]:
         normalised = normalize_text(term)
         if not normalised:
             raise ValueError(f"{origin} contains an empty term")
+        if len(normalised) < 2 or not re.search(r"[a-z0-9]", normalised):
+            raise ValueError(
+                f"{origin} contains an unusable term {normalised!r}:"
+                " terms need at least two characters, including a letter or digit"
+            )
         if normalised not in cleaned:
             cleaned.append(normalised)
     return tuple(cleaned)
