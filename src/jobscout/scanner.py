@@ -122,7 +122,7 @@ def run_scan(
             observed_only_jobs += 1
             if result.complete and existing.status is JobStatus.CLOSED:
                 reopened_jobs += 1
-            storage.mark_job_observed(existing.id, scan_id=scan_id)
+            storage.mark_job_observed(existing.id, scan_id=scan_id, reopen=result.complete)
 
         closed_jobs = 0
         if result.complete:

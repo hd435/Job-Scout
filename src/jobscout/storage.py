@@ -502,16 +502,29 @@ class Storage:
         )
         return {row["source_job_id"]: row["source_revision"] for row in rows}
 
-    def mark_job_observed(self, job_id: int, *, scan_id: int) -> None:
+    def mark_job_observed(self, job_id: int, *, scan_id: int, reopen: bool = False) -> None:
         """Record that a role was still listed, without re-reading its details.
 
-        Only the observation bookkeeping changes, so stored descriptions, dates, and
-        the match decision are left untouched.
+        Stored descriptions, dates, and the match decision are left untouched. Reopening
+        a closed role changes closure state, so the caller passes `reopen=True` only when
+        the scan was complete (D-014); an incomplete scan leaves the closure untouched and
+        only records that the role was seen again.
         """
+        if reopen:
+            self._conn.execute(
+                """
+                UPDATE jobs SET
+                    last_seen_scan_id = ?, status = ?, consecutive_misses = 0, closed_at = NULL
+                WHERE id = ?
+                """,
+                (scan_id, str(JobStatus.OPEN), job_id),
+            )
+            return
         self._conn.execute(
             """
             UPDATE jobs SET
-                last_seen_scan_id = ?, status = ?, consecutive_misses = 0, closed_at = NULL
+                last_seen_scan_id = ?,
+                consecutive_misses = CASE WHEN status = ? THEN 0 ELSE consecutive_misses END
             WHERE id = ?
             """,
             (scan_id, str(JobStatus.OPEN), job_id),
