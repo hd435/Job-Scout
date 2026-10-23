@@ -312,6 +312,29 @@ def test_partial_scan_does_not_reopen_a_refreshed_closed_role(store: Storage, so
     assert stored.last_seen_scan_id == outcome.scan_id
 
 
+def test_partial_scan_refreshing_an_open_role_resets_its_misses(store: Storage, source) -> None:
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of(jobs=(make_job("R1"),))))
+    scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
+    assert store.get_job(SOURCE_ID, "R1").consecutive_misses == 1
+
+    outcome = scripted_scan(
+        store,
+        source,
+        ScriptedAdapter(
+            lambda _known: result_of(
+                jobs=(make_job("R1"),),
+                status=ScanStatus.PARTIAL,
+                skipped=(SkipReason("R9", "missing_title"),),
+            )
+        ),
+    )
+
+    stored = store.get_job(SOURCE_ID, "R1")
+    assert outcome.reopened_jobs == 0
+    assert stored.status is JobStatus.OPEN
+    assert stored.consecutive_misses == 0
+
+
 def test_complete_scan_reopens_a_refreshed_closed_role(store: Storage, source) -> None:
     scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of(jobs=(make_job("R1"),))))
     scripted_scan(store, source, ScriptedAdapter(lambda _known: result_of()))
