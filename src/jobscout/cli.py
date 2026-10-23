@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -30,10 +31,17 @@ from .scanner import run_scan
 from .sources import AdapterError, get_adapter
 from .storage import Storage
 from .telegram import TelegramTransport
+from .validate import DEFAULT_SAMPLE_RECORDS, run_live_check
 
 EXIT_OK = 0
 EXIT_DEGRADED = 1
 EXIT_FAILED = 2
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_VALIDATION_FIXTURES = {
+    "palantir": PROJECT_ROOT / "tests" / "fixtures" / "palantir_jobs.json",
+}
+VALIDATION_SOURCES = frozenset(DEFAULT_VALIDATION_FIXTURES)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -47,6 +55,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_summary(args)
         if args.command == "deliver":
             return _cmd_deliver(args)
+        if args.command == "validate":
+            return _cmd_validate(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -121,6 +131,35 @@ def _build_parser() -> argparse.ArgumentParser:
     status.add_argument("--source", help="configured source id (default: all sources)")
     status.add_argument("--db", type=Path, help="SQLite database path")
     status.add_argument("--config", type=Path, help="TOML configuration file")
+
+    validate = subparsers.add_parser(
+        "validate",
+        help="one bounded live request to compare a source with its fixture (no database)",
+    )
+    validate.add_argument("--source", default="palantir", help="source id (default: palantir)")
+    validate.add_argument(
+        "--confirm-live",
+        action="store_true",
+        help="acknowledge that this command makes one real request to the source",
+    )
+    validate.add_argument(
+        "--fixture",
+        type=Path,
+        default=DEFAULT_VALIDATION_FIXTURES.get("palantir"),
+        help="recorded payload to compare against (default: the palantir fixture)",
+    )
+    validate.add_argument(
+        "--sample-out",
+        type=Path,
+        help="directory for the trimmed sample and report (default: data/validation)",
+    )
+    validate.add_argument(
+        "--max-records",
+        type=int,
+        default=DEFAULT_SAMPLE_RECORDS,
+        help=f"records kept in the sample (default: {DEFAULT_SAMPLE_RECORDS})",
+    )
+    validate.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -197,6 +236,56 @@ def _print_delivery_report(report: DeliveryReport) -> None:
         print("  Some delivery outcomes were ambiguous and are not retried automatically.")
     if report.retrying:
         print("  Transient failures remain queued; run: jobscout deliver")
+
+
+def _cmd_validate(args: argparse.Namespace) -> int:
+    """One bounded live request; never touches the database or Telegram."""
+    if not args.confirm_live:
+        print(
+            "error: validate makes one real request to the source."
+            " Re-run with --confirm-live to acknowledge it.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+    if args.source not in VALIDATION_SOURCES:
+        print(
+            f"error: validation is defined for {sorted(VALIDATION_SOURCES)} only"
+            f" (M5.1 scope); asked for '{args.source}'",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+    if args.max_records < 1:
+        print("error: --max-records must be at least 1", file=sys.stderr)
+        return EXIT_FAILED
+
+    fixture_path = args.fixture or DEFAULT_VALIDATION_FIXTURES[args.source]
+    try:
+        fixture_payload = json.loads(Path(fixture_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"error: cannot read fixture {fixture_path}: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+
+    source = load_config(args.config).source(args.source)
+    sample_dir = args.sample_out or PROJECT_ROOT / "data" / "validation"
+    client = UrllibHttpClient(max_attempts=1)
+
+    outcome = run_live_check(
+        source,
+        fixture_payload=fixture_payload,
+        client=client,
+        sample_dir=sample_dir,
+        max_records=args.max_records,
+    )
+
+    print(f"Live validation: {source.id} ({source.employer})")
+    for line in outcome.lines:
+        print(f"  {line}")
+    if outcome.sample_path is not None:
+        print(f"  Sample: {outcome.sample_path}")
+    if outcome.report_path is not None:
+        print(f"  Report: {outcome.report_path}")
+    print("  Database: not opened")
+    return EXIT_OK if outcome.ok else EXIT_DEGRADED
 
 
 def _cmd_summary(args: argparse.Namespace) -> int:

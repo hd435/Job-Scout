@@ -48,6 +48,29 @@ python -m jobscout summary --current
 python -m jobscout status
 ```
 
+## Live validation (one source, one request)
+
+`jobscout validate` makes a **single** read-only request to prove the newest live payload
+still matches what the adapter expects, without touching the database or Telegram:
+
+```bash
+# Refuses to run without the acknowledgement; no client is even constructed
+python -m jobscout validate
+
+# One GET to api.lever.co, retries disabled, sample written under data/validation/
+python -m jobscout validate --confirm-live
+```
+
+It prints the request, the live-versus-fixture record counts, the adapter's parse outcome,
+and `PASS`/`FAIL` per check, then exits `0` only when the payload is shape-compatible and
+every record parsed with no skips. Artifacts are capped at five records with descriptions
+truncated, and `data/` is gitignored. Validation is defined for `palantir` only in this
+increment; other sources still need their own scope and permission decision.
+
+The committed Palantir fixture is a synthetic trimming (some records have no `createdAt`,
+one carries a deliberately unusable timestamp), so it supplies a key-shape baseline while
+the type contract is enforced on the live payload.
+
 Common options: `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
 
 Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery failure, `2` failed scan or usage error.

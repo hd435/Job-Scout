@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1, M2, M3 and M4 (offline) delivered   
+**Status:** Approved; M1, M2, M3, M4 (offline) and M5.1 (tooling) delivered   
 **Last updated:** 2026-10-23  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
@@ -330,6 +330,21 @@ Live validation still required before these sources can be trusted or run unatte
 - Approve the retention policy.
 - Run for seven days; verify restart recovery, failure notices, status, log redaction, backup/restore, and no silent gap longer than one scheduled cycle.
 - MVP complete only when all six sources and the reliability gate pass.
+
+**M5 increments**
+
+| Increment | Outcome | Status |
+|---|---|---|
+| **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
+| **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Not started |
+| **M5.3** | Retention policy approval (D-025) and enforcement | Not started |
+| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on M5.2, M5.3 and the per-source permission decisions |
+
+M5.1 decisions: the check makes exactly one read-only request with retries disabled, never opens the database, writes only capped and trimmed artifacts under `data/validation/`, and exits non-zero unless the live payload is shape-compatible **and** the real adapter parses every record with zero skips (D-057). The personal-use risk acceptance for this check is narrow and does not authorise recurring or unattended access to any source (D-058).
+
+M5.1 acceptance evidence: `tests/test_validate.py` (payload comparison, sample trimming, one-request budget, failure-without-artifacts, shape-drift-keeps-evidence, CLI refusal without `--confirm-live`, source-scope rejection, missing fixture, non-positive sample size, and a run that proves the database is never opened). `python -m jobscout validate` without `--confirm-live` exits `2` and constructs no client.
+
+M5.1 fixture caveat found during implementation: `tests/fixtures/palantir_jobs.json` is a **synthetic** trimming, not a faithful recording — 12 of 22 records have no `createdAt` and one carries the literal string `"not-a-timestamp"` (a deliberate "never guess a date" case). The fixture therefore serves as a key-shape baseline only; the type contract is enforced on live data. A live sample is what makes the baseline trustworthy.
 
 ### M6 — Self-host readiness
 
