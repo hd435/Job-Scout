@@ -108,11 +108,12 @@ MONZO_PROFILE = ValidationProfile(
     records_key="jobs",
 )
 
-# Workday's listing is a POST returning `{total, jobPostings[]}`, and a posting whose location
-# is a placeholder ("2 Locations") needs one detail GET. The check therefore allows a small
-# fixed number of requests: one listing plus a capped number of detail lookups.
-# `require_complete` is off because hitting that cap leaves the scan `partial` by design, so
-# incompleteness is reported as a warning rather than treated as a payload failure.
+# Workday's listing is a POST returning `{total, jobPostings[]}`, paginated in pages of
+# `page_size`. Validation checks the listing contract, not location resolution, so detail
+# lookups are switched off: the live board already showed more multi-site postings than a
+# small budget can resolve, and placeholder resolution is covered by offline tests. With
+# lookups off the scan is `partial` by design, so `require_complete` is off and the
+# incompleteness is reported as a warning instead of a payload failure.
 WORKDAY_WATCHED_FIELDS: dict[str, type] = {
     "title": str,
     "externalPath": str,
@@ -125,9 +126,9 @@ LLOYDS_PROFILE = ValidationProfile(
     watched_fields=WORKDAY_WATCHED_FIELDS,
     required_fields=WORKDAY_REQUIRED_FIELDS,
     records_key="jobPostings",
-    request_budget=4,
+    request_budget=6,
     require_complete=False,
-    adapter_options={"page_size": 20, "max_detail_lookups": 3},
+    adapter_options={"page_size": 20, "max_detail_lookups": 0},
 )
 
 VALIDATION_PROFILES: dict[str, ValidationProfile] = {

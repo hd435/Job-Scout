@@ -74,7 +74,7 @@ python -m jobscout validate --confirm-live
 # The same bounded check for Monzo's Greenhouse board
 python -m jobscout validate --source monzo --confirm-live
 
-# Lloyds Graduate: one listing POST plus up to three detail lookups (Workday)
+# Lloyds Graduate: listing pages only, no detail lookups (Workday)
 python -m jobscout validate --source lloyds_graduate --confirm-live
 ```
 
@@ -89,9 +89,10 @@ Three payload families are supported: a bare JSON list (Lever), an envelope whos
 in a `jobs` array (Greenhouse), and Workday's `{total, jobPostings[]}` listing response.
 Each source has a `ValidationProfile` naming the fields to watch, the array that holds the
 roles, and how many requests the check may make. Palantir and Monzo use one request; Lloyds
-Graduate allows one listing POST plus up to three detail lookups, because Workday reports a
-placeholder like "2 Locations" for multi-site roles. A budget violation is reported before
-the extra request reaches the network.
+Graduate allows six, because a Workday listing is a paginated POST. Detail lookups are
+switched off for Lloyds on purpose: the live board has more multi-site postings than a small
+budget can resolve, and placeholder resolution is covered by offline tests. A budget
+violation is refused before the extra request reaches the network.
 
 The committed Palantir fixture is a synthetic trimming (some records have no `createdAt`,
 one carries a deliberately unusable timestamp), so it supplies a key-shape baseline while
@@ -103,8 +104,8 @@ What a `PASS` proves: the request(s) reached the board, the payload had the expe
 and field types, and every role mapped without a skip. What it does **not** prove:
 permission for recurring automated access, the correctness of extracted values, matching
 quality on that employer's titles, or anything about scheduling, deduplication or delivery.
-A Workday `PASS` can still show `complete=no`: hitting the detail-lookup cap is our bound,
-not a payload defect, so it is reported as a warning.
+A Workday `PASS` will normally show `complete=no`: detail lookups are capped so the scan is
+partial by design, which is reported as a warning rather than a failure.
 
 Common options: `--source ID`, `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
 

@@ -690,13 +690,15 @@ def lloyds_payload() -> dict[str, Any]:
     return data
 
 
-def test_the_lloyds_profile_allows_a_bounded_workday_conversation() -> None:
+def test_the_lloyds_profile_validates_the_listing_not_location_resolution() -> None:
     profile = validate.VALIDATION_PROFILES["lloyds_graduate"]
 
     assert profile.records_key == "jobPostings"
-    assert profile.request_budget > 1, "a Workday listing is a POST plus bounded detail GETs"
-    assert profile.require_complete is False, "the lookup cap makes partial scans expected"
-    assert profile.adapter_options["max_detail_lookups"] < 10
+    assert profile.request_budget > 1, "a paginated listing needs more than one POST"
+    assert profile.require_complete is False, "detail lookups off makes partial scans expected"
+    # The live board has more multi-site postings than a small budget can resolve, so the
+    # check spends its requests on pages and leaves placeholders unresolved.
+    assert profile.adapter_options["max_detail_lookups"] == 0
     assert cli.DEFAULT_VALIDATION_FIXTURES["lloyds_graduate"] == LLOYDS_FIXTURE
 
 
@@ -729,6 +731,7 @@ def test_lloyds_validation_posts_once_and_passes(
 def test_a_placeholder_location_costs_one_detail_lookup(
     tmp_path: Path, lloyds, lloyds_payload, fake_workday_http
 ) -> None:
+    """Location resolution is still exercised, with a profile that enables it."""
     payload = json.loads(json.dumps(lloyds_payload))
     payload["jobPostings"][0]["locationsText"] = "2 Locations"
     detail = {
@@ -742,18 +745,29 @@ def test_a_placeholder_location_costs_one_detail_lookup(
     client = fake_workday_http(
         pages=[payload], details={payload["jobPostings"][0]["externalPath"]: detail}
     )
-
-    outcome = run_live_check(
-        lloyds,
-        fixture_payload=lloyds_payload,
-        client=client,
-        sample_dir=tmp_path / "validation",
-        now=CAPTURED_AT,
+    resolving = validate.ValidationProfile(
+        watched_fields=validate.WORKDAY_WATCHED_FIELDS,
+        required_fields=validate.WORKDAY_REQUIRED_FIELDS,
+        records_key="jobPostings",
+        request_budget=4,
+        require_complete=True,
+        adapter_options={"page_size": 20, "max_detail_lookups": 3},
     )
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setitem(validate.VALIDATION_PROFILES, "lloyds_graduate", resolving)
+        outcome = run_live_check(
+            lloyds,
+            fixture_payload=lloyds_payload,
+            client=client,
+            sample_dir=tmp_path / "validation",
+            now=CAPTURED_AT,
+        )
 
     assert outcome.ok is True
     assert len(client.posts) == 1
     assert len(client.gets) == 1, "exactly one detail lookup for the one placeholder"
+    assert outcome.scan is not None and outcome.scan.complete
     assert sum(1 for line in outcome.lines if line.startswith("Requests:")) == 1
 
 
