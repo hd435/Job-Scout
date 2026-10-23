@@ -234,6 +234,102 @@ def test_detail_without_job_posting_info_is_partial(adapter, barclays, fake_work
     assert "had no jobPostingInfo" in (result.error_summary or "")
 
 
+@pytest.mark.parametrize(
+    ("detail", "expected_problem"),
+    [
+        ({"jobPostingInfo": {}}, "had no usable location"),
+        (
+            {"jobPostingInfo": {"location": "", "additionalLocations": []}},
+            "had no usable location",
+        ),
+        (
+            {"jobPostingInfo": {"location": "   ", "additionalLocations": ["", "  "]}},
+            "had no usable location",
+        ),
+        (
+            {"jobPostingInfo": {"location": None, "additionalLocations": [None, {"a": 1}]}},
+            "had no usable location",
+        ),
+        ({"jobPostingInfo": {"location": 42}}, "had no usable location"),
+        (
+            {"jobPostingInfo": {"location": "Multiple Locations"}},
+            "had only placeholder locations 'Multiple Locations'",
+        ),
+        (
+            {"jobPostingInfo": {"location": "2 Locations", "additionalLocations": ["3 Locations"]}},
+            "had only placeholder locations '2 Locations; 3 Locations'",
+        ),
+    ],
+)
+def test_detail_without_a_usable_location_is_partial(
+    adapter, barclays, fake_workday_http, detail, expected_problem
+) -> None:
+    client = fake_workday_http(
+        pages=[
+            page([posting("JR101", "Graduate Data Analyst", locationsText="2 Locations")], total=1)
+        ],
+        details={"/job/London/JR101": detail},
+    )
+
+    result = adapter.fetch_scan(barclays, client)
+
+    assert result.status is ScanStatus.PARTIAL
+    assert result.complete is False
+    assert f"detail lookup for JR101 {expected_problem}" in (result.error_summary or "")
+    job = result.jobs[0]
+    assert job.location_raw == "2 Locations"
+    assert job.location_normalized.ambiguous is True
+    assert job.location_normalized.qualifies is False
+
+
+def test_detail_with_only_additional_locations_resolves_the_placeholder(
+    adapter, barclays, fake_workday_http
+) -> None:
+    client = fake_workday_http(
+        pages=[
+            page([posting("JR101", "Graduate Data Analyst", locationsText="2 Locations")], total=1)
+        ],
+        details={
+            "/job/London/JR101": {
+                "jobPostingInfo": {
+                    "location": "",
+                    "additionalLocations": ["London, United Kingdom", "Leeds, United Kingdom"],
+                }
+            }
+        },
+    )
+
+    result = adapter.fetch_scan(barclays, client)
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.jobs[0].location_raw == "London, United Kingdom; Leeds, United Kingdom"
+    assert result.jobs[0].location_normalized.qualifies is True
+
+
+def test_placeholder_entries_are_dropped_when_a_real_location_is_present(
+    adapter, barclays, fake_workday_http
+) -> None:
+    client = fake_workday_http(
+        pages=[
+            page([posting("JR101", "Graduate Data Analyst", locationsText="2 Locations")], total=1)
+        ],
+        details={
+            "/job/London/JR101": {
+                "jobPostingInfo": {
+                    "location": "London, United Kingdom",
+                    "additionalLocations": ["2 Locations"],
+                }
+            }
+        },
+    )
+
+    result = adapter.fetch_scan(barclays, client)
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.jobs[0].location_raw == "London, United Kingdom"
+    assert result.jobs[0].location_normalized.qualifies is True
+
+
 def test_detail_lookups_are_capped(barclays, fake_workday_http) -> None:
     adapter = WorkdayAdapter(page_size=10, max_detail_lookups=1)
     records = [
@@ -438,6 +534,52 @@ def test_partial_workday_scan_cannot_close_or_alert(store, barclays, fake_workda
     missing = store.get_job("barclays", "JR2")
     assert missing.status is JobStatus.OPEN
     assert missing.consecutive_misses == 0
+
+
+def test_unresolved_placeholder_detail_cannot_close_or_alert(
+    store, barclays, fake_workday_http
+) -> None:
+    baseline = fake_workday_http(
+        pages=[
+            page(
+                [
+                    posting("JR1", "Graduate Software Engineer"),
+                    posting("JR2", "Graduate Data Engineer"),
+                ],
+                total=2,
+            )
+        ]
+    )
+    assert run_workday_scan(store, barclays, baseline).is_baseline is True
+
+    # JR2 disappears and a new placeholder role arrives, but its detail payload has no
+    # usable location, so the scan must not be complete.
+    later = fake_workday_http(
+        pages=[
+            page(
+                [
+                    posting("JR1", "Graduate Software Engineer"),
+                    posting("JR3", "Graduate Data Engineer", locationsText="2 Locations"),
+                ],
+                total=2,
+            )
+        ],
+        details={"/job/London/JR3": {"jobPostingInfo": {"location": ""}}},
+    )
+    outcome = run_workday_scan(store, barclays, later)
+
+    assert outcome.status is ScanStatus.PARTIAL
+    assert outcome.complete is False
+    assert outcome.closed_jobs == 0
+    assert outcome.candidates == ()
+    assert outcome.notifications_queued == 0
+    assert "detail lookup for JR3 had no usable location" in (outcome.error_summary or "")
+
+    missing = store.get_job("barclays", "JR2")
+    assert missing.status is JobStatus.OPEN
+    assert missing.consecutive_misses == 0
+    unresolved = store.get_job("barclays", "JR3")
+    assert unresolved.first_complete_scan_id is None
 
 
 def test_complete_workday_scan_alerts_for_new_matching_roles(

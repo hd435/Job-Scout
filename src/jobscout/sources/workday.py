@@ -12,7 +12,9 @@ exercised only against synthetic fixtures; no live request has been made.
 2. Identity: the requisition ID is `bulletFields[0]`.
 3. Detail: `GET https://{host}/wday/cxs/{tenant}/{site}{externalPath}` returns
    `{"jobPostingInfo": {...}}` containing `location`, `additionalLocations`,
-   `jobDescription`, `endDate`, `externalUrl`.
+   `jobDescription`, `endDate`, `externalUrl`. A detail response only counts as
+   resolved when it supplies a usable, non-placeholder location; otherwise the
+   scan is `partial` and the placeholder is left as recorded.
 4. Public URL: `https://{host}/{locale}/{site}{externalPath}` when no detail
    lookup was needed; Workday's locale prefix and redirect behaviour is unverified.
 5. Multi-location placeholders look like "2 Locations" or "Multiple Locations".
@@ -271,8 +273,9 @@ class WorkdayAdapter:
                 notes.append(f"detail lookup failed for {draft.requisition_id}: {exc.summary()}")
                 complete = False
                 continue
-            if not _apply_detail(draft, detail, site):
-                notes.append(f"detail lookup for {draft.requisition_id} had no jobPostingInfo")
+            problem = _apply_detail(draft, detail)
+            if problem is not None:
+                notes.append(f"detail lookup for {draft.requisition_id} {problem}")
                 complete = False
         return complete
 
@@ -330,29 +333,47 @@ def _map_posting(record: Any, index: int, site: _Site, reference: date) -> _Post
     )
 
 
-def _apply_detail(draft: _Posting, detail: Any, site: _Site) -> bool:
+def _apply_detail(draft: _Posting, detail: Any) -> str | None:
+    """Apply a detail payload to a posting whose location is a placeholder.
+
+    Returns `None` only when the payload supplies a usable location that replaces the
+    placeholder. Any other outcome returns a short reason, which the caller records as a
+    partial-scan note, so an unresolved placeholder can never leave the scan complete.
+    """
     info = detail.get("jobPostingInfo") if isinstance(detail, dict) else None
     if not isinstance(info, dict):
-        return False
+        return "had no jobPostingInfo"
 
     locations: list[str] = []
-    primary = _text(info.get("location"))
+    primary = _location_text(info.get("location"))
     if primary:
         locations.append(primary)
     additional = info.get("additionalLocations")
     if isinstance(additional, list):
         for item in additional:
-            text = _text(item)
+            text = _location_text(item)
             if text:
                 locations.append(text)
-    joined = "; ".join(dict.fromkeys(locations))
-    if joined:
-        draft.location_raw = joined
 
+    usable = [text for text in locations if not _PLACEHOLDER_LOCATION.match(text)]
+    if not usable:
+        if not locations:
+            return "had no usable location"
+        return f"had only placeholder locations '{'; '.join(dict.fromkeys(locations))}'"
+    joined = "; ".join(dict.fromkeys(usable))
+
+    draft.location_raw = joined
     draft.description = _text(info.get("jobDescription")) or draft.description
     draft.closing_at = _iso_date(_text(info.get("endDate"))) or draft.closing_at
     draft.url = _text(info.get("externalUrl")) or draft.url
-    return True
+    return None
+
+
+def _location_text(value: Any) -> str | None:
+    """A location must be a non-empty string; numbers and objects are unusable."""
+    if not isinstance(value, str):
+        return None
+    return value.strip() or None
 
 
 def _requisition_id(record: dict[str, Any]) -> str | None:
