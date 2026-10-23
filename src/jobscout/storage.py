@@ -123,7 +123,12 @@ _MIGRATION_3 = """
 ALTER TABLE jobs ADD COLUMN source_revision TEXT NULL;
 """
 
-_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2, _MIGRATION_3)
+_MIGRATION_4 = """
+ALTER TABLE sources ADD COLUMN failure_notice_at TEXT NULL;
+ALTER TABLE sources ADD COLUMN failure_notice_outcome TEXT NULL;
+"""
+
+_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2, _MIGRATION_3, _MIGRATION_4)
 
 
 def utc_now_iso() -> str:
@@ -285,6 +290,8 @@ class Storage:
             records_seen=row["records_seen"],
             records_parsed=row["records_parsed"],
             skipped_count=row["skipped_count"],
+            failure_notice_at=row["failure_notice_at"],
+            failure_notice_outcome=row["failure_notice_outcome"],
         )
 
     def update_source_after_scan(
@@ -312,6 +319,9 @@ class Storage:
         if result.complete:
             assignments.append("last_success_at = ?")
             params.append(result.finished_at)
+            # A completed scan ends the failure episode, so a new streak notifies again.
+            assignments.append("failure_notice_at = NULL")
+            assignments.append("failure_notice_outcome = NULL")
         else:
             assignments.append("last_error_at = ?")
             assignments.append("last_error_summary = ?")
@@ -329,6 +339,31 @@ class Storage:
         )
 
     # scans -----------------------------------------------------------------
+
+    def schedule_next_run(self, source_id: str, *, next_run_at: str) -> None:
+        self._conn.execute(
+            "UPDATE sources SET next_run_at = ? WHERE id = ?", (next_run_at, source_id)
+        )
+
+    def claim_failure_notice(self, source_id: str, *, now: str, threshold: int) -> bool:
+        """Reserve the single failure notice for a source's current failure episode.
+
+        Returns True only for the caller that claimed it, so a streak of failures sends
+        one notice rather than one per scan (D-010, D-038).
+        """
+        cursor = self._conn.execute(
+            """
+            UPDATE sources SET failure_notice_at = ?, failure_notice_outcome = 'pending'
+            WHERE id = ? AND failure_notice_at IS NULL AND consecutive_failures >= ?
+            """,
+            (now, source_id, threshold),
+        )
+        return cursor.rowcount == 1
+
+    def record_failure_notice_outcome(self, source_id: str, *, outcome: str) -> None:
+        self._conn.execute(
+            "UPDATE sources SET failure_notice_outcome = ? WHERE id = ?", (outcome, source_id)
+        )
 
     def record_scan(self, result: ScanResult, *, is_baseline: bool) -> int:
         cursor = self._conn.execute(

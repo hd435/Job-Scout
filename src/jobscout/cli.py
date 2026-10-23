@@ -11,6 +11,7 @@ import argparse
 import contextlib
 import json
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -26,8 +27,10 @@ from .config import (
 from .http import FixtureHttpClient, UrllibHttpClient
 from .matching import MatchingRules
 from .models import DeliveryReport, MatchOutcome, ScanOutcome, ScanStatus, SourceState, StoredJob
+from .notices import FailureNoticeSender
 from .notifier import Notifier
 from .scanner import run_scan
+from .scheduler import Scheduler, SourceRun
 from .sources import AdapterError, get_adapter
 from .storage import Storage
 from .telegram import TelegramTransport
@@ -58,6 +61,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_deliver(args)
         if args.command == "validate":
             return _cmd_validate(args)
+        if args.command == "schedule":
+            return _cmd_schedule(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -161,6 +166,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help=f"records kept in the sample (default: {DEFAULT_SAMPLE_RECORDS})",
     )
     validate.add_argument("--config", type=Path, help="TOML configuration file")
+
+    schedule = subparsers.add_parser(
+        "schedule",
+        help="run due sources on their cadence (no deployment, no daemon supervision)",
+    )
+    schedule.add_argument(
+        "--once",
+        action="store_true",
+        help="run the sources that are due now, then exit",
+    )
+    schedule.add_argument(
+        "--max-iterations",
+        type=int,
+        help="stop the loop after N passes (default: run until interrupted)",
+    )
+    schedule.add_argument(
+        "--jitter-seconds",
+        type=float,
+        default=0.0,
+        help="random extra delay added to each source's next run (default: 0)",
+    )
+    schedule.add_argument("--db", type=Path, help="SQLite database path")
+    schedule.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -297,6 +325,81 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         print(f"  Report: {outcome.report_path}")
     print("  Database: not opened")
     return EXIT_OK if outcome.ok else EXIT_DEGRADED
+
+
+def _cmd_schedule(args: argparse.Namespace) -> int:
+    """Run due sources once or on a loop. Delivery is optional, scanning is not."""
+    app = load_config(args.config)
+    db_path = args.db or app.database_path
+    telegram = _optional_telegram()
+    notifier = _build_notifier(telegram) if telegram else None
+    notice_sender = _build_notice_sender(telegram) if telegram else None
+
+    if telegram is None:
+        print("Telegram is not configured: scans run without delivery or failure notices.")
+
+    http_client = UrllibHttpClient()
+    with Storage.open(db_path) as storage:
+        scheduler = Scheduler(
+            storage,
+            app,
+            http_client=http_client,
+            notifier=notifier,
+            notice_sender=notice_sender,
+            chat_id=telegram.chat_id if telegram else None,
+            jitter_seconds=args.jitter_seconds,
+            sleep=time.sleep,
+        )
+        print(f"Database: {db_path}")
+        if args.once:
+            runs = scheduler.run_once()
+            _print_source_runs(runs)
+            return EXIT_OK
+
+        def report(runs: Sequence[SourceRun]) -> None:
+            _print_source_runs(runs)
+
+        scheduler.run_forever(max_iterations=args.max_iterations, on_run=report)
+    return EXIT_OK
+
+
+def _print_source_runs(runs: Sequence[SourceRun]) -> None:
+    if not runs:
+        print("No source is due.")
+        return
+    for run in runs:
+        if not run.scanned:
+            print(f"{run.source_id}: skipped ({run.error or 'not attempted'})")
+        else:
+            print(
+                f"{run.source_id}: {run.status}"
+                f" seen={run.outcome.records_seen if run.outcome else 0}"
+                f" new={run.outcome.new_jobs if run.outcome else 0}"
+                f" alerts={run.outcome.notifications_queued if run.outcome else 0}"
+            )
+        if run.delivery is not None:
+            print(
+                f"  delivery: sent={run.delivery.sent} failed={run.delivery.failed}"
+                f" ambiguous={run.delivery.ambiguous} retrying={run.delivery.retrying}"
+            )
+        if run.notice is not None and run.notice.attempted:
+            print(f"  failure notice: {run.notice.outcome}")
+        if run.next_run_at:
+            print(f"  next run: {run.next_run_at}")
+
+
+def _optional_telegram() -> TelegramConfig | None:
+    """Scheduling works without Telegram; alerts and notices then stay off."""
+    try:
+        return load_telegram_config()
+    except ConfigError:
+        return None
+
+
+def _build_notice_sender(telegram: TelegramConfig) -> FailureNoticeSender:
+    """Single seam for tests: the only place a real notice transport is created."""
+    transport = TelegramTransport(telegram, poster=UrllibHttpClient())
+    return FailureNoticeSender(transport, secret_values=(telegram.token,))
 
 
 def _cmd_summary(args: argparse.Namespace) -> int:
@@ -473,6 +576,13 @@ def _print_status(source: SourceConfig, state: SourceState | None, storage: Stor
     )
     print(f"  Last success: {state.last_success_at or 'none'}")
     print(f"  Consecutive failures: {state.consecutive_failures}")
+    if state.next_run_at:
+        print(f"  Next run: {state.next_run_at}")
+    if state.failure_notice_at:
+        print(
+            f"  Failure notice: {state.failure_notice_outcome or 'pending'}"
+            f" at {state.failure_notice_at}"
+        )
     if state.last_error_summary:
         print(f"  Last error: {state.last_error_at} - {state.last_error_summary}")
     else:

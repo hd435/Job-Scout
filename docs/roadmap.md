@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap and M1 plan
 
-**Status:** Approved; M1, M2, M3, M4 (offline) and M5.1 (tooling) delivered   
+**Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation) and M5.2 (scheduler) delivered   
 **Last updated:** 2026-10-23  
 **Product authority:** [docs/prd.md](./prd.md)  
 **Technical design:** [docs/architecture.md](./architecture.md)  
@@ -336,9 +336,20 @@ Live validation still required before these sources can be trusted or run unatte
 | Increment | Outcome | Status |
 |---|---|---|
 | **M5.1** | Bounded live validation of one source (Palantir): one request per run, no retries, no database, fixture comparison, capped local artifacts | Delivered 2026-10-23 as a tool with offline tests; the single live run awaits Product Owner authorisation |
-| **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Not started |
+| **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
 | **M5.3** | Retention policy approval (D-025) and enforcement | Not started |
-| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on M5.2, M5.3 and the per-source permission decisions |
+| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on M5.3 and the per-source permission decisions |
+
+M5.2 decisions: `sources.next_run_at` is the only schedule state, a missed cycle is never replayed as a burst, and each source runs and reschedules in isolation (D-059). A source that fails three consecutive scans triggers exactly one notice per failure episode, claimed before sending, with a single send attempt and no retry on an ambiguous outcome; a completed scan ends the episode (D-060).
+
+M5.2 acceptance evidence: `tests/test_scheduler.py` (due-ness, cadence, jitter, disabled sources, per-source failure isolation, one notice per streak, recovery then a second streak, no notice without a chat id, ambiguous notice recorded and not retried, partial scans not counted as failures, restart resuming from persisted `next_run_at`, no burst after ten missed cycles, queued alerts delivered after a restart, bounded loop with capped sleeps, baseline-then-new-role flow) and `tests/test_cli_schedule.py` (`schedule --once`, nothing due on the second pass, bounded loop, `status` showing the next run, Telegram optional).
+
+Blockers and limits for M5.2:
+
+- **Unattended polling is not started.** `schedule` without `--once` runs a loop, but nothing runs it in the background and no deployment exists.
+- **Retention (D-025) is still unapproved**, so the seven-day run cannot be judged against a retention policy yet.
+- **Per-source permission decisions (D-027) are unresolved**; AC-19 still blocks deployment of Palantir and any other source.
+- The loop is single-process and single-threaded by design; there is no supervisor, restart-on-crash, or alerting if the process itself dies. That belongs to M5.4's reliability gate.
 
 M5.1 decisions: the check makes exactly one read-only request with retries disabled, never opens the database, writes only capped and trimmed artifacts under `data/validation/`, and exits non-zero unless the live payload is shape-compatible **and** the real adapter parses every record with zero skips (D-057). The personal-use risk acceptance for this check is narrow and does not authorise recurring or unattended access to any source (D-058).
 

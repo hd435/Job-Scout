@@ -347,6 +347,8 @@ class SourceState:
     records_seen: int | None
     records_parsed: int | None
     skipped_count: int | None
+    failure_notice_at: str | None = None
+    failure_notice_outcome: str | None = None
 
     @property
     def has_baseline(self) -> bool:
