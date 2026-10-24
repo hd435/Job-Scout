@@ -289,6 +289,35 @@ def test_failure_notice_is_sent_once_after_three_failures(store: Storage, fake_t
     assert store.get_source_state("palantir").failure_notice_outcome == "sent"
 
 
+def test_connectivity_failures_in_one_pass_share_one_notice(store: Storage, fake_transport) -> None:
+    """D-086: two sources losing the connection are one outage, not two notices."""
+    clock = StepClock()
+    transport = fake_transport()
+    dns = "connection failed: [Errno 11001] getaddrinfo failed retryable"
+    scheduler = make_scheduler(
+        store,
+        app_config(
+            SourceConfig(id="monzo", employer="Monzo", adapter="one", options={"board": "monzo"}),
+            SourceConfig(id="wise", employer="Wise", adapter="two", options={"board": "wise"}),
+        ),
+        clock,
+        adapters={
+            "one": ScriptedAdapter([result("monzo", ScanStatus.FAILED, error=dns)]),
+            "two": ScriptedAdapter([result("wise", ScanStatus.FAILED, error=dns)]),
+        },
+        notice_sender=FailureNoticeSender(transport, clock=clock),
+    )
+
+    for _ in range(3):
+        runs = scheduler.run_once()
+        clock.advance(minutes=30)
+
+    assert len(transport.sent) == 1, "one message per outage, not one per source"
+    assert "2 sources" in transport.sent[0][1]
+    assert all(run.notice is None or run.notice.shared for run in runs)
+    assert {run.notice.outcome for run in runs} == {"sent"}
+
+
 def test_recovery_clears_the_episode_so_a_later_streak_notifies_again(
     store: Storage, fake_transport
 ) -> None:
@@ -551,6 +580,11 @@ class ExplodingNotifier:
 
 class ExplodingNoticeSender:
     """A notice sender that fails outside its own recorded outcomes."""
+
+    threshold = 3
+
+    def notify_pass(self, storage, states, *, chat_id):
+        raise RuntimeError("notice transport blew up")
 
     def maybe_notify(self, storage, state, *, chat_id):
         raise RuntimeError("notice transport blew up")

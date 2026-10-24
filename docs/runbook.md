@@ -2,13 +2,21 @@
 
 Operating instructions for a **single-user, personal-use** deployment on Windows.
 
-**Current release:** v0.4 beta (two live sources) while [v0.5](./iterations/v0.5-configurable-scope.md) is under development. The configuration keys in ?2a are the current schema; the upcoming `[preferences]` keys are specified in the v0.5 iteration file and do not exist yet. This
-document is preparation only: **no trial has started, no scheduled task exists, and no
-unattended polling is authorised.** The seven-day trial (M5.4) is blocked on the per-source
-permission decisions in [source-access.md](./source-access.md) and D-027.
+**Current state:** a limited personal-use beta is **running** on the operator's machine — 14
+enabled employers from the catalogue, scanning on a 30-minute cadence through the Windows
+scheduled task, with Telegram delivery and failure notices enabled. v0.5 (configurable scope)
+and v0.6 (scale-out machinery) are delivered; the outstanding MVP work is coverage towards
+roughly 100 employers and the seven-day reliability measurement, both described in
+[roadmap.md](./roadmap.md) and [prd.md](./prd.md). Section 2a describes exactly what is running.
+
+The beta is authorised by the Product Owner's blanket personal-use risk acceptance (D-066),
+which replaces the earlier per-source permission review. That is a risk decision for this
+single-user deployment, not a claim that any employer's terms permit automated polling, and it
+does not extend to a public or multi-user service. Each source records its access basis in its
+catalogue entry (D-087).
 
 Everything below runs locally against SQLite. Nothing contacts a third party except the
-employer sources the configured adapters already call, and Telegram if credentials are set.
+employer sources the configured adapters call, and Telegram if credentials are set.
 
 ## 1. What exists today
 
@@ -18,11 +26,14 @@ employer sources the configured adapters already call, and Telegram if credentia
 | `jobscout schedule --once` | Run every source that is due, then exit | Yes: scans, deliveries, notices, `next_run_at` |
 | `jobscout schedule` | Loop until interrupted | Same, continuously |
 | `jobscout deliver` | Deliver queued alerts | Yes: notification states |
-| `jobscout status` | Source and scan status | No |
-| `jobscout report --days 7` | Trial scorecard | No data; applies pending schema migrations if the file is from an older version |
+| `jobscout status` | Source and scan status (`--brief` for one line per source) | No |
+| `jobscout sources list` | Every catalogued source, enabled or not, with adapter, state and validation date | No |
+| `jobscout report --days 7` | Trial scorecard and per-source coverage | No data; applies pending schema migrations if the file is from an older version |
+| `jobscout notify-test` | One labelled Telegram message to prove the delivery path works | One `delivery_checks` row; no job or alert state |
+| `jobscout config show` / `config validate` | The effective scope, and every value that would not take effect | No |
 | `jobscout prune --dry-run` | Predict one cleanup pass | No |
 | `jobscout prune` | Apply retention | Yes: deletes/strips history |
-| `jobscout validate --source <id> --confirm-live` | One bounded request set to one source (palantir, monzo = 1 request; lloyds_graduate = listing pages only, max 6) | Only capped artifacts under `data/validation/` |
+| `jobscout validate --source <id> --confirm-live` | One bounded request set to any configured source (1 request for Lever/Greenhouse, up to 6 for Workday, 5 for sitemap) | Only capped artifacts under `data/validation/` |
 
 Credentials come from `JOBSCOUT_TELEGRAM_TOKEN` and `JOBSCOUT_TELEGRAM_CHAT_ID`, from the
 environment or from `.env` (gitignored). Without them, `schedule` and `scan` still run but
@@ -52,16 +63,18 @@ five sources you have not scanned here correctly show "No scans recorded yet". D
 What this rehearsal does **not** cover: scheduling, `next_run_at`, delivery and failure
 notices — those only happen through `schedule`, which is live.
 
-### Live scheduling is gated
+### Live scheduling contacts employers
 
 `jobscout schedule --once` and `jobscout schedule` contact the configured employer endpoints
-with the real adapters; there is no fixture switch. Running either is therefore an
-**unattended live request per source**, which requires the per-source permission decision
-(D-027) and your explicit approval. Until then, do not run them — not even once "to check the
-output". The rehearsal above and the offline tests are the substitute.
+with the real adapters; there is no fixture switch. A pass is therefore an **unattended live
+request per due source**. On this machine that is authorised: the Product Owner accepted the
+personal-use access risk for this single-user deployment (D-066), and the recurring task in
+section 2a already does it. On a fresh clone it is not authorised by default — the shipped
+catalogue is a starting point, not permission, and each operator makes their own decision
+before enabling sources.
 
-Everything above still assumes the sources you configure are ones you are permitted to call.
-`status`, `report` and `prune --dry-run` are safe because they only read the local database.
+`status`, `report`, `sources list` and `prune --dry-run` are safe because they only read the
+local database.
 
 ## 2a. Personal-use beta: what is actually running
 
@@ -70,19 +83,26 @@ it lives outside Git, so a fresh clone is unaffected.
 
 | Piece | Where |
 |---|---|
-| Scope config (the 17 enabled employers) | `data/ops/config.toml` — the pinned London scope in `[preferences]` (section 2b); the employer list itself lives in the catalogue |
+| Scope config (17 catalogued, 14 enabled) | `data/ops/config.toml` — the pinned London scope in `[preferences]` (section 2b) and the `disable` list; the employer list itself lives in the catalogue |
 | Recurring wrapper | `data/ops/run-once.cmd` |
 | Pass log | `data/ops/logs/schedule.log` |
 | Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
 
-**Current state: enabled and Ready**, running the 17 enabled catalogue employers with the pinned
-London scope — the six researched sources plus expansion batch 1 (section 7c). Measured on
-2026-10-24 straight after batch 1 was baselined: 23 current matches (Palantir 11, Wise 5, Lloyds 2,
-Monzo 2, Stripe 2, Deliveroo 1, the other 11 sources 0) and 119 needs-review roles. Arm contributes
-nothing under a London-only scope because almost all its roles are in Cambridge, Lund and
-Manchester; that is the scope working, not a fault. The batch as a whole added 3 047 stored roles
-for 3 alert-eligible matches, so scope and match quality — not source count — are the current
-constraint.
+**Current state: enabled and Ready**, running the 14 enabled catalogue employers with the pinned
+London scope — the six researched sources plus expansion batch 1, less three batch sources
+switched off for contributing nothing (section 7c). Measured on 2026-10-24 straight after batch 1
+was baselined: 23 current matches (Palantir 11, Wise 5, Lloyds 2, Monzo 2, Stripe 2, Deliveroo 1,
+the rest 0) and 119 needs-review roles. Arm contributes nothing under a London-only scope because
+almost all its roles are in Cambridge, Lund and Manchester; that is the scope working, not a
+fault. The batch as a whole added 3 047 stored roles for 3 alert-eligible matches, so scope — not
+source count — is the current constraint.
+
+Two things are **not** yet proven in production, and this section should keep saying so until
+they are: no alert has been delivered for a newly discovered matching role (the `notifications`
+table has stayed empty because every match so far arrived in a baseline scan), and the seven-day
+reliability measurement is still in progress. `jobscout notify-test` closes the first half of
+that gap — it proves the token, chat id and transport work — but not the matching-to-alert path
+(D-088).
 
 `schtasks /Change /TN "Job-Scout scan" /DISABLE` stops it without deleting anything.
 
@@ -112,16 +132,29 @@ schtasks /Delete /TN "Job-Scout scan" /F
 
 # Run one pass right now
 schtasks /Run /TN "Job-Scout scan"
+
+# Prove the Telegram path works (one labelled message; no job, no alert state)
+python -m jobscout notify-test --config data\ops\config.toml
+# ...or see exactly what it would send, without sending
+python -m jobscout notify-test --config data\ops\config.toml --dry-run
+
+# What is enabled, what is switched off, and whether each source was ever validated
+python -m jobscout sources list --config data\ops\config.toml
 ```
 
 Recovery:
 
-- **Nothing is arriving.** Check `Last Result` and the log tail, then `status`. A stale
-  `Last Run` means the task is disabled or the laptop was asleep; `schtasks /Run` proves the
-  wrapper still works. If the log shows `Telegram is not configured`, the `.env` file was
+- **Nothing is arriving.** Run `jobscout notify-test` first: it separates "Telegram is broken"
+  from "there is nothing to send". Then check `Last Result` and the log tail, then `status`. A
+  stale `Last Run` means the task is disabled or the laptop was asleep; `schtasks /Run` proves
+  the wrapper still works. If the log shows `Telegram is not configured`, the `.env` file was
   moved or the token is invalid.
 - **A source shows a growing failure count.** `status` names the error. Three consecutive
   failures send one Telegram notice; a completed scan clears it.
+- **One message naming several sources.** That is the shared-outage notice (D-086): several
+  sources failed because the connection never opened, which is almost always this machine's
+  network rather than several employers breaking at once. Further sources caught by the same
+  outage are recorded silently for two hours. Individual health is still per source in `status`.
 - **Everything looks healthy but no alerts.** Expected unless a genuinely new role appears:
   baselined roles never re-alert, by design. Use `summary --config data\ops\config.toml
   --current` to see what is currently matching.
@@ -337,7 +370,9 @@ Workday search were found — expect the same.
    (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry schema.org `JobPosting`
    JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md). A site needing a
    fifth shape needs an adapter, and that is development, not configuration.
-2. **Write one catalogue file** in your catalogue directory. For a sitemap site, open its sitemap
+2. **Write one catalogue file** in your catalogue directory. It must carry an `access_note`
+   naming the public endpoint it reads and the hygiene applied (D-087) — that is the record AC-19
+   asks for, and the loader rejects a file without one. For a sitemap site, open its sitemap
    and copy one real job URL: `job_url_pattern` must match it and contain `(?P<id>...)`. Do not
    guess the shape from a synthetic fixture — that is what went wrong twice.
 3. **Check it loads.** Both commands are offline and read-only:
@@ -453,6 +488,19 @@ path works at scale for one adapter shape, and that `report` distinguishes store
 delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible matches, because the
 pinned London scope and the `seniority_unclear` review gate reject almost everything on these large
 tech boards. That ratio is the finding to act on before adding batch 2.
+
+**Batch 1 triage, same day.** `tide`, `contentful` and `truelayer` were switched off with
+`disable = ["contentful", "tide", "truelayer"]` in the operator's config: 129 roles between them,
+0 matching and 0 in review. Their catalogue files and all stored history stay, so re-enabling one is
+deleting an id from that list. `graphcore`, `gitlab`, `elastic`, `anthropic` and `datadog` were kept
+for another observation period despite zero matches; `stripe` (2 matches) and `deliveroo` (1 match)
+earned their place outright.
+
+**Lesson for batch 2.** A live public board is not evidence of relevant early-career supply. All
+eleven employers were broad technology boards whose UK presence is small and mostly senior or
+go-to-market, so board size told us nothing about the roles worth alerting. Batch 2 should start
+from evidence of London-based graduate or intern volume under the operator's actual preferences,
+then confirm a supported adapter — not the other way round.
 
 **Narrowing without deleting**: `disable = ["id", ...]` in the config turns a source off while
 keeping its catalogue file and its history. Use it for anything seasonal; delete the file only when

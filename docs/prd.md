@@ -69,10 +69,21 @@ Releases are cumulative; each one is usable on its own and none reduces MVP scop
 | Release | Definition | Status |
 |---|---|---|
 | **v0.4 — personal beta** | Two sources (Lloyds Graduate, Monzo) scanning on a local schedule with Telegram delivery, an on-demand current-matches digest, and a read-only operating scorecard. Proves the end-to-end experience for one operator. | Delivered |
-| **v0.5 — configurable scope** | Sources, role families, seniority, employment types, locations and exclusions are chosen in configuration rather than code; failure reports are visible and recoverable; documentation describes the product as it is. This is the release that makes a clone usable by someone else. | In progress |
-| **v0.6 — MVP complete** | Roughly 100 enabled employers covering the six intended sources and beyond, satisfying section 12. Removing or substituting a source requires an explicit Product Owner re-scope; the coverage target is a milestone, not a stopping point, because adding employers is ongoing operational work (D-066). | Not started |
+| **v0.5 — configurable scope** | Sources, role families, seniority, employment types, locations and exclusions are chosen in configuration rather than code; failure reports are visible and recoverable; documentation describes the product as it is. This is the release that makes a clone usable by someone else. | **Delivered 2026-10-24** (increments 0.1–0.4) |
+| **v0.6 — scale-out machinery** | The engineering capability to reach the coverage target without a code change per employer: catalogue files, per-host pacing, compact status, and per-source coverage measurement. It does **not** add employers. | **Delivered 2026-10-24** |
+| **MVP complete — coverage target** | Roughly 100 enabled employers, satisfying section 12. Removing or substituting a source requires an explicit Product Owner re-scope; the coverage target is a milestone, not a stopping point, because adding employers is ongoing operational work (D-066). | **Outstanding** — 17 catalogued, 14 enabled as of 2026-10-24 |
 
-v0.5's increments and acceptance criteria are specified in [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md).
+Delivered engineering capability and MVP completion are two different things, and the
+distinction matters here: v0.5 and v0.6 were both delivered while the coverage target — the
+thing that makes the product *minimally useful* — is still 14 employers into roughly 100.
+Coverage progress is tracked by the report's per-source contribution counts, not by a release
+name, and expansion is measured in batches rather than in milestones (D-066).
+
+Iteration detail: v0.5's increments and acceptance criteria are in
+[iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md); the v0.6
+capability and its exit criteria are in
+[iterations/v0.6-scale-out.md](./iterations/v0.6-scale-out.md). Both files are historical
+records and are not rewritten after delivery.
 
 ### 4.3 Exclusions
 
@@ -138,7 +149,7 @@ These items are not yet approved and must not be treated as settled implementati
 | Open item | Why it matters | Needed by |
 |---|---|---|
 | **Exact matching keyword and synonym list** | The product categories and exclusions are approved, but the exact terms remain an implementation default; they are now extended per clone through `[matching]` configuration rather than edited in code (D-026 stays open). | Ongoing tuning |
-| **Alert volume shaping at ~100 sources** | Immediate per-role alerting is approved for two sources. At ~100 employers the volume may become unusable; re-open only when the observed volume justifies it (D-070). | After v0.6 coverage |
+| **Alert volume shaping at ~100 sources** | Immediate per-role alerting is approved for two sources. At ~100 employers the volume may become unusable; re-open only when the observed volume justifies it (D-070). | When the observed daily volume justifies it, not before |
 
 Resolved since the previous revision, recorded here so the section is not silently stale:
 
@@ -166,10 +177,10 @@ Resolved since the previous revision, recorded here so the section is not silent
 - Broad role-family matching may create noise; narrow matching may miss relevant roles.
 - A silent baseline may make the bot appear inactive until a new role is published.
 - Partial scans can resemble source shrinkage unless completeness is tracked explicitly.
-- Telegram delivery can be ambiguous after a timeout; the notification policy is unresolved.
+- Telegram delivery can be ambiguous after a timeout; the policy is now decided and implemented: ambiguous outcomes are recorded and never retried, and a failed send retries at most three times per episode (D-024, D-060).
 - Telegram token and chat ID must be kept out of the repository and logs.
 - The continuous-running host, scheduling, storage, HTTP/parsing, and library choices are engineering decisions, not PRD decisions.
-- Repository visibility and licensing for future self-hosting are unresolved; they do not block the personal MVP.
+- Repository visibility and licensing for future self-hosting are decided: private during the personal beta, MIT at the self-host release (D-071).
 
 ## 6. Intended user journey
 
@@ -289,6 +300,8 @@ does not override the ambiguity rule. See [configuration.md](./configuration.md)
 - **Volume:** no hard cap initially; approved. Monitor and tune after the first two weeks.
 - **Alert eligibility:** only matching roles first observed in a complete scan after baseline are alerted.
 - **Failure notice:** one concise message after three consecutive failed scans of a source; no repeated failure spam until recovery. A recovery notice is optional.
+- **Shared connectivity outage:** when several sources fail because the connection never opened, they produce one aggregated notice rather than one each, with a two-hour quiet window for further sources caught by the same outage (D-086). Timeouts and per-source errors keep their own notice. Individual source health in `status` and the report is unaffected.
+- **Delivery self-check:** `jobscout notify-test` proves the configured Telegram path with one labelled message and records the result outside the alert history (D-088). It does not substitute for a real alert.
 - **No re-alerts:** updates, salary changes, description changes, and closures do not trigger alerts by default.
 
 ## 11. Operational, security, and compliance requirements
@@ -296,7 +309,7 @@ does not override the ambiguity rule. See [configuration.md](./configuration.md)
 - **Single-user operation:** one Telegram chat; no multi-user account model in the MVP.
 - **Continuous operation:** the service should run continuously and check sources on a roughly 30-minute rhythm. Delivery is best-effort, not a real-time guarantee.
 - **Source access:** use official employer or ATS endpoints only. Do not use aggregators or third-party job databases.
-- **Permission versus access:** technical accessibility does not establish permission for recurring automated access. The Product Owner has accepted this risk on a blanket personal-use basis for this single-user deployment (D-066); each deployed source records its access basis, and robots rules, rate limits and non-evasion remain engineering requirements.
+- **Permission versus access:** technical accessibility does not establish permission for recurring automated access. The Product Owner has accepted this risk on a blanket personal-use basis for this single-user deployment (D-066); each deployed source records its access basis in its catalogue entry (`access_note`, D-087), and robots rules, rate limits and non-evasion remain engineering requirements.
 - **Source-specific constraints:** Wise query-string job pages and Arm search-results paths must not be crawled; Palantir's crawl delay must be respected; Workday rate limits must be respected.
 - **Secrets:** the Telegram token and chat ID must be stored outside source control and must not appear in logs or error messages.
 - **Data minimisation:** store only what is needed for job state, deduplication, notification history, and basic source status. Do not collect CVs, application data, or unrelated personal information.
@@ -367,7 +380,7 @@ The number of sources, number of stored jobs, and number of messages sent are **
 | Risk | Impact | Current position |
 |---|---|---|
 | Terms of service do not permit recurring automated access | A source may need to be removed or accessed differently | Accepted as a personal-use risk by the Product Owner (D-066); not a claim that any site grants permission |
-| Workday rate limits or pagination changes | Barclays/Lloyds scans may be incomplete or fail | Validated live for Lloyds; 429 handling implemented; Barclays not yet validated |
+| Workday rate limits or pagination changes | Barclays/Lloyds scans may be incomplete or fail | Both validated live on 2026-10-24; 429 handling implemented; Barclays is narrowed by its own `graduate` search (D-080) |
 | Wise or Arm page structure changes | Parsing may silently miss or misread roles | HTML-based access; needs fixtures and failure detection |
 | Matching is too broad or too narrow | Noise or missed roles undermines the product | Dry-run samples reviewed; tuning continues as observations arrive |
 | First-run baseline is misunderstood | User may think the bot is broken or receive a flood | Approved silent baseline plus an on-demand current-matches digest |

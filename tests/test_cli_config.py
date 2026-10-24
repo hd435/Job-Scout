@@ -151,6 +151,7 @@ def test_validate_warns_about_a_duplicate_employer(tmp_path: Path, capsys) -> No
 id = "monzo_a"
 employer = "Monzo"
 adapter = "greenhouse"
+access_note = "public Greenhouse board API, one GET per scan"
 [sources.options]
 board = "monzo"
 
@@ -158,6 +159,7 @@ board = "monzo"
 id = "monzo_b"
 employer = "Monzo"
 adapter = "greenhouse"
+access_note = "public Greenhouse board API, one GET per scan"
 [sources.options]
 board = "monzo-careers"
 """,
@@ -179,6 +181,7 @@ def test_validate_warns_about_an_unknown_adapter(tmp_path: Path, capsys) -> None
 id = "mystery"
 employer = "Mystery Ltd"
 adapter = "carrier_pigeon"
+access_note = "an endpoint nobody has written an adapter for"
 """,
     )
 
@@ -187,4 +190,26 @@ adapter = "carrier_pigeon"
 
     assert exit_code == 0
     assert "carrier_pigeon" in captured.out + captured.err
+    assert "OK with 1 warning(s)" in captured.out + captured.err
+
+
+def test_validate_asks_for_an_access_note_on_a_config_block(tmp_path: Path, capsys) -> None:
+    """A `[[sources]]` block is allowed without one, but the check says so (D-087)."""
+    config = write_config(
+        tmp_path,
+        """
+[[sources]]
+id = "anonymous"
+employer = "Anonymous Ltd"
+adapter = "greenhouse"
+[sources.options]
+board = "anonymous"
+""",
+    )
+
+    exit_code = run_cli("config", "validate", "--config", str(config))
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "no access_note" in captured.out + captured.err
     assert "OK with 1 warning(s)" in captured.out + captured.err

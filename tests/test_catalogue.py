@@ -36,6 +36,7 @@ id = "example"
 employer = "Example Ltd"
 adapter = "greenhouse"
 cadence_minutes = 45
+access_note = "public Greenhouse board API, one GET per scan"
 
 [options]
 board = "example"
@@ -46,6 +47,7 @@ SITEMAP_SOURCE = """
 id = "example_sitemap"
 employer = "Example Sitemap Ltd"
 adapter = "sitemap_html"
+access_note = "public sitemap plus job pages, GET only, spaced requests"
 
 [options]
 sitemap_urls = ["https://example.test/sitemap-jobs.xml"]
@@ -87,6 +89,43 @@ def test_catalogue_expansion_stays_on_supported_adapters() -> None:
         assert source.adapter in {"greenhouse", "lever", "workday", "sitemap_html"}
         assert source.cadence_minutes > 0
         assert source.employer.strip()
+
+
+def test_every_catalogue_entry_records_its_access_basis() -> None:
+    """AC-19 at scale: the record lives with the employer, not in prose somewhere else."""
+    for source in bundled_catalogue():
+        note = source.access_note.strip()
+        assert note, f"{source.id} has no access_note"
+        assert len(note) <= 220, f"{source.id} access_note is an essay, not a record"
+        assert "todo" not in note.casefold(), f"{source.id} has a placeholder access_note"
+
+
+def test_a_catalogue_file_without_an_access_note_is_rejected(tmp_path: Path) -> None:
+    write_catalogue(
+        tmp_path,
+        {"bare.toml": 'id = "bare"\nemployer = "Bare Ltd"\nadapter = "lever"\n'},
+    )
+    config = write_config(tmp_path, '[jobscout]\ncatalogue = "sources"\n')
+
+    with pytest.raises(ConfigError, match="access_note is required"):
+        load_config(config)
+
+
+def test_a_catalogue_file_with_an_unknown_key_is_rejected(tmp_path: Path) -> None:
+    """A typo must fail at load, not silently become a default."""
+    write_catalogue(
+        tmp_path,
+        {
+            "typo.toml": (
+                'id = "typo"\nemployer = "Typo Ltd"\nadapter = "lever"\n'
+                'access_note = "public API, one GET per scan"\ncadence_minute = 45\n'
+            )
+        },
+    )
+    config = write_config(tmp_path, '[jobscout]\ncatalogue = "sources"\n')
+
+    with pytest.raises(ConfigError, match="unknown key"):
+        load_config(config)
 
 
 def test_the_module_level_default_is_the_bundled_catalogue() -> None:

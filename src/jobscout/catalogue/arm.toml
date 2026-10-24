@@ -3,6 +3,7 @@
 id = "arm"
 employer = "Arm"
 adapter = "sitemap_html"
+access_note = "public sitemap plus job pages on careers.arm.com, GET only, 1.0s between detail requests, 400-page cap per scan"
 cadence_minutes = 30
 
 [options]

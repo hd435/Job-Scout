@@ -3,6 +3,7 @@
 id = "deliveroo"
 employer = "Deliveroo"
 adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
 cadence_minutes = 30
 
 [options]

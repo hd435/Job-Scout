@@ -29,7 +29,7 @@ import contextlib
 import random
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
 from .config import AppConfig, SourceConfig
@@ -124,9 +124,14 @@ class Scheduler:
     # running ---------------------------------------------------------------
 
     def run_once(self, *, now: str | None = None) -> tuple[SourceRun, ...]:
-        """Run every due source exactly once, isolating failures per source."""
+        """Run every due source exactly once, then decide notices for the pass as a whole.
+
+        Notices are decided after the pass, not per source, because several sources failing
+        for the same connectivity reason are one problem worth one message (D-086).
+        """
         moment = now or self._clock()
-        return tuple(self._run_source(source, moment) for source in self.due_sources(moment))
+        runs = tuple(self._run_source(source, moment) for source in self.due_sources(moment))
+        return self._notices_after_pass(runs)
 
     def run_forever(
         self,
@@ -190,28 +195,24 @@ class Scheduler:
             if not self._record_unexpected_failure(source, now=now, error=error):
                 error = f"{error} (failure could not be recorded)"
             delivery, delivery_error = self._deliver()
-            notice, notice_error = self._notice(source)
             return SourceRun(
                 source_id=source.id,
                 scanned=False,
                 error=error,
                 delivery=delivery,
-                notice=notice,
                 next_run_at=next_run,
-                post_run_error=_join_errors(delivery_error, notice_error),
+                post_run_error=delivery_error,
             )
 
         delivery, delivery_error = self._deliver()
-        notice, notice_error = self._notice(source)
         return SourceRun(
             source_id=source.id,
             scanned=True,
             status=str(outcome.status),
             outcome=outcome,
             delivery=delivery,
-            notice=notice,
             next_run_at=next_run,
-            post_run_error=_join_errors(delivery_error, notice_error),
+            post_run_error=delivery_error,
         )
 
     def _back_off_failed_claim(
@@ -261,20 +262,26 @@ class Scheduler:
         except Exception as exc:  # noqa: BLE001 - delivery must not abort the pass
             return None, f"delivery error: {type(exc).__name__}: {exc}"
 
-    def _notice(self, source: SourceConfig) -> tuple[NoticeOutcome | None, str | None]:
-        if self._notice_sender is None or not self._chat_id:
-            return None, None
+    def _notices_after_pass(self, runs: Sequence[SourceRun]) -> tuple[SourceRun, ...]:
+        """Attach this pass's notice decisions to the runs they belong to."""
+        if self._notice_sender is None or not self._chat_id or not runs:
+            return tuple(runs)
         try:
-            return self._maybe_notify(source), None
+            states = [
+                state
+                for state in (self._storage.get_source_state(run.source_id) for run in runs)
+                if state is not None
+            ]
+            outcomes = self._notice_sender.notify_pass(self._storage, states, chat_id=self._chat_id)
         except Exception as exc:  # noqa: BLE001 - a notice must not abort the pass
-            return None, f"notice error: {type(exc).__name__}: {exc}"
-
-    def _maybe_notify(self, source: SourceConfig) -> NoticeOutcome | None:
-        state = self._storage.get_source_state(source.id)
-        if state is None:
-            return None
-        return self._notice_sender.maybe_notify(  # type: ignore[union-attr]
-            self._storage, state, chat_id=self._chat_id
+            message = f"notice error: {type(exc).__name__}: {exc}"
+            return tuple(
+                replace(run, post_run_error=_join_errors(run.post_run_error, message))
+                for run in runs
+            )
+        return tuple(
+            replace(run, notice=outcomes[run.source_id]) if run.source_id in outcomes else run
+            for run in runs
         )
 
     def _seconds_until_next_due(self) -> float:

@@ -31,11 +31,18 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             )
         }
-        assert version == 5
-        assert {"sources", "scans", "jobs", "notifications"} <= tables
+        assert version == 6
+        assert {
+            "sources",
+            "scans",
+            "jobs",
+            "notifications",
+            "outage_notices",
+            "delivery_checks",
+        } <= tables
 
     with Storage.open(path) as storage:
-        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 6
 
 
 def test_open_creates_missing_parent_directory(tmp_path: Path) -> None:

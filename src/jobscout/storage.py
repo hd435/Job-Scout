@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, date, datetime
@@ -17,6 +17,7 @@ from pathlib import Path
 
 from .config import SourceConfig
 from .models import (
+    DeliveryCheck,
     Job,
     JobStatus,
     LocationResult,
@@ -140,12 +141,34 @@ _MIGRATION_5 = """
 ALTER TABLE sources ADD COLUMN failure_notice_attempts INTEGER NOT NULL DEFAULT 0;
 """
 
+_MIGRATION_6 = """
+CREATE TABLE outage_notices (
+    id INTEGER PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    source_ids TEXT NOT NULL,
+    source_count INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    last_error TEXT NULL
+);
+
+CREATE TABLE delivery_checks (
+    id INTEGER PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    telegram_message_id TEXT NULL,
+    created_at TEXT NOT NULL,
+    last_error TEXT NULL
+);
+"""
+
 _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_1,
     _MIGRATION_2,
     _MIGRATION_3,
     _MIGRATION_4,
     _MIGRATION_5,
+    _MIGRATION_6,
 )
 
 
@@ -478,6 +501,86 @@ class Storage:
     def record_failure_notice_outcome(self, source_id: str, *, outcome: str) -> None:
         self._conn.execute(
             "UPDATE sources SET failure_notice_outcome = ? WHERE id = ?", (outcome, source_id)
+        )
+
+    # outage notices and delivery checks ------------------------------------
+
+    def last_outage_notice_at(self, *, chat_id: str) -> str | None:
+        """When an aggregated connectivity notice last reached this chat.
+
+        Only a `sent` notice suppresses the next one; a failed attempt leaves the window
+        open, so a real outage is not silenced by a delivery that did not happen.
+        """
+        row = self._conn.execute(
+            """
+            SELECT max(created_at) FROM outage_notices
+            WHERE chat_id = ? AND outcome = 'sent'
+            """,
+            (chat_id,),
+        ).fetchone()
+        return row[0] if row is not None else None
+
+    def record_outage_notice(
+        self,
+        *,
+        chat_id: str,
+        outcome: str,
+        source_ids: Sequence[str],
+        error: str | None,
+        now: str,
+    ) -> None:
+        ordered = sorted(source_ids)
+        self._conn.execute(
+            """
+            INSERT INTO outage_notices (chat_id, outcome, source_ids, source_count, created_at,
+                                        last_error)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (chat_id, outcome, json.dumps(ordered), len(ordered), now, error),
+        )
+
+    def record_delivery_check(
+        self,
+        *,
+        chat_id: str,
+        outcome: str,
+        message_id: str | None,
+        error: str | None,
+        now: str,
+    ) -> DeliveryCheck:
+        self._conn.execute(
+            """
+            INSERT INTO delivery_checks (chat_id, outcome, telegram_message_id, created_at,
+                                         last_error)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (chat_id, outcome, message_id, now, error),
+        )
+        return DeliveryCheck(
+            chat_id=chat_id,
+            outcome=outcome,
+            telegram_message_id=message_id,
+            created_at=now,
+            last_error=error,
+        )
+
+    def list_delivery_checks(self, *, limit: int = 10) -> tuple[DeliveryCheck, ...]:
+        rows = self._conn.execute(
+            """
+            SELECT chat_id, outcome, telegram_message_id, created_at, last_error
+            FROM delivery_checks ORDER BY id DESC LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return tuple(
+            DeliveryCheck(
+                chat_id=row["chat_id"],
+                outcome=row["outcome"],
+                telegram_message_id=row["telegram_message_id"],
+                created_at=row["created_at"],
+                last_error=row["last_error"],
+            )
+            for row in rows
         )
 
     # retention -------------------------------------------------------------

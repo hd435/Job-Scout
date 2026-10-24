@@ -1,8 +1,8 @@
 """Command-line interface.
 
-`scan --dry-run` records findings without contacting anyone. `scan --deliver`
-(and the standalone `deliver` command) send queued alerts through the Telegram
-Bot API. There is still no scheduler and only the configured Palantir source.
+`scan --dry-run` records findings without contacting anyone. `scan --deliver`, the
+standalone `deliver` command, and `schedule` send queued alerts through the Telegram Bot
+API. `notify-test` proves that delivery path with one labelled message and no job state.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ from .config import (
     TelegramConfig,
     load_config,
     load_telegram_config,
+    missing_access_note_warnings,
 )
 from .digest import build_digest
 from .http import FixtureHttpClient, PacedHttpClient, UrllibHttpClient
@@ -32,6 +33,7 @@ from .matching import MatchingRules, preferences_fingerprint, split_pinned_citie
 from .models import (
     DeliveryOutcome,
     DeliveryReport,
+    DeliveryResult,
     MatchOutcome,
     ScanOutcome,
     ScanStatus,
@@ -39,7 +41,7 @@ from .models import (
     StoredJob,
 )
 from .notices import FailureNoticeSender
-from .notifier import Notifier, redact
+from .notifier import Notifier, format_delivery_check, redact
 from .report import DEFAULT_WINDOW_DAYS, build_trial_report, format_trial_report
 from .retention import RetentionPolicy
 from .scanner import run_scan
@@ -92,6 +94,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_report(args)
         if args.command == "digest":
             return _cmd_digest(args)
+        if args.command == "notify-test":
+            return _cmd_notify_test(args)
         if args.command == "sources":
             return _cmd_sources(args)
         if args.command == "config":
@@ -115,8 +119,8 @@ def _configure_output() -> None:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="jobscout",
-        description="Personal UK early-career job monitor (Workday and Lever sources, "
-        "Telegram delivery).",
+        description="Personal UK early-career job monitor (Lever, Greenhouse, Workday and"
+        " sitemap/JSON-LD sources, Telegram delivery).",
     )
     parser.add_argument("--version", action="version", version=f"jobscout {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -294,6 +298,18 @@ def _build_parser() -> argparse.ArgumentParser:
     digest.add_argument("--db", type=Path, help="SQLite database path")
     digest.add_argument("--config", type=Path, help="TOML configuration file")
 
+    notify_test = subparsers.add_parser(
+        "notify-test",
+        help="send one labelled test message through the configured Telegram path",
+    )
+    notify_test.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the message and the resolved chat id without contacting Telegram",
+    )
+    notify_test.add_argument("--db", type=Path, help="SQLite database path")
+    notify_test.add_argument("--config", type=Path, help="TOML configuration file")
+
     sources = subparsers.add_parser(
         "sources",
         help="list the configured sources with their adapter and state (read-only)",
@@ -337,8 +353,12 @@ def _load(config_path: Path | None) -> AppConfig:
 
 def _build_notifier(telegram: TelegramConfig) -> Notifier:
     """Single seam for tests: the only place a real Telegram transport is created."""
-    transport = TelegramTransport(telegram, poster=UrllibHttpClient())
-    return Notifier(transport, secret_values=(telegram.token,))
+    return Notifier(_build_telegram_transport(telegram), secret_values=(telegram.token,))
+
+
+def _build_telegram_transport(telegram: TelegramConfig) -> TelegramTransport:
+    """The real transport, so `notify-test` and alerts cannot drift apart."""
+    return TelegramTransport(telegram, poster=UrllibHttpClient())
 
 
 def _cmd_scan(args: argparse.Namespace) -> int:
@@ -552,7 +572,12 @@ def _print_source_runs(runs: Sequence[SourceRun]) -> None:
                 f" ambiguous={run.delivery.ambiguous} retrying={run.delivery.retrying}"
             )
         if run.notice is not None and run.notice.attempted:
-            print(f"  failure notice: {run.notice.outcome}")
+            if run.notice.shared:
+                print(f"  failure notice: {run.notice.outcome} (shared connectivity notice)")
+            else:
+                print(f"  failure notice: {run.notice.outcome}")
+        elif run.notice is not None and run.notice.outcome == "covered_by_outage_notice":
+            print("  failure notice: none (covered by a recent connectivity notice)")
         if run.next_run_at:
             print(f"  next run: {run.next_run_at}")
 
@@ -567,8 +592,85 @@ def _optional_telegram() -> TelegramConfig | None:
 
 def _build_notice_sender(telegram: TelegramConfig) -> FailureNoticeSender:
     """Single seam for tests: the only place a real notice transport is created."""
-    transport = TelegramTransport(telegram, poster=UrllibHttpClient())
-    return FailureNoticeSender(transport, secret_values=(telegram.token,))
+    return FailureNoticeSender(_build_telegram_transport(telegram), secret_values=(telegram.token,))
+
+
+def _cmd_notify_test(args: argparse.Namespace) -> int:
+    """Prove the configured Telegram path delivers a message. Never a job alert.
+
+    This deliberately creates no job, notification row, baseline or queue entry: it writes
+    one row to `delivery_checks`, which is a record of delivery tests rather than of what
+    the product told the user about a role.
+    """
+    try:
+        telegram = load_telegram_config()
+    except ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    now = utc_now_iso()
+    text = format_delivery_check(now)
+
+    if args.dry_run:
+        print(f"Chat id: {telegram.chat_id}")
+        print("Dry run: nothing was sent. Message would be:")
+        print(text)
+        return EXIT_OK
+
+    transport = _build_telegram_transport(telegram)
+    with Storage.open(db_path) as storage:
+        print(f"Database: {db_path}")
+        try:
+            result = transport.send(telegram.chat_id, text)
+            outcome = _check_outcome(result)
+            message_id = result.message_id
+            error = redact(result.error, secret_values=(telegram.token, telegram.chat_id))
+        except Exception as exc:  # noqa: BLE001 - report it rather than showing a traceback
+            outcome = "failed"
+            message_id = None
+            error = redact(
+                f"{type(exc).__name__}: {exc}",
+                secret_values=(telegram.token, telegram.chat_id),
+            )
+        check = storage.record_delivery_check(
+            chat_id=telegram.chat_id,
+            outcome=outcome,
+            message_id=message_id,
+            error=error,
+            now=now,
+        )
+
+    print(f"Delivery check: {check.outcome}")
+    if check.telegram_message_id:
+        print(f"Telegram message id: {check.telegram_message_id}")
+    if check.last_error:
+        print(f"Error: {check.last_error}")
+    if check.sent:
+        print(
+            "This proves the token, chat id and Telegram transport work."
+            " It does not prove the matching-to-alert path; only a newly discovered"
+            " matching role does that."
+        )
+        return EXIT_OK
+    print(
+        "The message was not delivered. No job state was changed. "
+        "Check the token, the chat id, and this machine's network.",
+        file=sys.stderr,
+    )
+    return EXIT_FAILED
+
+
+def _check_outcome(result: DeliveryResult) -> str:
+    """Name a one-off delivery test's outcome with the delivery state machine's vocabulary."""
+    if result.outcome is DeliveryOutcome.SENT:
+        return "sent"
+    if result.outcome is DeliveryOutcome.AMBIGUOUS:
+        return "ambiguous"
+    if result.outcome is DeliveryOutcome.RETRYABLE:
+        return "retryable"
+    return "failed"
 
 
 def _cmd_prune(args: argparse.Namespace) -> int:
@@ -901,6 +1003,7 @@ def _config_show(args: argparse.Namespace) -> int:
         )
         for key, value in sorted(source.options.items()):
             print(f"      {key} = {value!r}")
+        print(f"      access: {source.access_note or 'not recorded (D-087)'}")
 
     print("Preferences:")
     print(f"  Role families: {', '.join(rules.alerting_families)}")
@@ -954,6 +1057,8 @@ def _config_problems(app: AppConfig) -> list[str]:
             get_adapter(source.adapter)
         except AdapterError as exc:
             problems.append(f"source '{source.id}': {exc}")
+    # A catalogue file must carry one, so this reaches only `[[sources]]` blocks (D-087).
+    problems.extend(missing_access_note_warnings(app.enabled_sources()))
     employers: dict[str, str] = {}
     for source in app.enabled_sources():
         other = employers.setdefault(source.employer.casefold(), source.id)

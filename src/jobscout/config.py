@@ -51,6 +51,9 @@ class SourceConfig:
     enabled: bool = True
     cadence_minutes: int = 30
     options: dict[str, Any] = field(default_factory=dict)
+    # The recorded access basis for this employer: its public endpoint and the hygiene
+    # applied. Required in a catalogue file, optional in a `[[sources]]` block (D-087).
+    access_note: str = ""
 
 
 @dataclass(frozen=True)
@@ -194,23 +197,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         if source_id in seen:
             raise ConfigError(f"duplicate source id '{source_id}'")
         seen.add(source_id)
-        cadence = raw.get("cadence_minutes", 30)
-        if not isinstance(cadence, int) or cadence <= 0:
-            raise ConfigError(f"sources[{index}].cadence_minutes must be a positive integer")
-        options = raw.get("options", {})
-        if not isinstance(options, dict):
-            raise ConfigError(f"sources[{index}].options must be a table")
-        _validate_source_options(source_id, adapter, options, origin=f"sources[{index}]")
-        sources.append(
-            SourceConfig(
-                id=source_id,
-                employer=employer,
-                adapter=adapter,
-                enabled=bool(raw.get("enabled", True)),
-                cadence_minutes=cadence,
-                options=dict(options),
-            )
-        )
+        sources.append(_source_from_table(raw, origin=f"sources[{index}]"))
 
     if not sources:
         # The catalogue is the list; `[[sources]]` replaces it entirely, which is how a
@@ -250,8 +237,10 @@ def _disabled_ids(section: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(item.strip() for item in raw if item.strip())
 
 
-def _source_from_table(data: Mapping[str, Any], *, origin: str) -> SourceConfig:
-    """One employer from a parsed catalogue table."""
+def _source_from_table(
+    data: Mapping[str, Any], *, origin: str, require_access_note: bool = False
+) -> SourceConfig:
+    """One employer from a parsed catalogue table or `[[sources]]` block."""
     source_id = str(data.get("id", "")).strip()
     employer = str(data.get("employer", "")).strip()
     adapter = str(data.get("adapter", "")).strip()
@@ -264,6 +253,12 @@ def _source_from_table(data: Mapping[str, Any], *, origin: str) -> SourceConfig:
     if not isinstance(options, dict):
         raise ConfigError(f"{origin}: options must be a table")
     _validate_source_options(source_id, adapter, options, origin=origin)
+    access_note = str(data.get("access_note", "")).strip()
+    if require_access_note and not access_note:
+        raise ConfigError(
+            f"{origin}: access_note is required — record the public endpoint this source"
+            " reads and the request hygiene applied to it (D-066, D-087)"
+        )
     return SourceConfig(
         id=source_id,
         employer=employer,
@@ -271,6 +266,7 @@ def _source_from_table(data: Mapping[str, Any], *, origin: str) -> SourceConfig:
         enabled=bool(data.get("enabled", True)),
         cadence_minutes=cadence,
         options=dict(options),
+        access_note=access_note,
     )
 
 
@@ -332,6 +328,21 @@ def duplicate_source_warnings(sources: Sequence[SourceConfig]) -> tuple[str, ...
                     " expect duplicate roles"
                 )
     return tuple(warnings)
+
+
+def missing_access_note_warnings(sources: Sequence[SourceConfig]) -> tuple[str, ...]:
+    """Flag an enabled source with no recorded access basis (D-087).
+
+    Catalogue files must state one, so this reaches only sources written as a `[[sources]]`
+    block. It warns rather than fails because a one-source config is the documented way to
+    try the tool, and a missing note is a documentation gap, not a reason not to run.
+    """
+    return tuple(
+        f"source '{source.id}' has no access_note: record its public endpoint and the request"
+        " hygiene applied (D-066, D-087)"
+        for source in sources
+        if source.enabled and not source.access_note
+    )
 
 
 def _feed_keys(source: SourceConfig) -> tuple[str, ...]:
@@ -518,6 +529,11 @@ def _parse_location_preferences(section: Any) -> LocationPreferences:
 
 CATALOGUE_DIR_NAME = "catalogue"
 
+# Keys a catalogue file may set at the top level. Anything else is a typo, not a default.
+CATALOGUE_KEYS = frozenset(
+    {"id", "employer", "adapter", "enabled", "cadence_minutes", "access_note", "options"}
+)
+
 
 def bundled_catalogue() -> tuple[SourceConfig, ...]:
     """The employers that ship with the package: one TOML file each, no Python to edit."""
@@ -534,9 +550,10 @@ class _CatalogueEntry:
 def _load_catalogue_entries(directory: Any, *, origin: str) -> tuple[SourceConfig, ...]:
     """Read one employer per `*.toml` file from a catalogue directory.
 
-    A file is a single table: `id`, `employer`, `adapter`, optional `enabled` and
-    `cadence_minutes`, and an `[options]` table. One employer per file keeps a 100-entry
-    catalogue reviewable and free of merge conflicts.
+    A file is a single table: `id`, `employer`, `adapter`, `access_note`, optional `enabled`
+    and `cadence_minutes`, and an `[options]` table. One employer per file keeps a 100-entry
+    catalogue reviewable and free of merge conflicts. Unknown keys are rejected, so a typo
+    fails when the file loads rather than silently becoming a default.
     """
     entries: list[SourceConfig] = []
     seen: dict[str, str] = {}
@@ -556,6 +573,12 @@ def _load_catalogue_entries(directory: Any, *, origin: str) -> tuple[SourceConfi
             raise ConfigError(
                 f"{origin}: {name} must describe one employer with `id`, not a `[[sources]]` list"
             )
+        unknown = sorted(set(data) - CATALOGUE_KEYS)
+        if unknown:
+            raise ConfigError(
+                f"{origin}: {name} has unknown key(s): {', '.join(unknown)}"
+                f" (accepted: {', '.join(sorted(CATALOGUE_KEYS))})"
+            )
         source_id = str(data.get("id", "")).strip()
         if not source_id:
             raise ConfigError(f"{origin}: {name} has no `id`")
@@ -564,7 +587,9 @@ def _load_catalogue_entries(directory: Any, *, origin: str) -> tuple[SourceConfi
                 f"{origin}: '{source_id}' appears in both {seen[source_id]} and {name}"
             )
         seen[source_id] = name
-        entries.append(_source_from_table(data, origin=f"{origin}/{name}"))
+        entries.append(
+            _source_from_table(data, origin=f"{origin}/{name}", require_access_note=True)
+        )
     return tuple(entries)
 
 

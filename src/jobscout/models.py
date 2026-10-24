@@ -368,6 +368,26 @@ class SourceState:
 
 
 @dataclass(frozen=True)
+class DeliveryCheck:
+    """One explicitly requested delivery test, kept apart from alert history.
+
+    `notify-test` proves the configured Telegram path works; it is not an alert, so it
+    must not appear in `notifications` (which is the product's record of what it told the
+    user about a role).
+    """
+
+    chat_id: str
+    outcome: str
+    telegram_message_id: str | None
+    created_at: str
+    last_error: str | None = None
+
+    @property
+    def sent(self) -> bool:
+        return self.outcome == "sent"
+
+
+@dataclass(frozen=True)
 class ScanFacts:
     """The fields trial measurement needs from one recorded scan."""
 

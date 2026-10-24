@@ -66,6 +66,18 @@ def format_message(notification: PendingNotification) -> str:
     return "\n".join(lines)
 
 
+def format_delivery_check(now: str) -> str:
+    """The one message `notify-test` sends. It must be unmistakably not a job alert."""
+    return "\n".join(
+        [
+            "Job-Scout delivery check",
+            "The configured bot token and chat id can send a Telegram message.",
+            "This is not a job alert: no role was created, matched, queued or baselined.",
+            f"Sent: {now}",
+        ]
+    )
+
+
 class Notifier:
     """Delivers queued notifications and records the outcome of every attempt."""
 

@@ -47,14 +47,14 @@ failed shows `FAILED`; a successful check older than 30 days is counted as stale
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `database` | string | `data/jobscout.db` | SQLite file. Relative paths resolve from the working directory |
-| `catalogue` | string | none | Directory of employer files to use **instead of** the six shipped with the package. Relative paths resolve from the config file's directory |
+| `catalogue` | string | none | Directory of employer files to use **instead of** the set shipped with the package. Relative paths resolve from the config file's directory |
 | `disable` | array of ids | `[]` | Turn catalogue sources off without editing the catalogue files |
 
 ## 3. The employer catalogue (D-081)
 
-Employers are files, not code. The package ships one per employer in `src/jobscout/catalogue/`:
-`arm.toml`, `barclays.toml`, `lloyds_graduate.toml`, `monzo.toml`, `palantir.toml`, `wise.toml`.
-Adding the seventh is one more file.
+Employers are files, not code. The package ships one per employer in `src/jobscout/catalogue/`
+— the six researched employers plus expansion batch 1; `jobscout sources list` prints the current
+set. Adding the next one is one more file.
 
 A catalogue file describes exactly one employer:
 
@@ -63,6 +63,7 @@ A catalogue file describes exactly one employer:
 id = "example"
 employer = "Example Ltd"
 adapter = "greenhouse"        # lever | greenhouse | workday | sitemap_html
+access_note = "public Greenhouse job-board API, one GET per scan, no auth"   # required
 cadence_minutes = 30          # optional, default 30
 enabled = true                # optional, default true
 
@@ -71,18 +72,26 @@ board = "example"
 uk_employer = true
 ```
 
+`access_note` is the recorded access basis for that employer (D-087, satisfying AC-19): one line
+naming the public endpoint the source reads and the request hygiene applied to it — one request
+per scan, page caps, request spacing, a search narrowing. It is the *recording* of the posture the
+Product Owner accepted for this personal-use deployment (D-066), not a per-source permission
+decision, and nothing in it claims a site's terms permit automated access.
+
 Rules, so the list stays predictable at a hundred entries:
 
 - One employer per file, and the file must not contain a `[[sources]]` list.
 - Files are read in filename order, so the source list is alphabetical and stable.
 - Every file is validated when the configuration loads: a bad option fails with the file name,
   the source id and the key.
+- A missing `access_note` is an error naming the file, and an unknown top-level key is an error
+  listing the accepted ones — a typo like `cadence_minute` must not silently become a default.
 - Two files claiming the same `id` are an error naming both files.
 
 **Which list applies.** The bundled catalogue is the default. `[jobscout] catalogue = "sources"`
-uses your own directory *instead* ? it is your list, not an addition to the six. A `[[sources]]`
-block in the config file still replaces whatever list applies, which is what a config written
-before v0.6 means and keeps meaning. `disable = ["wise", "arm"]` narrows any of those lists
+uses your own directory *instead* ? it is your list, not an addition to the shipped one. A
+`[[sources]]` block in the config file still replaces whatever list applies, which is what a config
+written before v0.6 means and keeps meaning. `disable = ["wise", "arm"]` narrows any of those lists
 without touching the files:
 
 ```toml
@@ -107,6 +116,7 @@ One table per employer, for an override or a one-off experiment. Listing any `[[
 | `adapter` | string | required | `lever`, `greenhouse`, `workday`, or `sitemap_html` |
 | `enabled` | bool | `true` | Disabled sources are kept in config but never scanned or counted against targets |
 | `cadence_minutes` | int | `30` | Minimum gap between scans of this source |
+| `access_note` | string | `""` | Recorded access basis (D-087). Optional here; `config validate` names any that omit it |
 | `[sources.options]` | table | `{}` | Adapter-specific keys below |
 
 ### 3.1 Adapter options
@@ -121,6 +131,10 @@ or a required option that is missing, is an error naming the source and the key
 | `greenhouse` | — | `board` (defaults to the source id), `uk_employer` |
 | `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_pages`, `search_text`, `uk_employer` |
 | `sitemap_html` | `job_url_pattern` and `sitemap_urls` (or `sitemap`) | `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches`, `request_delay_seconds`, `uk_employer` |
+
+A `[[sources]]` block may omit `access_note` — it is the documented way to try one source, and a
+missing note is a documentation gap rather than a reason not to run — but `jobscout config
+validate` lists every enabled source that has not recorded one.
 
 `uk_employer = true` marks a source whose board only advertises UK roles. It relaxes the
 town-name collision check (Manchester, Halifax, and other names that exist abroad) so a UK-only

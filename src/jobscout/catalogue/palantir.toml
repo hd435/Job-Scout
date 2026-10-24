@@ -2,6 +2,7 @@
 id = "palantir"
 employer = "Palantir Technologies"
 adapter = "lever"
+access_note = "public Lever postings API (api.lever.co), one GET per scan, no auth; one request per scan also satisfies the 1s crawl delay in Lever's robots rules"
 cadence_minutes = 30
 
 [options]

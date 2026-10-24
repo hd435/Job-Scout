@@ -3,6 +3,7 @@
 id = "barclays"
 employer = "Barclays"
 adapter = "workday"
+access_note = "public Workday careers site (CXS API at barclays.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, narrowed by the site's own `graduate` search"
 cadence_minutes = 30
 
 [options]

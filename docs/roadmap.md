@@ -1,6 +1,6 @@
 # Job-Scout — Roadmap
 
-- **Status:** Approved; **v0.5 (configurable scope)** is the current iteration. The M-series below is the historical delivery record for v0.1–v0.4
+- **Status:** Approved. **v0.5 (configurable scope) and v0.6 (scale-out machinery) are both delivered** — what remains for MVP completion is the coverage target of roughly 100 employers plus the reliability measurement, which are operational work rather than a development iteration (D-066). The M-series below is the historical delivery record for v0.1–v0.4
 - **Last updated:** 2026-10-24
 - **Product authority:** [docs/prd.md](./prd.md)
 - **Technical design:** [docs/architecture.md](./architecture.md)
@@ -340,12 +340,14 @@ organised by iteration, one file each in [iterations/](./iterations/).
 | Release | Theme | State |
 |---|---|---|
 | v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Delivered**; the local scheduled task was disabled while v0.5 changes landed and is re-enabled at the end of each increment |
-| **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **In progress** — 0.1 delivered, 0.2 delivered; see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) |
+| **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **Delivered 2026-10-24** — increments 0.1–0.4; see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) |
 | **v0.6** | **Scale out: catalogue files, per-host pacing, compact status, coverage measurement** | **Delivered 2026-10-24** — see [iterations/v0.6-scale-out.md](./iterations/v0.6-scale-out.md); alert-volume policy stays deferred (D-070) |
+| **MVP complete** | Roughly 100 enabled employers, plus the reliability measurement in AC-20 | **Outstanding** — 17 catalogued and 14 enabled on 2026-10-24, after expansion batch 1 |
 
-Coverage beyond the six researched employers is the Product Owner's ongoing operational work
-(D-066), not a milestone. The roadmap stays one screen; per-iteration detail lives in the
-iteration file it links to.
+Delivered engineering capability is not the same as MVP completion: the machinery is finished,
+the coverage is not. Coverage beyond the six researched employers is the Product Owner's
+ongoing operational work (D-066), measured per batch by the report rather than by a release
+name. Adding a release number for it would imply a development milestone that does not exist.
 
 **Two notes on the historical sections below.** They are the record of how v0.1–v0.4 were built,
 and some of their gates have since been superseded:
@@ -375,23 +377,23 @@ and some of their gates have since been superseded:
 | **M5.4.1** | Validation scope extended to Monzo (Greenhouse envelope): the same one-request check, a per-source shape profile, a synthetic Monzo baseline fixture | Delivered 2026-10-23 with offline tests; the single authorised live Monzo request was executed and passed |
 | **M5.4.2** | Validation scope extended to Lloyds Graduate (Workday): per-profile request budget, POST support, bounded detail lookups | Delivered 2026-10-23 with offline tests; the single authorised live request set was executed and passed |
 | **M5.4.3** | UK-employer location context (D-065): ambiguous UK town names qualify for boards that only advertise UK roles | Delivered 2026-10-23 with offline tests; the live Lloyds board previously left four graduate schemes in review |
-| **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests; unattended operation not started |
-| **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four retention horizons remain engineering defaults awaiting explicit Product Owner ratification |
+| **M5.2** | Scheduler and proactive failure notices (D-038), per-source cadence and jitter | Delivered 2026-10-23 with offline tests. Unattended operation began later: the local task was created on 2026-10-23 and has been running since |
+| **M5.3** | Retention policy (D-025) and enforcement | Delivered 2026-10-23 with offline tests; implemented as an explicit command. The four horizons were ratified as implemented on 2026-10-24 (D-067) |
 | **M5.4.0** | Offline reliability preparation for the trial: scheduler failure hardening, restart and duplicate-process behaviour, host operating procedure, trial measurement, retention operations | Delivered 2026-10-23 with offline tests and documentation. No trial started, no scheduled task created |
-| **M5.4** | Seven-day unattended run and the reliability gate | Not started; blocked on the per-source permission decisions |
+| **M5.4** | Seven-day unattended run and the reliability gate | **Running, not yet measured.** Authorised as a limited personal-use beta on 2026-10-24 (D-066), started 2026-10-23T17:30Z; the seven-day window completes on 2026-10-30 |
 
 M5.2 decisions: `sources.next_run_at` is the only schedule state, a missed cycle is never replayed as a burst, and each source runs and reschedules in isolation (D-059). A source that fails three consecutive scans triggers exactly one notice per failure episode, claimed before sending, with a single send attempt and no retry on an ambiguous outcome; a completed scan ends the episode (D-060).
 
 M5.2 acceptance evidence: `tests/test_scheduler.py` (due-ness, cadence, jitter, disabled sources, per-source failure isolation, one notice per streak, recovery then a second streak, no notice without a chat id, ambiguous notice recorded and not retried, partial scans not counted as failures, restart resuming from persisted `next_run_at`, no burst after ten missed cycles, queued alerts delivered after a restart, bounded loop with capped sleeps, baseline-then-new-role flow) and `tests/test_cli_schedule.py` (`schedule --once`, nothing due on the second pass, bounded loop, `status` showing the next run, Telegram optional).
 
-Blockers and limits for M5.2:
+Blockers and limits for M5.2 (as delivered on 2026-10-23; the first three are now closed):
 
-- **Unattended polling is not started.** `schedule` without `--once` runs a loop, but nothing runs it in the background and no deployment exists.
-- **The retention horizons (D-025) are implemented but not ratified**, so the seven-day run cannot yet be judged against an agreed retention policy.
-- **Per-source permission decisions (D-027) are unresolved**; AC-19 still blocks deployment of Palantir and any other source.
-- The loop is single-process and single-threaded by design; there is no supervisor, restart-on-crash, or alerting if the process itself dies. That belongs to M5.4's reliability gate.
+- ~~**Unattended polling is not started.**~~ Closed 2026-10-23: the Windows scheduled task runs `schedule --once` every five minutes against the operator's own config.
+- ~~**The retention horizons (D-025) are implemented but not ratified.**~~ Closed 2026-10-24: ratified as implemented (D-067).
+- ~~**Per-source permission decisions (D-027) are unresolved.**~~ Closed 2026-10-24: replaced by the Product Owner's blanket personal-use risk acceptance (D-066), with the access basis recorded per catalogue entry (D-087).
+- Still true: the loop is single-process and single-threaded by design; there is no supervisor, restart-on-crash, or alerting if the process itself dies. Host availability is the operator's responsibility and shows up as missing scans in `report`, which is how AC-20 distinguishes host downtime from scheduler failure.
 
-M5.3 decisions: the retention policy in D-025 follows the shape already proposed in architecture 5.3, and pruning is an explicit, bounded, idempotent command that never runs during a scan (D-061). Batches advance in a deterministic order, notification error text ages from the latest delivery attempt, a dry run predicts exactly one real invocation, and `truncated` reports remaining work in every phase (D-062). Implementation status is not approval: the 30 / 365 / 90 / 90-day horizons are engineering defaults that the Product Owner has not yet ratified.
+M5.3 decisions: the retention policy in D-025 follows the shape already proposed in architecture 5.3, and pruning is an explicit, bounded, idempotent command that never runs during a scan (D-061). Batches advance in a deterministic order, notification error text ages from the latest delivery attempt, a dry run predicts exactly one real invocation, and `truncated` reports remaining work in every phase (D-062). The 30 / 365 / 90 / 90-day horizons were ratified as implemented on 2026-10-24 (D-067).
 
 M5.3 acceptance evidence: `tests/test_retention.py` (open jobs never pruned or stripped; closed content cleared only past 30 days while identity stays; closed identity and its notifications deleted past 12 months; referenced scans — first-seen and baseline — preserved while unreferenced old scans are deleted; delivery error text cleared with the outcome retained; idempotent second run; batch limits with truncation reporting; dry run changes nothing; invalid policies rejected; a retained closed role and a retained open role both avoid re-alerting after pruning; a scan never prunes; CLI dry-run, apply, and invalid-policy paths). The D-062 corrective pass adds: batches advancing past roles that never had notifications (the case that previously stopped early); a batch limit stopping between batches with `PRAGMA foreign_key_check` clean; seven expiring roles converging over repeated bounded runs; a recent error on an old notification retained while an old error is cleared and a NULL `last_attempt_at` falling back to creation time; dry-run counts equal to the same real run with nothing written; and `truncated` true then false in each of the four cleanup phases.
 

@@ -61,6 +61,10 @@ python -m jobscout report --days 7
 # Send the roles that already match, once (does not queue alerts or touch the database)
 python -m jobscout digest --dry-run
 python -m jobscout digest
+
+# Prove the Telegram delivery path with one labelled message (no job, no alert state)
+python -m jobscout notify-test --dry-run
+python -m jobscout notify-test
 ```
 
 ## First usable session
@@ -74,6 +78,12 @@ does not disturb baselining or deduplication — so the same role can never be a
 python -m jobscout digest --dry-run   # preview the messages
 python -m jobscout digest             # send them to the configured chat
 ```
+
+`jobscout notify-test` answers a different question — "can this machine reach my chat at all?"
+— with one message that says it is a delivery check rather than a role. It records the attempt
+in a `delivery_checks` table, never in the alert history, and it changes no job state. It is
+worth keeping the distinction in mind: a passing check proves the token, chat id and transport
+work, while only a genuinely new matching role proves the matching-to-alert path (D-088).
 
 ## Live validation (any configured source)
 
@@ -163,6 +173,11 @@ one-source config meaning one source. Options are validated when the configurati
 option the adapter does not read, or a required one that is missing, fails with a message
 naming the file, the source and the key. Two enabled sources that watch the same employer, or
 read the same feed, produce a warning, because deduplication is per source id.
+
+Each catalogue file also carries `access_note` — one line naming the public endpoint it reads and
+the hygiene applied (one request per scan, page caps, request spacing, a search narrowing). It is
+required, because the access basis should travel with the employer rather than live in a paragraph
+somewhere else (D-087); `config validate` names the sources in a `[[sources]]` block that omit it.
 
 `jobscout sources list` prints every source with its adapter, state, match counts and whether
 it has been validated (and when); `jobscout status --brief` gives one line per source and shows
@@ -256,6 +271,8 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 - `--once` runs one pass and exits; without it the command loops until interrupted. Nothing runs in the background on its own, and `schedule` is not deployed anywhere.
 
 **Failure notices (D-010, D-038):** a source that fails three consecutive scans produces exactly one message — employer, consecutive failure count, last error, and a pointer to `jobscout status`. The notice is claimed in the database before sending, so a long outage cannot spam you; a completed scan ends the episode, and a later outage notifies again. A partial scan is not a failure. One send attempt is made, and an ambiguous outcome is recorded rather than retried. `jobscout status` shows the next run and the failure-notice outcome per source.
+
+**Shared connectivity outages (D-086):** when several sources fail because the connection never opened — DNS failures, a refused connection — they are one problem, so they produce one message naming the affected employers instead of one message each, and further sources caught by the same outage are recorded silently for two hours. Timeouts, HTTP errors and parser failures keep their own notice, because those can belong to one employer. Per-source health is unaffected: `status` and `report` still show every source's own state.
 
 **Trial measurement:** `jobscout report --days 7` reads the database and prints a scorecard per source — scans against the cycles its cadence implies, complete/partial/failed counts, longest gap and missed episodes, mean scheduling delay, consecutive failures, and delivery outcomes for the window. It writes nothing and contacts nothing. Availability is inferred from scans per expected cycle; nothing records a process heartbeat, so the report says so rather than claiming the process was up. See [docs/runbook.md](docs/runbook.md) for the operating procedure and the Windows Task Scheduler preparation.
 

@@ -3,6 +3,7 @@
 id = "wise"
 employer = "Wise"
 adapter = "sitemap_html"
+access_note = "public sitemap index plus job pages on wise.jobs, GET only, 0.5s between detail requests, 400-page cap per scan"
 cadence_minutes = 30
 
 [options]

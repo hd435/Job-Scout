@@ -2,6 +2,7 @@
 id = "lloyds_graduate"
 employer = "Lloyds Banking Group"
 adapter = "workday"
+access_note = "public Workday careers site (CXS API at lbg.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200"
 cadence_minutes = 30
 
 [options]

@@ -314,6 +314,35 @@ last_error TEXT NULL
 UNIQUE(chat_id, job_id)
 ```
 
+**outage_notices** — one row per aggregated connectivity notice (D-086)
+
+```text
+id INTEGER PRIMARY KEY
+chat_id TEXT NOT NULL
+outcome TEXT NOT NULL          -- sent | failed | ambiguous
+source_ids TEXT NOT NULL       -- JSON array of the sources the notice covered
+source_count INTEGER NOT NULL
+created_at TEXT NOT NULL
+last_error TEXT NULL
+```
+
+**delivery_checks** — one row per `jobscout notify-test` (D-088)
+
+```text
+id INTEGER PRIMARY KEY
+chat_id TEXT NOT NULL
+outcome TEXT NOT NULL          -- sent | failed | ambiguous | retryable
+telegram_message_id TEXT NULL
+created_at TEXT NOT NULL
+last_error TEXT NULL
+```
+
+Both tables are deliberately separate from `notifications`: that table is the record of what the
+product told the user *about a role*, and neither an outage notice nor a delivery test is one.
+`delivery_checks` is append-only and touched only by an explicit command; `outage_notices` is
+written only when an aggregated notice is attempted, and its most recent `sent` row is what opens
+the quiet window.
+
 ### 5.2 Indices and state queries
 
 - `jobs(source_id, status)` for open-role scans.
@@ -322,7 +351,7 @@ UNIQUE(chat_id, job_id)
 - `notifications(status)` for later outbox processing.
 - Status queries should expose `baseline_completed_at`, last scan status/completeness, records seen/parsed, consecutive failures, and recent notification states.
 
-### 5.3 Retention policy (implemented, D-025; horizons awaiting Product Owner ratification)
+### 5.3 Retention policy (implemented, D-025; horizons ratified as implemented, D-067)
 
 Active data is never pruned, however old it is: source rows, open jobs, and any scan that a
 job or a source still points at. Everything else ages out:
@@ -470,6 +499,7 @@ Rules:
 - A failed or partial scan never establishes baseline, alerts new roles, or increments closure misses.
 - Bounded retries run inside a scan; exhausted retries produce a failed scan and a source failure count.
 - Three consecutive source failures trigger one failure notice, with no repeated spam until recovery. A notice whose delivery failed is retried up to three times per episode (the failure that blocked the notice is usually the one being reported); an ambiguous notice is never retried, and a completed scan resets the budget (D-060).
+- Notices are decided once per pass, after every due source has run, so failures sharing a cause can be grouped (D-086). Only errors where the connection never opened (`connection failed:` from `http.connection_never_opened`) are grouped: two or more in one pass produce a single aggregated message, and a `sent` aggregate opens a 120-minute quiet window in which further such failures are claimed and recorded without a second message. Timeouts, HTTP errors and parser failures stay per source. Each covered source is still claimed individually through the same `sources.failure_notice_*` state, so an episode cannot notify twice and a completed scan still ends it.
 - The status command must distinguish success, empty success, partial, and failed.
 - Notification failures are handled by a persisted state machine (`pending`, `sent`, `ambiguous`, `failed`). Exactly-once external delivery is not assumed: an ambiguous outcome is recorded and not retried automatically (D-024), transient failures stay `pending` for a later pass, permanent rejections become `failed`, and a `sent` row is never re-sent.
 - Trial measurement is a read-only projection over `scans`, `sources`, and `notifications` (`jobscout report`, D-064). No heartbeat or measurement-only state is recorded, so "availability" means "scans appeared when the cadence said they should".
