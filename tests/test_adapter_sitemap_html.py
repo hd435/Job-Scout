@@ -27,13 +27,13 @@ ARM_JOB_2 = "https://careers.arm.com/job/manchester/graduate-software-engineer/8
 def wise_adapter(**kwargs) -> SitemapHtmlAdapter:
     kwargs.setdefault("sleep", lambda _seconds: None)
     kwargs.setdefault("request_delay", 0.0)
-    return SitemapHtmlAdapter(profile="wise", **kwargs)
+    return SitemapHtmlAdapter(**kwargs)
 
 
 def arm_adapter(**kwargs) -> SitemapHtmlAdapter:
     kwargs.setdefault("sleep", lambda _seconds: None)
     kwargs.setdefault("request_delay", 0.0)
-    return SitemapHtmlAdapter(profile="arm", **kwargs)
+    return SitemapHtmlAdapter(**kwargs)
 
 
 def wise_documents(html_payloads: dict[str, str], **overrides) -> dict[str, object]:
@@ -96,7 +96,7 @@ def test_no_matching_job_urls_makes_the_scan_partial(wise, fake_html_http) -> No
     result = wise_adapter().fetch_scan(wise, client)
 
     assert result.status is ScanStatus.PARTIAL
-    assert "matched the wise job URL pattern" in (result.error_summary or "")
+    assert "matched options.job_url_pattern" in (result.error_summary or "")
 
 
 def test_empty_urlset_is_empty_success(wise, fake_html_http) -> None:
@@ -165,18 +165,84 @@ def test_duplicate_job_ids_are_skipped(wise, fake_html_http) -> None:
     assert result.records_seen == 1
 
 
-def test_unknown_profile_fails_clearly(wise, fake_html_http) -> None:
+def test_a_missing_url_pattern_fails_clearly(wise, fake_html_http) -> None:
     misconfigured = type(wise)(
         id="mystery",
         employer="Mystery",
         adapter="sitemap_html",
-        options={"profile": "mystery"},
+        options={"sitemap_urls": ["https://example.test/sitemap.xml"]},
     )
 
-    result = SitemapHtmlAdapter(profile=None).fetch_scan(misconfigured, fake_html_http())
+    result = SitemapHtmlAdapter().fetch_scan(misconfigured, fake_html_http())
 
     assert result.status is ScanStatus.FAILED
-    assert "unknown sitemap profile 'mystery'" in (result.error_summary or "")
+    assert "requires options.job_url_pattern" in (result.error_summary or "")
+
+
+def test_a_pattern_without_an_id_group_fails_clearly(wise, fake_html_http) -> None:
+    misconfigured = type(wise)(
+        id="mystery",
+        employer="Mystery",
+        adapter="sitemap_html",
+        options={
+            "sitemap_urls": ["https://example.test/sitemap.xml"],
+            "job_url_pattern": r"^https://example\.test/job/[^/]+$",
+        },
+    )
+
+    result = SitemapHtmlAdapter().fetch_scan(misconfigured, fake_html_http())
+
+    assert result.status is ScanStatus.FAILED
+    assert "(?P<id>" in (result.error_summary or "")
+
+
+def test_an_invalid_regex_fails_clearly(wise, fake_html_http) -> None:
+    misconfigured = type(wise)(
+        id="mystery",
+        employer="Mystery",
+        adapter="sitemap_html",
+        options={
+            "sitemap_urls": ["https://example.test/sitemap.xml"],
+            "job_url_pattern": "([unclosed",
+        },
+    )
+
+    result = SitemapHtmlAdapter().fetch_scan(misconfigured, fake_html_http())
+
+    assert result.status is ScanStatus.FAILED
+    assert "not a valid regex" in (result.error_summary or "")
+
+
+def test_a_missing_sitemap_fails_clearly(wise, fake_html_http) -> None:
+    misconfigured = type(wise)(
+        id="mystery",
+        employer="Mystery",
+        adapter="sitemap_html",
+        options={"job_url_pattern": r"^https://example\.test/(?P<id>\d+)$"},
+    )
+
+    result = SitemapHtmlAdapter().fetch_scan(misconfigured, fake_html_http())
+
+    assert result.status is ScanStatus.FAILED
+    assert "requires options.sitemap_urls" in (result.error_summary or "")
+
+
+def test_location_from_url_needs_a_location_group(wise, fake_html_http) -> None:
+    misconfigured = type(wise)(
+        id="mystery",
+        employer="Mystery",
+        adapter="sitemap_html",
+        options={
+            "sitemap_urls": ["https://example.test/sitemap.xml"],
+            "job_url_pattern": r"^https://example\.test/job/(?P<id>\d+)$",
+            "location_from": "url",
+        },
+    )
+
+    result = SitemapHtmlAdapter().fetch_scan(misconfigured, fake_html_http())
+
+    assert result.status is ScanStatus.FAILED
+    assert "(?P<location>" in (result.error_summary or "")
 
 
 # field mapping -----------------------------------------------------------
@@ -230,7 +296,9 @@ def test_page_without_json_ld_falls_back_to_the_heading(arm, html_payloads, fake
     fallback = result.jobs[1]
     assert fallback.title == "Graduate Software Engineer"
     assert fallback.posted_at == date(2026, 10, 18)
-    assert fallback.location_raw == ""
+    # Arm publishes the town in the path, so `location_from = "url"` recovers it even
+    # when the page carries no JobPosting block.
+    assert fallback.location_raw == "manchester"
     assert fallback.location_normalized.ambiguous is True
     assert result.status is ScanStatus.SUCCESS
     assert "had no JobPosting JSON-LD" in (result.error_summary or "")
@@ -343,11 +411,11 @@ def test_detail_fetch_cap_and_delay_can_come_from_source_options(
         id="wise",
         employer="Wise",
         adapter="sitemap_html",
-        options={"profile": "wise", "max_detail_fetches": 2, "request_delay_seconds": 0.25},
+        options={**wise.options, "max_detail_fetches": 2, "request_delay_seconds": 0.25},
     )
     client = fake_html_http(wise_documents(html_payloads))
 
-    result = SitemapHtmlAdapter(profile="wise", request_delay=0.0, sleep=delays.append).fetch_scan(
+    result = SitemapHtmlAdapter(request_delay=0.0, sleep=delays.append).fetch_scan(
         configured, client
     )
 
@@ -361,7 +429,7 @@ def test_detail_requests_are_spaced_by_the_configured_delay(
     wise, html_payloads, fake_html_http
 ) -> None:
     delays: list[float] = []
-    adapter = SitemapHtmlAdapter(profile="wise", request_delay=0.5, sleep=delays.append)
+    adapter = SitemapHtmlAdapter(request_delay=0.5, sleep=delays.append)
 
     adapter.fetch_scan(wise, fake_html_http(wise_documents(html_payloads)))
 

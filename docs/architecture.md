@@ -407,6 +407,23 @@ Logs are outside the database; host log rotation (14 to 30 days) remains a deplo
   stored revision, or the sitemap revision changed. Detail requests are spaced by a
   configurable delay (default 0.5s) and bounded per scan.
 
+### 6.x Source shapes and option validation
+
+Four adapter shapes cover the intended employers, and each is configured rather than coded:
+
+| Adapter | Feed | Identity |
+|---|---|---|
+| `lever` | one JSON list | record `id` |
+| `greenhouse` | `{jobs: [...]}` envelope | record `id` |
+| `workday` | paginated POST `{total, jobPostings[]}` | requisition id from `externalPath` |
+| `sitemap_html` | sitemap index/urlset, then JSON-LD job pages | named `(?P<id>...)` group in `job_url_pattern` |
+
+`source_options.py` declares the accepted and required option keys per adapter and is used by the
+configuration loader (D-077), so a source added by configuration fails loudly at load rather than
+scanning with a half-understood shape. `validate.py` infers the request budget and the shape
+contract from the adapter as well (D-078), which is what lets a new source be checked before it is
+enabled.
+
 ## 7. Matcher boundaries
 
 The matcher is a pure, deterministic function:

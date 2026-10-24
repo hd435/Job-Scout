@@ -362,7 +362,7 @@ and some of their gates have since been superseded:
 |---|---|---|
 | **0.1** | Recoverable failure notices (bounded retry after a failed send), honest non-JSON diagnostics, documentation brought into line with the running product | Delivered 2026-10-24 with tests; the failure-notice change came directly from the beta's eleven-scan Lloyds outage |
 | **0.2** | `[preferences]`: role families, employment types, seniority, title exclusions and location scope as configuration; `config show` / `config validate`; the active scope fingerprinted into every stored decision | Delivered 2026-10-24 with tests and [configuration.md](./configuration.md); defaults verified decision-for-decision against the 105 roles in the beta database |
-| **0.3** | Source catalogue: config-only Lever/Greenhouse/Workday definitions, a generic sitemap source replacing the in-code `wise`/`arm` profiles, `sources list`/`add`/`disable`, duplicate-employer guard, `validate` for any configured source | Not started |
+| **0.3** | Source catalogue: the generic sitemap/JSON-LD source replacing the in-code `wise`/`arm` profiles, a validated per-adapter option schema, the duplicate employer/feed guard, `sources list`, and `validate` for any configured source | Delivered 2026-10-24 with tests. `sources add`/`disable` were deferred by the Product Owner: editing the TOML is sufficient for six sources |
 | **0.4** | Barclays, Wise and Arm validated live; all six researched employers baselining on the operator's machine | Not started |
 
 ---

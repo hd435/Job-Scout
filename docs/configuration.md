@@ -52,19 +52,51 @@ every source you want to run.
 
 ### 3.1 Adapter options
 
+Every key below is validated when the configuration loads: an option the adapter does not read,
+or a required option that is missing, is an error naming the source and the key
+(`src/jobscout/source_options.py` is the single source of truth).
+
 | Adapter | Required options | Optional |
 |---|---|---|
-| `lever` | `site` (board name) | — |
-| `greenhouse` | `board` | — |
-| `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_detail_lookups`, `uk_employer` |
-| `sitemap_html` | `profile` (in-code profile name: `wise` or `arm`) | `sitemap`, `max_detail_fetches`, `request_delay_seconds`, `uk_employer` |
+| `lever` | — | `site` (defaults to the source id), `uk_employer` |
+| `greenhouse` | — | `board` (defaults to the source id), `uk_employer` |
+| `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_pages`, `uk_employer` |
+| `sitemap_html` | `job_url_pattern` and `sitemap_urls` (or `sitemap`) | `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches`, `request_delay_seconds`, `uk_employer` |
 
 `uk_employer = true` marks a source whose board only advertises UK roles. It relaxes the
-town-name collision check (Manchester, Halifax, …) so a UK-only board does not leave those roles
-in review for ever. It never makes a non-UK location qualify (D-065).
+town-name collision check (Manchester, Halifax, and other names that exist abroad) so a UK-only
+board does not leave those roles in review for ever. It never makes a non-UK location qualify
+(D-065).
 
-Adding an employer whose *kind* of access is not in that table still needs an adapter. That is
-increment 0.3, not configuration.
+### 3.2 The sitemap/JSON-LD adapter (D-076)
+
+One adapter covers any careers site that publishes a sitemap of job URLs whose pages carry a
+schema.org `JobPosting` JSON-LD block. A new employer of that shape needs no Python change.
+
+| Key | Meaning |
+|---|---|
+| `sitemap_urls` | Array of sitemap URLs. A sitemap **index** is followed one level, so list the index |
+| `sitemap` | Single sitemap URL; shorthand for a one-entry `sitemap_urls` |
+| `sitemap_child_pattern` | Regex; when an index lists several child sitemaps, only matching children are read. Omit to read all of them |
+| `job_url_pattern` | **Required.** Regex matched against each sitemap URL. It must contain a named group `(?P<id>...)`, which becomes the stable source job id. Only matching URLs are ever requested |
+| `location_from` | `"url"` takes the town from a named group `(?P<location>...)` in `job_url_pattern`, for pages that publish no JSON-LD address. Hyphens become spaces |
+| `max_sitemap_documents` | Cap on sitemap documents per scan (default 5) |
+| `max_detail_fetches` | Cap on job pages fetched per scan (default 400) |
+| `request_delay_seconds` | Pause between job-page requests (default 0.5) |
+
+Behaviour worth knowing before adding a site:
+
+- A role's `lastmod` is its revision. An unchanged revision is not re-fetched; the role is
+  recorded as observed only, which keeps a 400-role board cheap after the first scan.
+- A page with no JSON-LD still yields a title from its heading. Its location stays unknown (or
+  comes from the URL with `location_from = "url"`), which keeps the role in review rather than
+  guessing.
+- A scan that matches no URLs, or hits a cap, is `partial`, not `success`. Partial scans never
+  establish a baseline, never alert, and never close roles.
+- TOML interprets backslashes inside double-quoted strings. Write a regex in single quotes
+  (`'^https://example.test/jobs/(?P<id>\\d+)$'`) or double every backslash.
+
+A source whose *kind* of access is none of those four shapes still needs an adapter.
 
 ## 4. `[preferences]`
 

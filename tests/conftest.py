@@ -255,22 +255,20 @@ def monzo() -> SourceConfig:
 
 @pytest.fixture
 def wise() -> SourceConfig:
-    return SourceConfig(
-        id="wise",
-        employer="Wise",
-        adapter="sitemap_html",
-        options={"profile": "wise"},
-    )
+    """The shipped Wise defaults: a sitemap index and a `-jid-<id>` URL pattern."""
+    return _default_source("wise")
 
 
 @pytest.fixture
 def arm() -> SourceConfig:
-    return SourceConfig(
-        id="arm",
-        employer="Arm",
-        adapter="sitemap_html",
-        options={"profile": "arm"},
-    )
+    """The shipped Arm defaults: one urlset, town in the path, location from the URL."""
+    return _default_source("arm")
+
+
+def _default_source(source_id: str) -> SourceConfig:
+    from jobscout.config import DEFAULT_SOURCES
+
+    return next(source for source in DEFAULT_SOURCES if source.id == source_id)
 
 
 @pytest.fixture

@@ -1,20 +1,20 @@
-"""Sitemap discovery plus server-rendered job page adapter (Wise and Arm in M4).
+"""Sitemap discovery plus server-rendered job page adapter.
 
-**Assumptions pending validation against real payloads.** No live request has been made;
-everything below is exercised only against synthetic fixtures.
+A generic source shape, driven entirely by configuration (v0.5 increment 0.3):
 
-1. Discovery: a sitemap index or urlset lists job URLs with a `lastmod`. Wise publishes a
-   vacancy sitemap referenced from its sitemap index; Arm's sitemap is a single urlset.
-2. Identity: the source job id is taken from the job URL by the profile's pattern rather
-   than from the page body.
-3. Detail pages publish a schema.org `JobPosting` JSON-LD block. When they do not, only
-   the title is recovered and the location stays unknown, which makes the role a
-   `needs_review` candidate instead of guessing a location.
-4. `lastmod` changes whenever a role's details change. A role whose stored `lastmod`
-   still matches is not re-fetched; its details are kept and only the observation is
-   recorded.
-5. Both sitemaps allow crawling; Wise query-string job pages and Arm search-result paths
-   are never requested. Detail requests are spaced by `request_delay` seconds.
+1. Discovery: one or more sitemaps (an index is followed one level) list job URLs with a
+   `lastmod`.
+2. Identity: the source job id comes from a named `id` group in `job_url_pattern`, so the
+   URL is the identifier and the page body never has to be trusted for it.
+3. Detail pages publish a schema.org `JobPosting` JSON-LD block. Without one, only the
+   title is recovered: by default the location stays unknown, which keeps the role in
+   review rather than guessing. `location_from = "url"` uses a named `location` group from
+   the URL instead, for sources that put the town in the path.
+4. `lastmod` changes whenever a role's details change. A role whose stored `lastmod` still
+   matches is not re-fetched; its details are kept and only the observation is recorded.
+5. Detail requests are spaced by `request_delay_seconds`, sitemap documents and detail
+   fetches are capped, and only URLs matching the pattern are ever requested, so a
+   search-result path can never be crawled.
 """
 
 from __future__ import annotations
@@ -48,30 +48,73 @@ class HtmlClient(Protocol):
 
 
 @dataclass(frozen=True)
-class _Profile:
-    name: str
-    sitemap_url: str
+class _SourceSpec:
+    """Resolved from `[sources.options]`: what to read and how to recognise a role."""
+
+    sitemaps: tuple[str, ...]
     job_url_pattern: re.Pattern[str]
-    sitemap_child_pattern: re.Pattern[str] | None = None
+    child_pattern: re.Pattern[str] | None
+    location_from_url: bool
 
 
-_PROFILES: dict[str, _Profile] = {
-    "wise": _Profile(
-        name="wise",
-        sitemap_url="https://wise.jobs/sitemap.xml",
-        sitemap_child_pattern=re.compile(r"vacanc", re.IGNORECASE),
-        job_url_pattern=re.compile(
-            r"^https://wise\.jobs/jobs/(?P<slug>[A-Za-z0-9\-]+?)-jid-(?P<id>\d+)/?$"
-        ),
-    ),
-    "arm": _Profile(
-        name="arm",
-        sitemap_url="https://careers.arm.com/sitemap.xml",
-        job_url_pattern=re.compile(
-            r"^https://careers\.arm\.com/job/(?P<city>[^/?#]+)/(?P<slug>[^/?#]+)/(?P<id>\d+)/?$"
-        ),
-    ),
-}
+class _Misconfigured(Exception):
+    """Options that cannot describe a usable source; reported as a failed scan."""
+
+
+def _option_spec(config: SourceConfig) -> _SourceSpec:
+    raw_pattern = str(config.options.get("job_url_pattern") or "").strip()
+    if not raw_pattern:
+        raise _Misconfigured(
+            "sitemap_html requires options.job_url_pattern, a regular expression matching"
+            " job URLs with a named group (?P<id>...)"
+        )
+    try:
+        job_url_pattern = re.compile(raw_pattern)
+    except re.error as exc:
+        raise _Misconfigured(f"options.job_url_pattern is not a valid regex: {exc}") from exc
+    if "id" not in job_url_pattern.groupindex:
+        raise _Misconfigured(
+            "options.job_url_pattern needs a named group (?P<id>...) to give each role a"
+            " stable source job id"
+        )
+
+    child_raw = str(config.options.get("sitemap_child_pattern") or "").strip()
+    try:
+        child_pattern = re.compile(child_raw) if child_raw else None
+    except re.error as exc:
+        raise _Misconfigured(f"options.sitemap_child_pattern is not a valid regex: {exc}") from exc
+
+    raw_urls = config.options.get("sitemap_urls")
+    sitemaps: list[str] = []
+    if raw_urls is not None:
+        if not isinstance(raw_urls, list) or not all(isinstance(url, str) for url in raw_urls):
+            raise _Misconfigured("options.sitemap_urls must be an array of URLs")
+        sitemaps.extend(url.strip() for url in raw_urls if url.strip())
+    single = str(config.options.get("sitemap") or "").strip()
+    if single and single not in sitemaps:
+        sitemaps.insert(0, single)
+    if not sitemaps:
+        raise _Misconfigured(
+            "sitemap_html requires options.sitemap_urls (or options.sitemap) to find the board"
+        )
+
+    location_from = str(config.options.get("location_from") or "").strip().lower()
+    if location_from not in {"", "url"}:
+        raise _Misconfigured(
+            f"options.location_from = {location_from!r} is not supported (only 'url', or omit it)"
+        )
+    if location_from == "url" and "location" not in job_url_pattern.groupindex:
+        raise _Misconfigured(
+            "options.location_from = 'url' needs a named group (?P<location>...) in job_url_pattern"
+        )
+
+    return _SourceSpec(
+        sitemaps=tuple(sitemaps),
+        job_url_pattern=job_url_pattern,
+        child_pattern=child_pattern,
+        location_from_url=location_from == "url",
+    )
+
 
 _CURRENCY_SYMBOLS = {"GBP": "£", "USD": "$", "EUR": "€"}
 _SALARY_UNITS = {
@@ -88,6 +131,7 @@ class _SitemapEntry:
     job_id: str
     url: str
     revision: str | None
+    location_hint: str | None = None
 
 
 class SitemapHtmlAdapter:
@@ -96,13 +140,11 @@ class SitemapHtmlAdapter:
     def __init__(
         self,
         *,
-        profile: str | None = None,
         max_sitemap_documents: int = SITEMAP_MAX_DOCUMENTS,
         max_detail_fetches: int = SITEMAP_MAX_DETAIL_FETCHES,
         request_delay: float = SITEMAP_REQUEST_DELAY,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self._profile_name = profile
         self._max_sitemap_documents = max_sitemap_documents
         self._max_detail_fetches = max_detail_fetches
         self._request_delay = request_delay
@@ -116,20 +158,16 @@ class SitemapHtmlAdapter:
         known: Mapping[str, str | None] | None = None,
     ) -> ScanResult:
         started_at = _now_iso()
-        profile = _resolve_profile(config, self._profile_name)
-        if profile is None:
-            return _failed(
-                config,
-                started_at,
-                f"unknown sitemap profile '{config.options.get('profile')}';"
-                f" known profiles: {', '.join(sorted(_PROFILES))}",
-            )
+        try:
+            spec = _option_spec(config)
+        except _Misconfigured as exc:
+            return _failed(config, started_at, str(exc))
 
         notes: list[str] = []
         incomplete = False
         try:
             entries, discovery_notes, discovery_incomplete = self._collect_entries(
-                http_client, profile, config
+                http_client, spec, config
             )
         except HttpError as exc:
             return _failed(config, started_at, exc.summary())
@@ -138,12 +176,10 @@ class SitemapHtmlAdapter:
         notes.extend(discovery_notes)
         incomplete = incomplete or discovery_incomplete
 
-        matched, duplicates = _match_entries(entries, profile)
+        matched, duplicates = _match_entries(entries, spec)
         skipped: list[SkipReason] = list(duplicates)
         if entries and not matched:
-            notes.append(
-                f"none of {len(entries)} sitemap URL(s) matched the {profile.name} job URL pattern"
-            )
+            notes.append(f"none of {len(entries)} sitemap URL(s) matched options.job_url_pattern")
             incomplete = True
 
         to_fetch, observed_only = _plan_refreshes(matched, known)
@@ -169,7 +205,7 @@ class SitemapHtmlAdapter:
             except HttpError as exc:
                 skipped.append(SkipReason(entry.job_id, "detail_request_failed", exc.summary()))
                 continue
-            mapped, used_fallback = _map_page(markup, entry, config)
+            mapped, used_fallback = _map_page(markup, entry, config, spec)
             if isinstance(mapped, SkipReason):
                 skipped.append(mapped)
                 continue
@@ -181,7 +217,8 @@ class SitemapHtmlAdapter:
             # unknown location keeps the role out of automatic matches.
             notes.append(
                 f"{fallback_pages} page(s) had no JobPosting JSON-LD;"
-                " title-only fallback used, location unknown"
+                " title-only fallback used"
+                + (" (location taken from the URL)" if spec.location_from_url else "")
             )
 
         refreshed = {job.source_job_id for job in jobs}
@@ -213,15 +250,14 @@ class SitemapHtmlAdapter:
     def _collect_entries(
         self,
         http_client: HtmlClient,
-        profile: _Profile,
+        spec: _SourceSpec,
         config: SourceConfig,
     ) -> tuple[list[tuple[str, str | None]], list[str], bool]:
         """Return (loc, lastmod) pairs, following one index level."""
-        root_url = str(config.options.get("sitemap") or profile.sitemap_url)
         notes: list[str] = []
         incomplete = False
         documents = 0
-        pending = [root_url]
+        pending = list(dict.fromkeys(spec.sitemaps))
         entries: list[tuple[str, str | None]] = []
 
         while pending:
@@ -241,11 +277,7 @@ class SitemapHtmlAdapter:
                 selected = [
                     child
                     for child in children
-                    if child
-                    and (
-                        profile.sitemap_child_pattern is None
-                        or profile.sitemap_child_pattern.search(child)
-                    )
+                    if child and (spec.child_pattern is None or spec.child_pattern.search(child))
                 ]
                 if not selected:
                     notes.append(f"no child sitemap matched in {url}")
@@ -265,11 +297,6 @@ class SitemapHtmlAdapter:
 
 class _MalformedSitemap(Exception):
     """A sitemap that cannot be parsed or is not a sitemap at all."""
-
-
-def _resolve_profile(config: SourceConfig, fallback: str | None) -> _Profile | None:
-    name = str(config.options.get("profile") or fallback or config.id).strip().lower()
-    return _PROFILES.get(name)
 
 
 def _option_int(options: dict[str, Any], name: str, fallback: int) -> int:
@@ -301,13 +328,13 @@ def _text(element: ElementTree.Element | None) -> str | None:
 
 
 def _match_entries(
-    entries: list[tuple[str, str | None]], profile: _Profile
+    entries: list[tuple[str, str | None]], spec: _SourceSpec
 ) -> tuple[list[_SitemapEntry], list[SkipReason]]:
     matched: list[_SitemapEntry] = []
     skipped: list[SkipReason] = []
     seen: set[str] = set()
     for loc, lastmod in entries:
-        match = profile.job_url_pattern.match(loc)
+        match = spec.job_url_pattern.match(loc)
         if match is None:
             continue
         job_id = (match.groupdict().get("id") or "").strip()
@@ -318,7 +345,9 @@ def _match_entries(
             skipped.append(SkipReason(job_id, "duplicate_source_job_id", loc))
             continue
         seen.add(job_id)
-        matched.append(_SitemapEntry(job_id=job_id, url=loc, revision=lastmod))
+        groups = match.groupdict()
+        hint = (groups.get("location") or "").strip() or None
+        matched.append(_SitemapEntry(job_id=job_id, url=loc, revision=lastmod, location_hint=hint))
     return matched, skipped
 
 
@@ -340,7 +369,10 @@ def _plan_refreshes(
 
 
 def _map_page(
-    markup: str, entry: _SitemapEntry, config: SourceConfig
+    markup: str,
+    entry: _SitemapEntry,
+    config: SourceConfig,
+    spec: _SourceSpec,
 ) -> tuple[Job | SkipReason, bool]:
     document = HtmlDocument(markup)
     posting = document.job_posting()
@@ -355,7 +387,7 @@ def _map_page(
                 source_job_id=entry.job_id,
                 employer=config.employer,
                 title=title,
-                location_raw=_locations_text(posting),
+                location_raw=_locations_text(posting) or _url_location(entry, spec),
                 url=entry.url,
                 description=strip_html(_text_value(posting.get("description"))),
                 posted_at=_iso_date(posting.get("datePosted")),
@@ -381,7 +413,7 @@ def _map_page(
             source_job_id=entry.job_id,
             employer=config.employer,
             title=title,
-            location_raw="",
+            location_raw=_url_location(entry, spec),
             url=entry.url,
             description=None,
             posted_at=_iso_date(document.times[0]) if document.times else None,
@@ -392,6 +424,13 @@ def _map_page(
         ),
         True,
     )
+
+
+def _url_location(entry: _SitemapEntry, spec: _SourceSpec) -> str:
+    """The town from the URL, for sources that put it there and publish no JSON-LD address."""
+    if spec.location_from_url and entry.location_hint:
+        return entry.location_hint.replace("-", " ")
+    return ""
 
 
 def _locations_text(posting: dict[str, Any]) -> str:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -25,6 +25,7 @@ from .matching import (
     MatchingRules,
     build_rules,
 )
+from .source_options import describe, known_adapters, missing_options, unknown_options
 
 DEFAULT_DB_PATH = Path("data") / "jobscout.db"
 DEFAULT_CONFIG_PATH = Path("config.toml")
@@ -56,6 +57,7 @@ class AppConfig:
     sources: tuple[SourceConfig, ...]
     config_path: Path | None = None
     matching: MatchingRules = DEFAULT_RULES
+    warnings: tuple[str, ...] = ()
 
     def source(self, source_id: str) -> SourceConfig:
         for source in self.sources:
@@ -116,14 +118,30 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         employer="Wise",
         adapter="sitemap_html",
         cadence_minutes=30,
-        options={"profile": "wise", "uk_employer": True},
+        # Wise publishes a sitemap index; the vacancy child sitemap lists job URLs whose
+        # slug ends in `-jid-<id>`.
+        options={
+            "sitemap_urls": ["https://wise.jobs/sitemap.xml"],
+            "sitemap_child_pattern": "vacanc",
+            "job_url_pattern": r"^https://wise\.jobs/jobs/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$",
+            "uk_employer": True,
+        },
     ),
     SourceConfig(
         id="arm",
         employer="Arm",
         adapter="sitemap_html",
         cadence_minutes=30,
-        options={"profile": "arm", "uk_employer": True},
+        # Arm publishes one urlset and puts the town in the path, so a page without
+        # JSON-LD still yields a location.
+        options={
+            "sitemap_urls": ["https://careers.arm.com/sitemap.xml"],
+            "job_url_pattern": (
+                r"^https://careers\.arm\.com/job/(?P<location>[^/?#]+)/[^/?#]+/(?P<id>\d+)/?$"
+            ),
+            "location_from": "url",
+            "uk_employer": True,
+        },
     ),
 )
 
@@ -253,6 +271,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         options = raw.get("options", {})
         if not isinstance(options, dict):
             raise ConfigError(f"sources[{index}].options must be a table")
+        _validate_source_options(source_id, adapter, options)
         sources.append(
             SourceConfig(
                 id=source_id,
@@ -271,7 +290,83 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         sources=tuple(sources),
         config_path=config_path,
         matching=parse_rules(data),
+        warnings=duplicate_source_warnings(sources),
     )
+
+
+def _validate_source_options(source_id: str, adapter: str, options: Mapping[str, Any]) -> None:
+    """Reject options an adapter does not read, and options it cannot work without.
+
+    A source defined by configuration is exactly where a typo is likely, and an ignored
+    option is the worst failure mode: the source loads, scans, and returns the wrong thing.
+    An unknown adapter is left to `config validate`, because the option set for it is
+    unknown by definition and a disabled source should not stop the file loading.
+    """
+    if adapter not in known_adapters():
+        return
+    unknown = unknown_options(adapter, options)
+    if unknown:
+        raise ConfigError(
+            f"source '{source_id}': unknown option(s) for the {adapter} adapter:"
+            f" {', '.join(unknown)} (accepted: {describe(adapter)})"
+        )
+    missing = missing_options(adapter, options)
+    if missing:
+        raise ConfigError(
+            f"source '{source_id}': the {adapter} adapter needs"
+            f" {', '.join(missing)} (accepted: {describe(adapter)})"
+        )
+
+
+def duplicate_source_warnings(sources: Sequence[SourceConfig]) -> tuple[str, ...]:
+    """Warn when two enabled sources watch the same employer or the same feed.
+
+    Neither is fatal - an employer can genuinely publish two boards - but both produce the
+    same role twice under different source ids, and deduplication is per source id.
+    """
+    warnings: list[str] = []
+    seen_employer: dict[str, str] = {}
+    seen_feed: dict[str, str] = {}
+    for source in sources:
+        if not source.enabled:
+            continue
+        employer = " ".join(str(source.employer).casefold().split())
+        other = seen_employer.setdefault(employer, source.id)
+        if other != source.id:
+            warnings.append(
+                f"sources '{other}' and '{source.id}' both monitor '{source.employer}';"
+                " the same role can then alert twice"
+            )
+        for feed in _feed_keys(source):
+            owner = seen_feed.setdefault(feed, source.id)
+            if owner != source.id:
+                warnings.append(
+                    f"sources '{owner}' and '{source.id}' read the same feed ({feed});"
+                    " expect duplicate roles"
+                )
+    return tuple(warnings)
+
+
+def _feed_keys(source: SourceConfig) -> tuple[str, ...]:
+    """The identifying values of a source's feed, normalised for comparison."""
+    options = source.options
+    keys: list[str] = []
+    if source.adapter in {"lever", "greenhouse"}:
+        site = str(options.get("board") or options.get("site") or source.id).casefold()
+        keys.append(f"{source.adapter}:{site}")
+    elif source.adapter == "workday":
+        keys.append(
+            "workday:"
+            + "/".join(str(options.get(key) or "").casefold() for key in ("host", "tenant", "site"))
+        )
+    elif source.adapter == "sitemap_html":
+        urls = options.get("sitemap_urls")
+        if isinstance(urls, list):
+            keys.extend(str(url).strip().casefold() for url in urls if str(url).strip())
+        single = str(options.get("sitemap") or "").strip()
+        if single:
+            keys.append(single.casefold())
+    return tuple(dict.fromkeys(keys))
 
 
 _MATCHING_KEYS = {"extra_family_terms", "extra_exclude_terms"}

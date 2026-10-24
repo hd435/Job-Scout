@@ -75,10 +75,10 @@ python -m jobscout digest --dry-run   # preview the messages
 python -m jobscout digest             # send them to the configured chat
 ```
 
-## Live validation (one source, one request)
+## Live validation (any configured source)
 
-`jobscout validate` makes a **single** read-only request to prove the newest live payload
-still matches what the adapter expects, without touching the database or Telegram:
+`jobscout validate` is a **bounded** read-only check that proves a source's live payload still
+matches what its adapter expects, without touching the database or Telegram:
 
 ```bash
 # Refuses to run without the acknowledgement; no client is even constructed
@@ -92,36 +92,34 @@ python -m jobscout validate --source monzo --confirm-live
 
 # Lloyds Graduate: listing pages only, no detail lookups (Workday)
 python -m jobscout validate --source lloyds_graduate --confirm-live
+
+# Any other configured source, with a recorded payload for the shape comparison
+python -m jobscout validate --source barclays --confirm-live --fixture tests/fixtures/barclays.json
 ```
 
-It prints the request, the live-versus-fixture record counts, the adapter's parse outcome,
-and `PASS`/`FAIL` per check, then exits `0` only when the payload is shape-compatible and
-every record parsed with no skips. Artifacts are capped at five records with descriptions
-truncated, and `data/` is gitignored. A `--fixture` is chosen per source by default
-(Palantir's list-shaped Lever payload, Monzo's enveloped Greenhouse board, or Workday's
-`{total, jobPostings[]}` listing); override it with `--fixture PATH`.
+It prints the request(s), the live-versus-fixture record counts, the adapter's parse outcome and
+`PASS`/`FAIL`, then exits `0` only when the payload is shape-compatible and every record parsed
+with no skips. Artifacts are capped at five records with descriptions truncated, and `data/` is
+gitignored.
 
-Three payload families are supported: a bare JSON list (Lever), an envelope whose roles sit
-in a `jobs` array (Greenhouse), and Workday's `{total, jobPostings[]}` listing response.
-Each source has a `ValidationProfile` naming the fields to watch, the array that holds the
-roles, and how many requests the check may make. Palantir and Monzo use one request; Lloyds
-Graduate allows six, because a Workday listing is a paginated POST. Detail lookups are
-switched off for Lloyds on purpose: the live board has more multi-site postings than a small
-budget can resolve, and placeholder resolution is covered by offline tests. A budget
-violation is refused before the extra request reaches the network.
+The request budget comes from the **adapter**, not the source id, so a source you add yourself is
+covered: Lever and Greenhouse allow one request, Workday allows six (a paginated listing POST),
+and the sitemap adapter allows five (two sitemap documents plus three job pages). A budget
+violation is refused before the extra request reaches the network, and text requests count as
+well as JSON ones. A named profile (Palantir, Monzo, Lloyds Graduate) supplies the fields to
+watch and a bundled fixture; any other source is judged by its adapter's shape, and a JSON source
+without a fixture needs `--fixture PATH` so there is something to compare against.
 
-The committed Palantir fixture is a synthetic trimming (some records have no `createdAt`,
-one carries a deliberately unusable timestamp), so it supplies a key-shape baseline while
-the type contract is enforced on the live payload. The Monzo fixture
-(`tests/fixtures/monzo_validation.json`) is synthetic too and covers only the fields the
-adapter reads, so a field it omits appears as a `WARN`, not a failure.
+Sitemap/HTML sources have no JSON payload to compare. Their `PASS` means the board was found,
+URLs matched `job_url_pattern`, and pages parsed; the report says so rather than pretending a
+shape comparison happened.
 
-What a `PASS` proves: the request(s) reached the board, the payload had the expected envelope
-and field types, and every role mapped without a skip. What it does **not** prove:
-permission for recurring automated access, the correctness of extracted values, matching
-quality on that employer's titles, or anything about scheduling, deduplication or delivery.
-A Workday `PASS` will normally show `complete=no`: detail lookups are capped so the scan is
-partial by design, which is reported as a warning rather than a failure.
+What a `PASS` proves: the request(s) reached the board, the payload had the expected envelope and
+field types, and every role mapped without a skip. What it does **not** prove: permission for
+recurring automated access, the correctness of extracted values, matching quality on that
+employer's titles, or anything about scheduling, deduplication or delivery. A Workday `PASS` will
+normally show `complete=no`: detail lookups are capped so the scan is partial by design, which is
+reported as a warning rather than a failure.
 
 Common options: `--source ID`, `--db PATH`, `--config PATH`, `--fixture PATH`, `--accept-empty`.
 
@@ -133,20 +131,43 @@ Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery
 
 | Source id | Employer | Adapter | State |
 |---|---|---|---|
-| `palantir` | Palantir Technologies | `lever` | **Live-validated**; not currently enabled |
+| `palantir` | Palantir Technologies | `lever` | **Live-validated**; not enabled in the personal beta |
 | `barclays` | Barclays | `workday` | Implemented; synthetic fixtures only |
 | `lloyds_graduate` | Lloyds Banking Group | `workday` | **Live-validated and running**; the `Graduate_careers` site only |
 | `monzo` | Monzo | `greenhouse` | **Live-validated and running** |
 | `wise` | Wise | `sitemap_html` | Implemented; synthetic fixtures only; the vacancies sitemap only |
 | `arm` | Arm | `sitemap_html` | Implemented; synthetic fixtures only; never the `/search-jobs/` path |
 
-`--source` is required while more than one source is configured. The two Workday sources share one adapter: the listing is a read-only POST query that is paginated to the reported `total`, the requisition id is the job identity, and a detail page is fetched only when the listing shows a placeholder location such as "2 Locations".
+`jobscout sources list` prints every configured source with its adapter, cadence and last scan;
+`jobscout config show` prints the effective scope. `--source` is required by `scan` while more
+than one source is enabled.
 
-Wise and Arm share the sitemap+HTML adapter: the sitemap supplies every role URL and its `lastmod`, and a detail page is fetched only when a role is new or its `lastmod` changed. Unchanged roles are recorded as observed without being re-fetched, so an unchanged role is never mistaken for a removed one. Pages are parsed from schema.org `JobPosting` JSON-LD; a page without it contributes only a title, which leaves the location unknown and the role in `needs_review` rather than guessing. Detail requests are spaced by 0.5s and capped per scan.
+The two Workday sources share one adapter: the listing is a read-only POST query paginated to the
+reported `total`, the requisition id is the job identity, and a detail page is fetched only when
+the listing shows a placeholder location such as "2 Locations".
 
-A `--fixture` file feeds list-shaped sources only (Palantir JSON, Workday listing, Monzo board), and a paginated Workday fixture stops as `partial` with a visible note instead of looping. Sitemap-driven sources need several documents, so their offline coverage lives in `tests/test_adapter_sitemap_html.py`.
+Wise and Arm use the sitemap/JSON-LD adapter, which is generic: `sitemap_urls`,
+`job_url_pattern` (with a named `(?P<id>...)` group) and an optional `location_from = "url"`. The
+sitemap supplies every role URL and its `lastmod`; a page is fetched only when a role is new or its
+`lastmod` changed, so an unchanged role is recorded as observed rather than mistaken for a removed
+one. Pages are parsed from schema.org `JobPosting` JSON-LD; a page without it contributes only a
+title, which leaves the location unknown and the role in `needs_review` rather than guessing.
+Requests are spaced by `request_delay_seconds` and capped per scan. Any careers site of that shape
+can be added in configuration alone ? see [docs/configuration.md](./docs/configuration.md).
 
-**No live request has been made for Barclays, Lloyds Graduate, Monzo, Wise, or Arm.** Their fixtures are synthetic, so they prove parsing, pagination, discovery, failure handling, and scan safety — not that the real services return those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs permitted live validation.
+A `[[sources]]` block replaces the built-in list, so keep every source you want to run. Options are
+validated when the configuration loads: an option the adapter does not read, or a required one
+that is missing, fails with a message naming the source and key. Two enabled sources that watch the
+same employer, or read the same feed, produce a warning, because deduplication is per source id.
+
+A `--fixture` file feeds list-shaped sources only (Palantir JSON, Workday listing, Monzo board),
+and a paginated Workday fixture stops as `partial` with a visible note instead of looping.
+Sitemap-driven sources need several documents, so their offline coverage lives in
+`tests/test_adapter_sitemap_html.py`.
+
+**No live request has been made for Barclays, Wise, or Arm.** Their fixtures are synthetic, so they
+prove parsing, pagination, discovery, failure handling and scan safety ? not that the real services
+return those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs live validation.
 
 ## Telegram credentials
 
@@ -285,7 +306,9 @@ enabled = true
 cadence_minutes = 30
 
 [sources.options]
-profile = "wise"
+sitemap_urls = ["https://wise.jobs/sitemap.xml"]
+sitemap_child_pattern = "vacanc"
+job_url_pattern = '^https://wise\.jobs/jobs/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$'
 
 # Optional, additive-only matching overrides (defaults stay unchanged if omitted)
 [matching]
@@ -295,7 +318,7 @@ extra_exclude_terms = ["unpaid", "commission only"]
 data = ["bioinformatics analyst"]
 ```
 
-Workday sources need `host`, `tenant`, and `site`; `locale` and `page_size` are optional. Sitemap sources select an in-code profile (`wise` or `arm`); `sitemap`, `max_detail_fetches`, and `request_delay_seconds` may override the defaults. Listing a `[[sources]]` block replaces the built-in source list, so keep every source you want to run.
+Workday sources need `host`, `tenant`, and `site`; `locale`, `page_size` and `max_pages` are optional. Sitemap sources need `sitemap_urls` (or `sitemap`) and a `job_url_pattern` containing a named `(?P<id>...)` group; `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches` and `request_delay_seconds` are optional. Every option is validated at load.
 
 ### Your job-search scope: `[preferences]`
 

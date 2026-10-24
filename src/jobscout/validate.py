@@ -30,6 +30,7 @@ from .config import SourceConfig
 from .http import HttpClient, HttpError
 from .models import ScanResult, ScanStatus
 from .sources import SourceAdapter, get_adapter
+from .sources.sitemap_html import SitemapHtmlAdapter
 from .sources.workday import WorkdayAdapter
 
 DEFAULT_SAMPLE_RECORDS = 5
@@ -85,6 +86,7 @@ class ValidationProfile:
     request_budget: int = 1
     require_complete: bool = True
     adapter_options: Mapping[str, Any] = field(default_factory=dict)
+    payload_kind: str = "json"  # "json" compares a payload; "html" judges the scan alone
 
     def records(self, payload: Any) -> Any:
         """The role records inside a payload; `None` when an envelope lacks them."""
@@ -136,6 +138,37 @@ VALIDATION_PROFILES: dict[str, ValidationProfile] = {
     "monzo": MONZO_PROFILE,
     "lloyds_graduate": LLOYDS_PROFILE,
 }
+
+# A sitemap source has no JSON payload to compare: its contract is "the board was found,
+# URLs matched, and pages parsed". The budget covers two sitemap documents and three detail
+# pages, with the delay removed because the check must stay quick and small.
+SITEMAP_VALIDATION_BUDGET = 5
+SITEMAP_PROFILE = ValidationProfile(
+    watched_fields={},
+    required_fields=(),
+    request_budget=SITEMAP_VALIDATION_BUDGET,
+    require_complete=False,
+    adapter_options={
+        "max_sitemap_documents": 2,
+        "max_detail_fetches": 3,
+        "request_delay": 0.0,
+    },
+    payload_kind="html",
+)
+
+# Budgets inferred from the adapter when a source has no named profile, so any configured
+# source can be checked before it is enabled.
+ADAPTER_PROFILES: dict[str, ValidationProfile] = {
+    "lever": PALANTIR_PROFILE,
+    "greenhouse": MONZO_PROFILE,
+    "workday": LLOYDS_PROFILE,
+    "sitemap_html": SITEMAP_PROFILE,
+}
+
+
+def profile_for(source: SourceConfig) -> ValidationProfile | None:
+    """The check's expectations for a source: named profile first, then adapter default."""
+    return VALIDATION_PROFILES.get(source.id) or ADAPTER_PROFILES.get(source.adapter)
 
 
 @dataclass(frozen=True)
@@ -199,6 +232,11 @@ class RecordingClient:
         payload = self._client.get_json(url)
         self._remember(payload)
         return payload
+
+    def get_text(self, url: str) -> str:
+        """Sitemap and HTML sources read text, and that counts against the budget too."""
+        self._check(url)
+        return self._client.get_text(url)  # type: ignore[attr-defined]
 
     def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
         self._check(url)
@@ -377,13 +415,27 @@ def run_live_check(
     CLI); the containment check runs before any request is made.
     """
     captured_at = now or _now_iso()
-    profile = VALIDATION_PROFILES.get(source.id)
+    profile = profile_for(source)
     if profile is None:
         return ValidationOutcome(
             ok=False,
             source_id=source.id,
             error=f"no validation profile for source '{source.id}'",
             lines=(f"No validation profile for source '{source.id}'",),
+        )
+    if fixture_payload is None and profile.payload_kind == "json":
+        return ValidationOutcome(
+            ok=False,
+            source_id=source.id,
+            error=(
+                f"source '{source.id}' has no recorded fixture, so its payload shape cannot"
+                " be compared; pass --fixture <path> with a recorded response"
+            ),
+            lines=(
+                f"No recorded fixture for source '{source.id}'."
+                " Pass --fixture <path> to compare shapes, or use a source whose fixture"
+                " is bundled.",
+            ),
         )
     if sample_dir is not None and allowed_root is not None:
         _ensure_within(sample_dir, allowed_root)
@@ -432,14 +484,28 @@ def run_live_check(
             lines=(f"Request: {recording.requests[0]}", f"Request failed: {message}"),
         )
 
-    live_records = profile.records(recording.payload)
-    comparison = compare_payloads(live_records, profile.records(fixture_payload), profile=profile)
     complete_ok = bool(scan.complete) or not profile.require_complete
     parse_ok = scan.status is not ScanStatus.FAILED and not scan.skipped and complete_ok
-    ok = comparison.ok and parse_ok
+    if profile.payload_kind == "html":
+        # Nothing to compare against a fixture: the contract is that the board was found
+        # and pages parsed, which `scan` already reports.
+        comparison = None
+        live_records = None
+        ok = parse_ok and scan.records_seen > 0
+    else:
+        live_records = profile.records(recording.payload)
+        comparison = compare_payloads(
+            live_records, profile.records(fixture_payload), profile=profile
+        )
+        ok = comparison.ok and parse_ok
 
     lines = _report_lines(
-        recording.requests, comparison, scan, ok, require_complete=profile.require_complete
+        recording.requests,
+        comparison,
+        scan,
+        ok,
+        require_complete=profile.require_complete,
+        payload_kind=profile.payload_kind,
     )
     sample_path = report_path = None
     if sample_dir is not None:
@@ -471,41 +537,58 @@ def _build_adapter(source: SourceConfig, profile: ValidationProfile) -> SourceAd
         return get_adapter(source.adapter)
     if source.adapter == "workday":
         return WorkdayAdapter(**profile.adapter_options)
+    if source.adapter == "sitemap_html":
+        return SitemapHtmlAdapter(**profile.adapter_options)
     raise ValueError(f"no bounded adapter builder for '{source.adapter}'")  # pragma: no cover
 
 
 def _report_lines(
     requests: list[str],
-    comparison: PayloadComparison,
+    comparison: PayloadComparison | None,
     scan: ScanResult,
     ok: bool,
     *,
     require_complete: bool,
+    payload_kind: str = "json",
 ) -> tuple[str, ...]:
     lines = [
         f"Request: {requests[0]}" if len(requests) == 1 else f"Requests: {len(requests)}",
     ]
     if len(requests) > 1:
         lines.extend(f"  {url}" for url in requests)
-    lines.extend(
-        [
-            f"Records: live={comparison.live_records} fixture={comparison.fixture_records}",
-            f"Adapter: status={scan.status} complete={'yes' if scan.complete else 'no'}"
-            f" seen={scan.records_seen} parsed={scan.records_parsed} skipped={scan.skipped_count}",
-        ]
+    if comparison is None:
+        lines.append(
+            f"Records: live={scan.records_seen} (no JSON payload to compare for this adapter)"
+        )
+    else:
+        lines.append(
+            f"Records: live={comparison.live_records} fixture={comparison.fixture_records}"
+        )
+    lines.append(
+        f"Adapter: status={scan.status} complete={'yes' if scan.complete else 'no'}"
+        f" seen={scan.records_seen} parsed={scan.records_parsed} skipped={scan.skipped_count}"
     )
     if scan.error_summary:
         lines.append(f"Adapter note: {scan.error_summary}")
-    for failure in comparison.failures:
-        lines.append(f"FAIL  {failure}")
-    for warning in comparison.warnings:
-        lines.append(f"WARN  {warning}")
+    if comparison is None:
+        if not scan.records_seen:
+            lines.append("FAIL  the adapter found no roles on the live board")
+    else:
+        for failure in comparison.failures:
+            lines.append(f"FAIL  {failure}")
+        for warning in comparison.warnings:
+            lines.append(f"WARN  {warning}")
     if scan.status is not ScanStatus.FAILED and not scan.complete and not require_complete:
         lines.append(
             "WARN  scan was partial; incompleteness does not fail this check, but a"
             " production scan would refuse to baseline or alert on it"
         )
-    if not comparison.failures and not comparison.warnings:
+    if comparison is None:
+        lines.append(
+            "Shape: not compared (this adapter has no JSON payload; the scan result is"
+            " the evidence)"
+        )
+    elif not comparison.failures and not comparison.warnings:
         lines.append("Shape: identical to the recorded fixture")
     elif comparison.shape_ok:
         lines.append("Shape: compatible, with the warnings above")
@@ -588,9 +671,11 @@ def _now_iso() -> str:
 
 
 __all__ = [
+    "ADAPTER_PROFILES",
     "DEFAULT_SAMPLE_RECORDS",
     "MONZO_PROFILE",
     "PALANTIR_PROFILE",
+    "SITEMAP_PROFILE",
     "PayloadComparison",
     "RecordingClient",
     "RequestBudgetExceeded",
@@ -599,6 +684,7 @@ __all__ = [
     "ValidationProfile",
     "build_sample",
     "compare_payloads",
+    "profile_for",
     "ensure_artifacts_location",
     "run_live_check",
 ]

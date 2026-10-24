@@ -51,6 +51,7 @@ adapter = "sitemap_html"
 enabled = false
 [sources.options]
 sitemap_urls = ["https://example.test/sitemap.xml"]
+job_url_pattern = '^https://example.test/job/(?P<id>\\d+)$'
 """,
     )
 

@@ -45,7 +45,13 @@ from .scheduler import Scheduler, SourceRun
 from .sources import AdapterError, get_adapter
 from .storage import Storage, utc_now_iso
 from .telegram import TelegramTransport
-from .validate import DEFAULT_SAMPLE_RECORDS, ensure_artifacts_location, run_live_check
+from .validate import (
+    ADAPTER_PROFILES,
+    DEFAULT_SAMPLE_RECORDS,
+    ensure_artifacts_location,
+    profile_for,
+    run_live_check,
+)
 
 EXIT_OK = 0
 EXIT_DEGRADED = 1
@@ -82,6 +88,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_report(args)
         if args.command == "digest":
             return _cmd_digest(args)
+        if args.command == "sources":
+            return _cmd_sources(args)
         if args.command == "config":
             return _cmd_config(args)
         return _cmd_status(args)
@@ -166,12 +174,12 @@ def _build_parser() -> argparse.ArgumentParser:
     validate.add_argument(
         "--source",
         default="palantir",
-        help="source id to validate: palantir, monzo or lloyds_graduate (default: palantir)",
+        help="configured source id to validate (default: palantir)",
     )
     validate.add_argument(
         "--confirm-live",
         action="store_true",
-        help="acknowledge that this command makes one real request to the source",
+        help="acknowledge that this command makes real requests to the source",
     )
     validate.add_argument(
         "--fixture",
@@ -274,6 +282,17 @@ def _build_parser() -> argparse.ArgumentParser:
     digest.add_argument("--db", type=Path, help="SQLite database path")
     digest.add_argument("--config", type=Path, help="TOML configuration file")
 
+    sources = subparsers.add_parser(
+        "sources",
+        help="list the configured sources with their adapter and state (read-only)",
+    )
+    source_commands = sources.add_subparsers(dest="sources_command", required=True)
+    sources_list = source_commands.add_parser(
+        "list", help="every configured source, its adapter, and its last scan"
+    )
+    sources_list.add_argument("--db", type=Path, help="SQLite database path")
+    sources_list.add_argument("--config", type=Path, help="TOML configuration file")
+
     config = subparsers.add_parser(
         "config",
         help="inspect the effective configuration and preferences (read-only)",
@@ -291,6 +310,14 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _load(config_path: Path | None) -> AppConfig:
+    """Load configuration, surfacing anything the user should know but need not fix now."""
+    app = load_config(config_path)
+    for warning in app.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+    return app
+
+
 def _build_notifier(telegram: TelegramConfig) -> Notifier:
     """Single seam for tests: the only place a real Telegram transport is created."""
     transport = TelegramTransport(telegram, poster=UrllibHttpClient())
@@ -306,7 +333,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         return EXIT_FAILED
 
     telegram = load_telegram_config() if args.deliver else None
-    app = load_config(args.config)
+    app = _load(args.config)
     source = _resolve_source(app, args.source)
     adapter = get_adapter(source.adapter)
     http_client = FixtureHttpClient(args.fixture) if args.fixture else UrllibHttpClient()
@@ -342,7 +369,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
 
 def _cmd_deliver(args: argparse.Namespace) -> int:
     telegram = load_telegram_config()
-    app = load_config(args.config)
+    app = _load(args.config)
     db_path = args.db or app.database_path
 
     with Storage.open(db_path) as storage:
@@ -366,18 +393,11 @@ def _print_delivery_report(report: DeliveryReport) -> None:
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
-    """One bounded live request; never touches the database or Telegram."""
+    """One bounded live check of one configured source; never touches Telegram or scans."""
     if not args.confirm_live:
         print(
-            "error: validate makes one real request to the source."
+            "error: validate makes real requests to the source."
             " Re-run with --confirm-live to acknowledge it.",
-            file=sys.stderr,
-        )
-        return EXIT_FAILED
-    if args.source not in VALIDATION_SOURCES:
-        print(
-            f"error: validation is supported for {sorted(VALIDATION_SOURCES)} only;"
-            f" asked for '{args.source}'",
             file=sys.stderr,
         )
         return EXIT_FAILED
@@ -385,14 +405,39 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         print("error: --max-records must be at least 1", file=sys.stderr)
         return EXIT_FAILED
 
-    fixture_path = args.fixture or DEFAULT_VALIDATION_FIXTURES[args.source]
+    app = _load(args.config)
     try:
-        fixture_payload = json.loads(Path(fixture_path).read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        print(f"error: cannot read fixture {fixture_path}: {exc}", file=sys.stderr)
+        source = app.source(args.source)
+    except ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return EXIT_FAILED
 
-    source = load_config(args.config).source(args.source)
+    profile = profile_for(source)
+    if profile is None:
+        print(
+            f"error: no validation profile for '{source.id}': its adapter"
+            f" '{source.adapter}' is not supported; known adapters:"
+            f" {', '.join(sorted(ADAPTER_PROFILES))}",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+
+    fixture_path = args.fixture or DEFAULT_VALIDATION_FIXTURES.get(source.id)
+    fixture_payload = None
+    if fixture_path is not None:
+        try:
+            fixture_payload = json.loads(Path(fixture_path).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"error: cannot read fixture {fixture_path}: {exc}", file=sys.stderr)
+            return EXIT_FAILED
+    elif profile.payload_kind == "json":
+        print(
+            f"error: no recorded fixture for '{source.id}'."
+            " Pass --fixture <path> with a recorded response so the shape can be compared.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+
     sample_dir = args.sample_out or VALIDATION_ARTIFACT_ROOT / "validation"
     try:
         ensure_artifacts_location(sample_dir, VALIDATION_ARTIFACT_ROOT)
@@ -414,7 +459,8 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_FAILED
 
-    print(f"Live validation: {source.id} ({source.employer})")
+    print(f"Live validation: {source.id} ({source.employer}) - adapter {source.adapter}")
+    print(f"  Budget: {profile.request_budget} request(s)")
     for line in outcome.lines:
         print(f"  {line}")
     if outcome.sample_path is not None:
@@ -427,7 +473,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 def _cmd_schedule(args: argparse.Namespace) -> int:
     """Run due sources once or on a loop. Delivery is optional, scanning is not."""
-    app = load_config(args.config)
+    app = _load(args.config)
     db_path = args.db or app.database_path
     telegram = _optional_telegram()
     notifier = _build_notifier(telegram) if telegram else None
@@ -518,7 +564,7 @@ def _cmd_prune(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_FAILED
 
-    app = load_config(args.config)
+    app = _load(args.config)
     db_path = args.db or app.database_path
     with Storage.open(db_path) as storage:
         report = storage.prune(policy, now=utc_now_iso(), dry_run=args.dry_run)
@@ -545,7 +591,7 @@ def _cmd_prune(args: argparse.Namespace) -> int:
 
 def _cmd_digest(args: argparse.Namespace) -> int:
     """Send the roles that already match, once. Reads only; never queues a notification."""
-    app = load_config(args.config)
+    app = _load(args.config)
     db_path = args.db or app.database_path
     if not db_path.exists():
         print(f"error: database not found: {db_path}", file=sys.stderr)
@@ -607,7 +653,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
     if args.days < 1:
         print("error: days must be at least 1", file=sys.stderr)
         return EXIT_FAILED
-    app = load_config(args.config)
+    app = _load(args.config)
     db_path = args.db or app.database_path
     if not db_path.exists():
         # Never create an empty database just to print a report about it.
@@ -625,7 +671,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 
 def _cmd_summary(args: argparse.Namespace) -> int:
-    app = load_config(args.config)
+    app = _load(args.config)
     sources = _selected_sources(app, args.source)
     db_path = args.db or app.database_path
 
@@ -645,7 +691,7 @@ def _cmd_summary(args: argparse.Namespace) -> int:
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
-    app = load_config(args.config)
+    app = _load(args.config)
     sources = _selected_sources(app, args.source)
     db_path = args.db or app.database_path
 
@@ -670,6 +716,66 @@ def _describe_matching(rules: MatchingRules) -> str:
     )
 
 
+def _cmd_sources(args: argparse.Namespace) -> int:
+    """Every configured source with its adapter and, when the database exists, its state."""
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    enabled = {source.id for source in app.enabled_sources()}
+
+    print(f"Config: {app.config_path if app.config_path else 'none (built-in defaults)'}")
+    print(f"Sources: {len(app.sources)} configured, {len(enabled)} enabled")
+    if not Path(db_path).exists():
+        print(f"Database: {db_path} (not created yet)")
+    print()
+
+    rows: list[tuple[str, ...]] = [
+        ("id", "employer", "adapter", "every", "state", "last success", "matches")
+    ]
+    with contextlib.ExitStack() as stack:
+        storage = stack.enter_context(Storage.open(db_path)) if Path(db_path).exists() else None
+        for source in app.sources:
+            state = storage.get_source_state(source.id) if storage else None
+            rows.append(
+                (
+                    source.id,
+                    source.employer,
+                    source.adapter,
+                    f"{source.cadence_minutes}m",
+                    _source_state_text(source, state, enabled),
+                    (state.last_success_at if state and state.last_success_at else "-"),
+                    _source_match_text(storage, source.id),
+                )
+            )
+    _print_table(rows)
+    if storage is None:
+        print(f"\nState is unknown until the first scan writes {db_path}.")
+    return EXIT_OK
+
+
+def _source_state_text(source: SourceConfig, state: SourceState | None, enabled: set[str]) -> str:
+    if source.id not in enabled:
+        return "disabled"
+    if state is None or not state.last_scan_status:
+        return "enabled, not yet scanned"
+    completeness = "complete" if state.last_scan_complete else "incomplete"
+    return f"{state.last_scan_status}/{completeness}"
+
+
+def _source_match_text(storage: Storage | None, source_id: str) -> str:
+    if storage is None or storage.get_source_state(source_id) is None:
+        return "-"
+    matches = len(storage.list_jobs_by_decision(source_id, MatchOutcome.MATCH))
+    reviews = len(storage.list_jobs_by_decision(source_id, MatchOutcome.NEEDS_REVIEW))
+    return f"{matches} (+{reviews} review)"
+
+
+def _print_table(rows: Sequence[tuple[str, ...]]) -> None:
+    widths = [max(len(row[column]) for row in rows) for column in range(len(rows[0]))]
+    for row in rows:
+        cells = (cell.ljust(width) for cell, width in zip(row, widths, strict=True))
+        print("  ".join(cells).rstrip())
+
+
 def _cmd_config(args: argparse.Namespace) -> int:
     if args.config_command == "validate":
         return _config_validate(args)
@@ -677,7 +783,7 @@ def _cmd_config(args: argparse.Namespace) -> int:
 
 
 def _config_show(args: argparse.Namespace) -> int:
-    app = load_config(args.config)
+    app = _load(args.config)
     rules = app.matching
 
     print(f"Config: {app.config_path if app.config_path else 'none (built-in defaults)'}")
@@ -719,7 +825,7 @@ def _config_show(args: argparse.Namespace) -> int:
 
 def _config_validate(args: argparse.Namespace) -> int:
     try:
-        app = load_config(args.config)
+        app = _load(args.config)
     except ConfigError as exc:
         print(f"invalid: {exc}", file=sys.stderr)
         return EXIT_FAILED

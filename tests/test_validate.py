@@ -396,6 +396,111 @@ def test_artifacts_do_not_overwrite_an_earlier_run(
     assert len(list(sample_dir.glob("*.json"))) == 2
 
 
+# validate any configured source -------------------------------------------
+
+EXAMPLE_SITEMAP = "https://careers.example.test/sitemap-jobs.xml"
+EXAMPLE_JOB = "https://careers.example.test/jobs/graduate-data-analyst-7012"
+EXAMPLE_PAGE = (
+    '<html><head><script type="application/ld+json">'
+    '{"@type": "JobPosting", "title": "Graduate Data Analyst",'
+    ' "jobLocation": {"@type": "Place", "address": {"addressLocality": "London"}}}'
+    "</script></head><body></body></html>"
+)
+EXAMPLE_SITEMAP_XML = (
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    f"<url><loc>{EXAMPLE_JOB}</loc><lastmod>2026-10-20</lastmod></url></urlset>"
+)
+
+
+class SitemapLiveClient:
+    """A live sitemap site, served offline."""
+
+    def __init__(self) -> None:
+        self.gets: list[str] = []
+
+    def get_text(self, url: str) -> str:
+        self.gets.append(url)
+        return EXAMPLE_SITEMAP_XML if url == EXAMPLE_SITEMAP else EXAMPLE_PAGE
+
+    def get_json(self, url: str) -> Any:  # pragma: no cover - never used by this adapter
+        raise AssertionError("a sitemap source must not request JSON")
+
+
+def example_sitemap_source() -> SourceConfig:
+    return SourceConfig(
+        id="example",
+        employer="Example Ltd",
+        adapter="sitemap_html",
+        options={
+            "sitemap_urls": [EXAMPLE_SITEMAP],
+            "job_url_pattern": r"^https://careers\.example\.test/jobs/[a-z0-9-]+-(?P<id>\d+)$",
+        },
+    )
+
+
+def test_any_configured_source_has_a_profile_inferred_from_its_adapter() -> None:
+    assert validate.profile_for(example_sitemap_source()) is validate.SITEMAP_PROFILE
+    assert validate.SITEMAP_PROFILE.payload_kind == "html"
+    assert validate.SITEMAP_PROFILE.request_budget >= 2
+
+
+def test_a_named_profile_wins_over_the_adapter_default(palantir) -> None:
+    assert validate.profile_for(palantir) is validate.PALANTIR_PROFILE
+
+
+def test_sitemap_validation_needs_no_fixture_and_counts_every_request() -> None:
+    client = SitemapLiveClient()
+
+    outcome = run_live_check(
+        example_sitemap_source(),
+        fixture_payload=None,
+        client=client,
+        now=CAPTURED_AT,
+    )
+
+    assert outcome.ok is True
+    assert outcome.comparison is None
+    assert "Shape: not compared" in "\n".join(outcome.lines)
+    assert "Records: live=1" in "\n".join(outcome.lines)
+    assert client.gets == [EXAMPLE_SITEMAP, EXAMPLE_JOB]
+    assert len(client.gets) <= validate.SITEMAP_PROFILE.request_budget
+
+
+def test_a_sitemap_source_with_no_roles_fails_the_check() -> None:
+    source = example_sitemap_source()
+    empty = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
+
+    class EmptyClient(SitemapLiveClient):
+        def get_text(self, url: str) -> str:
+            self.gets.append(url)
+            return empty
+
+    outcome = run_live_check(source, fixture_payload=None, client=EmptyClient(), now=CAPTURED_AT)
+
+    assert outcome.ok is False
+    assert any("found no roles" in line for line in outcome.lines)
+
+
+def test_text_requests_count_against_the_budget() -> None:
+    client = SitemapLiveClient()
+    recording = validate.RecordingClient(client, max_requests=1)
+
+    recording.get_text(EXAMPLE_SITEMAP)
+
+    with pytest.raises(validate.RequestBudgetExceeded, match="request budget of 1 exceeded"):
+        recording.get_text(EXAMPLE_JOB)
+
+
+def test_a_json_source_without_a_fixture_is_refused_before_any_request(palantir) -> None:
+    client = SitemapLiveClient()
+
+    outcome = run_live_check(palantir, fixture_payload=None, client=client, now=CAPTURED_AT)
+
+    assert outcome.ok is False
+    assert "no recorded fixture" in (outcome.error or "")
+    assert client.gets == []
+
+
 # CLI wiring ---------------------------------------------------------------
 
 
@@ -409,11 +514,18 @@ def test_cli_refuses_without_confirm_live(monkeypatch, capsys) -> None:
     assert "--confirm-live" in capsys.readouterr().err
 
 
-def test_cli_rejects_sources_outside_the_validation_scope(monkeypatch, capsys) -> None:
+def test_cli_rejects_an_unconfigured_source(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "UrllibHttpClient", lambda **_kwargs: pytest.fail("no client"))
 
-    assert cli.main(["validate", "--confirm-live", "--source", "wise"]) == cli.EXIT_FAILED
-    assert "validation is supported for" in capsys.readouterr().err
+    assert cli.main(["validate", "--confirm-live", "--source", "nope"]) == cli.EXIT_FAILED
+    assert "unknown source 'nope'" in capsys.readouterr().err
+
+
+def test_cli_requires_a_fixture_for_a_source_without_one(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(cli, "UrllibHttpClient", lambda **_kwargs: pytest.fail("no client"))
+
+    assert cli.main(["validate", "--confirm-live", "--source", "barclays"]) == cli.EXIT_FAILED
+    assert "no recorded fixture for 'barclays'" in capsys.readouterr().err
 
 
 def test_cli_runs_the_check_without_opening_a_database(
