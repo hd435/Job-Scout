@@ -1,0 +1,9 @@
+# Greenhouse board `tide`. Discovery on 2026-10-24: 100 roles open, 20 roles located 'United Kingdom' (no city).
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "tide"
+employer = "Tide"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "tide"

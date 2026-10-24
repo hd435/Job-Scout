@@ -1,0 +1,9 @@
+# Greenhouse board `datadog`. Discovery on 2026-10-24: 433 roles open, 17 London, 4 UK-remote.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "datadog"
+employer = "Datadog"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "datadog"

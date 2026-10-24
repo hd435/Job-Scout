@@ -1,0 +1,9 @@
+# Greenhouse board `truelayer`. Discovery on 2026-10-24: 3 roles open, 1 London; very small board.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "truelayer"
+employer = "TrueLayer"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "truelayer"

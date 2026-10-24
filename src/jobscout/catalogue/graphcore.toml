@@ -1,0 +1,9 @@
+# Greenhouse board `graphcore`. Discovery on 2026-10-24: 215 roles open, 13 London, 80 Bristol; 29 intern/graduate titles.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "graphcore"
+employer = "Graphcore"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "graphcore"

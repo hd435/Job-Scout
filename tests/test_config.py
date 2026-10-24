@@ -8,6 +8,7 @@ from jobscout.config import (
     TELEGRAM_CHAT_ID_ENV,
     TELEGRAM_TOKEN_ENV,
     ConfigError,
+    bundled_catalogue,
     default_config,
     load_config,
     load_telegram_config,
@@ -39,15 +40,11 @@ def test_defaults_are_usable_without_a_config_file(tmp_path: Path, monkeypatch) 
     config = load_config()
 
     assert config.database_path == default_config().database_path
+    ids = [source.id for source in config.sources]
     # Catalogue files are read in filename order, so the list is stable and alphabetical.
-    assert [source.id for source in config.sources] == [
-        "arm",
-        "barclays",
-        "lloyds_graduate",
-        "monzo",
-        "palantir",
-        "wise",
-    ]
+    assert ids == sorted(ids)
+    assert ids == [source.id for source in bundled_catalogue()]
+    assert {"palantir", "barclays", "lloyds_graduate", "monzo", "wise", "arm"} <= set(ids)
     assert config.source("palantir").cadence_minutes == 30
 
 

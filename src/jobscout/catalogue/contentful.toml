@@ -1,0 +1,9 @@
+# Greenhouse board `contentful`. Discovery on 2026-10-24: 24 roles open, 14 London.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "contentful"
+employer = "Contentful"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "contentful"

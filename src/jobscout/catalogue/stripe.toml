@@ -1,0 +1,9 @@
+# Greenhouse board `stripe`. Discovery on 2026-10-24: 719 roles open, 47 London, 1 UK-remote; Data/Fincrime interns.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "stripe"
+employer = "Stripe"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "stripe"

@@ -58,9 +58,12 @@ job_url_pattern = '^https://example\\.test/jobs/[a-z0-9-]+-(?P<id>\\d+)$'
 
 def test_the_researched_employers_are_catalogue_files_not_python() -> None:
     catalogue = bundled_catalogue()
+    by_id = {source.id: source for source in catalogue}
 
-    assert {source.id for source in catalogue} == RESEARCHED
-    adapters = {source.id: source.adapter for source in catalogue}
+    # Growth beyond the researched six is operational work; the researched set must stay present
+    # with the adapter each employer actually uses.
+    assert set(by_id) >= RESEARCHED
+    adapters = {source_id: by_id[source_id].adapter for source_id in RESEARCHED}
     assert adapters == {
         "palantir": "lever",
         "barclays": "workday",
@@ -73,6 +76,17 @@ def test_the_researched_employers_are_catalogue_files_not_python() -> None:
         assert source.enabled is True, "a fresh clone scans the researched set"
         assert unknown_options(source.adapter, source.options) == ()
         assert missing_options(source.adapter, source.options) == ()
+
+
+def test_catalogue_expansion_stays_on_supported_adapters() -> None:
+    catalogue = bundled_catalogue()
+    extra = [source for source in catalogue if source.id not in RESEARCHED]
+
+    assert extra, "the catalogue is expected to grow beyond the researched six"
+    for source in extra:
+        assert source.adapter in {"greenhouse", "lever", "workday", "sitemap_html"}
+        assert source.cadence_minutes > 0
+        assert source.employer.strip()
 
 
 def test_the_module_level_default_is_the_bundled_catalogue() -> None:

@@ -1,0 +1,9 @@
+# Greenhouse board `gocardless`. Discovery on 2026-10-24: 26 roles open, 4 London; rest Riga/Lisbon.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "gocardless"
+employer = "GoCardless"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "gocardless"

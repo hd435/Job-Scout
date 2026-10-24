@@ -70,16 +70,19 @@ it lives outside Git, so a fresh clone is unaffected.
 
 | Piece | Where |
 |---|---|
-| Scope config (the six researched employers) | `data/ops/config.toml` — sources plus the pinned London scope in `[preferences]` (section 2b) |
+| Scope config (the 17 enabled employers) | `data/ops/config.toml` — the pinned London scope in `[preferences]` (section 2b); the employer list itself lives in the catalogue |
 | Recurring wrapper | `data/ops/run-once.cmd` |
 | Pass log | `data/ops/logs/schedule.log` |
 | Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
 
-**Current state: enabled and Ready**, running the six researched employers with the pinned London
-scope. Measured on 2026-10-24 straight after baselining: 20 current matches (Palantir 11, Wise 5,
-Lloyds 2, Monzo 2, Barclays 0, Arm 0) and 51 needs-review roles. Arm contributes nothing under a
-London-only scope because almost all its roles are in Cambridge, Lund and Manchester; that is the
-scope working, not a fault.
+**Current state: enabled and Ready**, running the 17 enabled catalogue employers with the pinned
+London scope — the six researched sources plus expansion batch 1 (section 7c). Measured on
+2026-10-24 straight after batch 1 was baselined: 23 current matches (Palantir 11, Wise 5, Lloyds 2,
+Monzo 2, Stripe 2, Deliveroo 1, the other 11 sources 0) and 119 needs-review roles. Arm contributes
+nothing under a London-only scope because almost all its roles are in Cambridge, Lund and
+Manchester; that is the scope working, not a fault. The batch as a whole added 3 047 stored roles
+for 3 alert-eligible matches, so scope and match quality — not source count — are the current
+constraint.
 
 `schtasks /Change /TN "Job-Scout scan" /DISABLE` stops it without deleting anything.
 
@@ -413,6 +416,43 @@ python -m jobscout report --days 1 --config data\ops\config.toml
   search text, or a board that has moved. Check `sources list` for the last scan status.
 - **A source that keeps failing** is a maintenance cost. Two consecutive days of failures means the
   feed changed; `validate` will say how.
+
+### Completed batches
+
+**Batch 1 — 2026-10-24 — 11 Greenhouse employers.** All validated live (`--live-only`), complete,
+0 skipped, and baselined silently.
+
+| Source | Board | Roles | Eligible | Review |
+|---|---|---|---|---|
+| stripe | `stripe` | 719 | 2 | 27 |
+| anthropic | `anthropic` | 681 | 0 | 16 |
+| datadog | `datadog` | 433 | 0 | 0 |
+| elastic | `elastic` | 402 | 0 | 1 |
+| gitlab | `gitlab` | 239 | 0 | 7 |
+| graphcore | `graphcore` | 215 | 0 | 2 |
+| deliveroo | `deliveroo` | 205 | 1 | 12 |
+| tide | `tide` | 100 | 0 | 0 |
+| gocardless | `gocardless` | 26 | 0 | 3 |
+| contentful | `contentful` | 24 | 0 | 0 |
+| truelayer | `truelayer` | 3 | 0 | 0 |
+
+3 047 roles, 3 eligible matches, 68 reviews, under the pinned London scope. Candidates were found by
+probing board tokens directly: many likely UK employers 404 (`checkout`, `monzo`-era fintechs,
+`trainline`, `skyscanner`, `ocado`, `asos`) because they use a different ATS. Two boards were
+rejected on scope grounds rather than data: `cloudflare` reports locations as `Hybrid` /
+`Distributed` with no city, and `brandwatch` has no UK locations at all. Boards are not UK-only, so
+their `id` is the board token and no `uk_employer` flag is set.
+
+Two sources failed their first baseline attempt and succeeded on retry: `anthropic` hit the 20-second
+HTTP timeout on its 681-role payload, and `stripe` hit a local DNS failure (`getaddrinfo failed`).
+Both were transient, not feed changes — worth remembering before diagnosing a single failure as a
+broken source.
+
+**What the batch proved, and what it did not.** It proved the candidate → validate → enable → baseline
+path works at scale for one adapter shape, and that `report` distinguishes stored roles from value
+delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible matches, because the
+pinned London scope and the `seniority_unclear` review gate reject almost everything on these large
+tech boards. That ratio is the finding to act on before adding batch 2.
 
 **Narrowing without deleting**: `disable = ["id", ...]` in the config turns a source off while
 keeping its catalogue file and its history. Use it for anything seasonal; delete the file only when

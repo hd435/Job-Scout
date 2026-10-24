@@ -174,13 +174,17 @@ and a paginated Workday fixture stops as `partial` with a visible note instead o
 Sitemap-driven sources need several documents, so their offline coverage lives in
 `tests/test_adapter_sitemap_html.py`.
 
-All six were validated live on 2026-10-24 and each has completed a scan on the operator's machine.
-Two researched URL shapes turned out to be wrong ? Wise serves `/job/<slug>-jid-<id>` and Arm's
-paths carry two trailing numbers ? which is exactly what the bounded check exists to catch.
-Barclays' external board is far larger than its early-career subset, so that source sets
-`search_text = "graduate"` and its completeness is measured against the search's own total.
-Fixtures stay synthetic: they prove parsing, pagination, discovery, failure handling and scan
-safety, not that the services keep returning those shapes.
+All six researched employers were validated live on 2026-10-24 and each has completed a scan on the
+operator's machine. Two researched URL shapes turned out to be wrong ? Wise serves
+`/job/<slug>-jid-<id>` and Arm's paths carry two trailing numbers ? which is exactly what the
+bounded check exists to catch. Barclays' external board is far larger than its early-career subset,
+so that source sets `search_text = "graduate"` and its completeness is measured against the search's
+own total. Fixtures stay synthetic: they prove parsing, pagination, discovery, failure handling and
+scan safety, not that the services keep returning those shapes.
+
+The catalogue now also carries growth beyond the researched six; `jobscout sources list` is the
+authoritative count. Batch records and the per-batch expansion procedure live in
+[docs/runbook.md](./docs/runbook.md) section 7c.
 
 ## Telegram credentials
 
@@ -280,7 +284,9 @@ before the next batch.
 
 ## Configuration
 
-Built-in defaults cover all six sources: Palantir, Barclays, Lloyds Graduate, Monzo, Wise, and Arm. An optional `config.toml` can change the database path and source settings:
+Built-in defaults come from the bundled catalogue in `src/jobscout/catalogue/`, one file per
+employer (`jobscout sources list` prints the current set). An optional `config.toml` can change the
+database path and narrow or extend that list:
 
 ```toml
 [jobscout]

@@ -1,0 +1,9 @@
+# Greenhouse board `deliveroo`. Discovery on 2026-10-24: 205 roles open, 110 London; early-career is mostly marketing/design.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "deliveroo"
+employer = "Deliveroo"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "deliveroo"

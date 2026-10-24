@@ -1,0 +1,9 @@
+# Greenhouse board `gitlab`. Discovery on 2026-10-24: 239 roles open, 51 UK-remote; all-remote employer.
+# No `uk_employer` relaxation: the board is not UK-only, so ambiguous town names stay in review.
+id = "gitlab"
+employer = "GitLab"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "gitlab"
