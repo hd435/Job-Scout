@@ -1,4 +1,4 @@
-.venv/
+﻿.venv/
 venv/
 build/
 dist/
@@ -26,3 +26,4 @@ schedule.log
 
 .idea/
 .vscode/
+.git-commit-msg.tmp
