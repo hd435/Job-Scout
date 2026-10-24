@@ -37,13 +37,21 @@ Rows = Sequence[Sequence[Button]]
 
 
 class BotApi:
+    """Calls against the Bot API.
+
+    `timeout_seconds` is Telegram's long-poll hold time, and it **must stay below** the HTTP
+    client's own timeout (20s by default) or every idle poll fails as a client-side timeout —
+    which is exactly the normal state of a quiet bot. 8 seconds leaves ample margin and still
+    makes the loop cheap: one request per 8 seconds while idle.
+    """
+
     def __init__(
         self,
         token: str,
         *,
         poster: JsonPoster | None = None,
         api_base: str = TELEGRAM_API_BASE,
-        timeout_seconds: int = 25,
+        timeout_seconds: int = 8,
     ) -> None:
         self._token = token
         self._poster = poster or UrllibHttpClient()
