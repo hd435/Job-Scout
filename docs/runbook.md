@@ -1,6 +1,8 @@
 # Runbook
 
-Operating instructions for a **single-user, personal-use** deployment on Windows. This
+Operating instructions for a **single-user, personal-use** deployment on Windows.
+
+**Current release:** v0.4 beta (two live sources) while [v0.5](./iterations/v0.5-configurable-scope.md) is under development. The configuration keys in ?2a are the current schema; the upcoming `[preferences]` keys are specified in the v0.5 iteration file and do not exist yet. This
 document is preparation only: **no trial has started, no scheduled task exists, and no
 unattended polling is authorised.** The seven-day trial (M5.4) is blocked on the per-source
 permission decisions in [source-access.md](./source-access.md) and D-027.
@@ -113,12 +115,14 @@ Recovery:
   baselined roles never re-alert, by design. Use `summary --config data\ops\config.toml
   --current` to see what is currently matching.
 
-## 3. Windows Task Scheduler setup (documented, not created)
+## 3. Windows Task Scheduler setup (reference for creating or recreating it)
 Two shapes work. **Option B is recommended for a first trial** because supervision comes for
 free from Task Scheduler and each pass is short-lived.
 
-Both shapes are **live scheduling** and are gated by section 2: do not create either task
-until the per-source permission decision (D-027) and your explicit approval are in place.
+Both shapes are **live scheduling**. A task of this shape is already running (section 2a); this
+section exists so it can be recreated on another machine. The operator has accepted the blanket
+personal-use access posture for the configured employers (D-066), which replaces the earlier
+per-source permission gate.
 
 ### Option B — a short-lived pass every five minutes (recommended)
 
@@ -274,15 +278,19 @@ Two reading caveats:
   downtime (a laptop switched off overnight) shows up as missed episodes; note it in the
   evidence rather than treating it as a defect.
 
-## 8. Gates that remain closed
+## 8. Standing posture and limits
 
-- **No source is approved for recurring automated access** (D-027, AC-19). Palantir and Wise
-  publish wording that prohibits automated monitoring without written permission; Barclays,
-  Lloyds, and Arm permit personal use but condition copying on permission; Monzo publishes no
-  website terms. Technical reachability is not permission.
-- The personal-use risk acceptance covers the single authorised M5.1 validation request only
-  (D-058). It does not authorise a trial against any source.
-- The retention horizons in D-025 are implemented but unratified.
-- There is no supervisor beyond Task Scheduler's own settings, and no alert if the process
-  dies silently; section 5 is the substitute.
-- Nothing here is deployed, and no scheduled task is created by the repository.
+- **Access:** the operator has accepted a blanket personal-use risk posture for any employer using a
+  public ATS or careers endpoint (D-066). Robots rules, rate limits and non-evasion remain engineering
+  hygiene, and technically hostile sources are still excluded by engineering judgement. This is a risk
+  decision, not a claim that any site's terms grant permission.
+- **Retention:** horizons are as implemented and accepted as-is (D-067); `prune` stays opt-in.
+- **Alert volume:** immediate per-role alerts with no cap, unchanged for now (D-070).
+- **Coverage:** beyond the six researched employers, expansion is operational work (D-066), not a
+  milestone.
+- **Supervision:** none beyond Task Scheduler's own restart settings; section 5 is the substitute.
+- **Known blind spot:** a source that returns `partial` every cycle neither alerts nor counts as a
+  failure, so it can look healthy while never alerting. Watch `report` for complete-versus-partial
+  drift when a source goes quiet.
+
+Nothing here is deployed by the repository: the task in section 2a was created by the operator.

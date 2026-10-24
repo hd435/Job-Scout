@@ -1,5 +1,8 @@
 # Job-Scout — Source-access review (six MVP sources)
 
+> **Archive (non-normative since D-066).** This review records what each source's published terms say, gathered while per-source review was still a gate. The operator has since accepted a blanket personal-use risk posture for any employer using a public ATS or careers endpoint (D-066). The evidence below remains useful for engineering judgement and is not a permission record.
+
+
 **Status:** Evidence for a Product Owner decision. **Not** permission to proceed.
 **Retrieved:** 2026-10-23
 **Related:** [docs/sources.md](./sources.md) (reachability research) · [docs/prd.md](./prd.md) §9 · D-012 · D-027 · D-048 · D-055

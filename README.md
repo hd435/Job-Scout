@@ -2,9 +2,9 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state: M1 + M2.3 + M3 + M4 (offline) — local, all six sources configured.** Discovery, SQLite persistence, deterministic matching, silent baseline, new-role detection, update and closure handling, read-only `summary`/`status` views, a notification pipeline (queued alerts, formatting, delivery state, duplicate prevention), a **Telegram Bot API transport**, **additive-only matching-filter overrides in configuration**, and **adapters for all six intended sources** (Lever for Palantir, Workday for Barclays and Lloyds Graduate, Greenhouse for Monzo, sitemap+HTML for Wise and Arm) are implemented. Delivery is opt-in via `--deliver` and needs credentials in a local `.env` file (or in real environment variables). Scheduling and deployment are absent. Only Palantir has ever been read with recorded payloads from the live service; **the other five sources have only run against synthetic fixtures**, and no live request has been made for them.
+**Current state:** a two-source personal beta is running (Lloyds Graduate and Monzo) with recurring local scans, Telegram alerts and a one-off current-matches digest. Six employer sources are implemented; Palantir, Lloyds Graduate and Monzo are live-validated. The current iteration is **v0.5 (configurable scope)** — see [docs/iterations/v0.5-configurable-scope.md](docs/iterations/v0.5-configurable-scope.md) — and [docs/README.md](docs/README.md) explains which document owns what.
 
-Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
+Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Documentation map: [docs/README.md](./docs/README.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
 
 ## Requirements
 
@@ -68,7 +68,7 @@ python -m jobscout digest
 New roles only alert from the moment they are first seen, so a fresh install would stay
 silent until an employer posts something. `jobscout digest` closes that gap: it reads the
 roles that already match and sends them once. It writes nothing, queues no notifications, and
-does not disturb baselining or deduplication ? so the same role can never be alerted twice.
+does not disturb baselining or deduplication — so the same role can never be alerted twice.
 
 ```bash
 python -m jobscout digest --dry-run   # preview the messages
@@ -133,10 +133,10 @@ Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery
 
 | Source id | Employer | Adapter | State |
 |---|---|---|---|
-| `palantir` | Palantir Technologies | `lever` | Implemented; exercised against recorded payloads |
+| `palantir` | Palantir Technologies | `lever` | **Live-validated**; not currently enabled |
 | `barclays` | Barclays | `workday` | Implemented; synthetic fixtures only |
-| `lloyds_graduate` | Lloyds Banking Group | `workday` | Implemented; synthetic fixtures only; the `Graduate_careers` site only |
-| `monzo` | Monzo | `greenhouse` | Implemented; synthetic fixtures only |
+| `lloyds_graduate` | Lloyds Banking Group | `workday` | **Live-validated and running**; the `Graduate_careers` site only |
+| `monzo` | Monzo | `greenhouse` | **Live-validated and running** |
 | `wise` | Wise | `sitemap_html` | Implemented; synthetic fixtures only; the vacancies sitemap only |
 | `arm` | Arm | `sitemap_html` | Implemented; synthetic fixtures only; never the `/search-jobs/` path |
 

@@ -1,14 +1,15 @@
 # Job-Scout — Product Requirements Document
 
-**Status:** Approved (product defaults and architecture direction approved; M1 implemented)  
-**Last updated:** 2026-10-22  
-**Owner:** Product Owner  
-**Companion evidence:** [docs/sources.md](./sources.md)  
-**Technical design:** [docs/architecture.md](./architecture.md)  
-**Decision log:** [docs/decisions.md](./decisions.md)  
-**Delivery plan:** [docs/roadmap.md](./roadmap.md)  
-**Authority:** This PRD is the product source of truth. Discovery evidence remains in `docs/sources.md`; technical design and delivery planning derive from this document.  
-**Repository state:** M1 implemented (local Palantir-only dry run: persistence, matching, baseline and closure handling, `scan`/`summary`/`status` CLI). Telegram, scheduling, deployment, and the other five sources are not implemented.
+- **Status:** Approved. A revision for **v0.5 (configurable scope)** was accepted on 2026-10-24; the changes are specified in [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) and are applied to this document in increment 0.1
+- **Last updated:** 2026-10-24
+- **Owner:** Product Owner
+- **Companion evidence:** [docs/sources.md](./sources.md)
+- **Technical design:** [docs/architecture.md](./architecture.md)
+- **Decision log:** [docs/decisions.md](./decisions.md)
+- **Delivery plan:** [docs/roadmap.md](./roadmap.md)
+- **Documentation map:** [docs/README.md](./README.md)
+- **Authority:** This PRD is the product source of truth. Discovery evidence remains in `docs/sources.md`; technical design and delivery planning derive from this document.
+- **Repository state:** see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) for the current state and this iteration's plan, and [docs/README.md](./README.md) for which document owns what. The release history is in [roadmap.md](./roadmap.md).
 
 ## 1. Product vision
 

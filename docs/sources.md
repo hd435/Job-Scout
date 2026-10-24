@@ -1,5 +1,8 @@
 # Job source inventory — Stage 0
 
+> **Archive (non-normative).** This file records discovery research gathered before the blanket personal-use access posture (D-066). Counts and titles are historical; it is evidence, not a requirement, and no longer gates which employers may be monitored.
+
+
 **Status:** validated evidence for MVP source selection  
 **Last checked:** 2026-10-22  
 **Scope:** 12 Tier A employers, plus two high-value Tier B discoveries  

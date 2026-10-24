@@ -1,10 +1,11 @@
-# Job-Scout — Roadmap and M1 plan
+# Job-Scout — Roadmap
 
-- **Status:** Approved; M1, M2, M3, M4 (offline), M5.1 (tooling + live validation), M5.2 (scheduler), M5.3 (retention), M5.4.0 (offline trial preparation), M5.4.1 (Monzo validation scope), M5.4.2 (Lloyds Graduate validation profile) and M5.4.3 (UK-employer location context) delivered
-- **Last updated:** 2026-10-23
+- **Status:** Approved; **v0.5 (configurable scope)** is the current iteration. The M-series below is the historical delivery record for v0.1–v0.4
+- **Last updated:** 2026-10-24
 - **Product authority:** [docs/prd.md](./prd.md)
 - **Technical design:** [docs/architecture.md](./architecture.md)
 - **Decision log:** [docs/decisions.md](./decisions.md)
+- **Documentation map:** [docs/README.md](./README.md)
 
 ## 1. Release definitions
 
@@ -331,6 +332,23 @@ Live validation still required before these sources can be trusted or run unatte
 - Run for seven days; verify restart recovery, failure notices, status, log redaction, backup/restore, and no silent gap longer than one scheduled cycle.
 - MVP complete only when all six sources and the reliability gate pass.
 
+## Release view
+
+The M-series below is the historical record of how the product was built. Delivery is now
+organised by iteration, one file each in [iterations/](./iterations/).
+
+| Release | Theme | State |
+|---|---|---|
+| v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Running** on the operator's machine |
+| **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **Approved 2026-10-24 — see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md)** |
+| v0.6 | Scale: ~100 employers in batches, per-host politeness, compact status, alert-volume policy | Not started |
+
+Coverage beyond the six researched employers is the Product Owner's ongoing operational work
+(D-066), not a milestone. The roadmap stays one screen; per-iteration detail lives in the
+iteration file it links to.
+
+---
+
 **M5 increments**
 
 | Increment | Outcome | Status |
@@ -415,7 +433,7 @@ M5.4.2 scope and limits (Lloyds Graduate, Workday): the check gained a per-sourc
 
 What a Lloyds PASS would prove: the listing POST returned `{total, jobPostings[]}`, the watched fields (`title`, `externalPath`, `locationsText`, `postedOn`, `bulletFields`) had the expected types, and every posting mapped with zero skips. It would **not** prove: that real postings use the `Graduate_careers` site rather than the general LBG careers site, that relative `postedOn` strings (`Posted 5 Days Ago`) are parsed as intended on every wording, that the requisition id in `bulletFields[0]` is stable across refreshes, that multi-site placeholders resolve through detail lookups within the cap, that the derived public URL pattern is correct, or permission for recurring access.
 
-M5.4.2 live evidence (Lloyds Graduate, exit 0, 2026-10-23T17:53Z): two listing POSTs (pages of 20) returned 33 graduate postings, all 33 mapped with 0 skips, and `Shape: identical to the recorded fixture` ? the watched fields matched the synthetic baseline exactly, with no new or missing fields. The sampled roles are real graduate schemes (Software Engineer, Occupational Psychology, People Science) with city-level `locationsText` (`London`, `Edinburgh`, `Bristol`, `Leeds`), numeric requisition ids in `bulletFields[0]`, and `postedOn: "Posted Today"`, which exercised a relative-date wording the fixture never had.
+M5.4.2 live evidence (Lloyds Graduate, exit 0, 2026-10-23T17:53Z): two listing POSTs (pages of 20) returned 33 graduate postings, all 33 mapped with 0 skips, and `Shape: identical to the recorded fixture` — the watched fields matched the synthetic baseline exactly, with no new or missing fields. The sampled roles are real graduate schemes (Software Engineer, Occupational Psychology, People Science) with city-level `locationsText` (`London`, `Edinburgh`, `Bristol`, `Leeds`), numeric requisition ids in `bulletFields[0]`, and `postedOn: "Posted Today"`, which exercised a relative-date wording the fixture never had.
 
 A first attempt with the earlier profile (budget 4, three detail lookups allowed) was refused by the budget after four requests and wrote no artifact: the board is paginated beyond one page and carries more multi-site postings than that budget could resolve. That refusal is itself the evidence that the budget is enforced before the request reaches the network. The profile was then narrowed to listing pages only (`max_detail_lookups` 0, budget 6), which is why this run reports `partial` with the note `detail lookups capped at 0`.
 
