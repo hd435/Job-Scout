@@ -349,6 +349,7 @@ class SourceState:
     skipped_count: int | None
     failure_notice_at: str | None = None
     failure_notice_outcome: str | None = None
+    failure_notice_attempts: int = 0
 
     @property
     def has_baseline(self) -> bool:

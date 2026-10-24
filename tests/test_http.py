@@ -170,6 +170,57 @@ def test_invalid_json_is_reported_without_echoing_the_url() -> None:
     assert "token=secret" not in str(exc.value)
 
 
+def test_non_json_response_names_the_status_and_a_bounded_snippet() -> None:
+    body = b"<html><head><title>502 Bad Gateway</title></head>" + b"<p>pad</p>" * 200
+
+    def transport(request, timeout):
+        return HttpResponse(200, body, {})
+
+    client = UrllibHttpClient(transport=transport)
+
+    with pytest.raises(HttpError) as exc:
+        client.get_json("https://example.test/jobs")
+    message = str(exc.value)
+    assert "status=200" in message
+    assert "looks like HTML" in message
+    assert "502 Bad Gateway" in message
+    assert len(message) < 300
+
+
+def test_html_challenge_is_reported_as_html() -> None:
+    def transport(request, timeout):
+        return HttpResponse(200, b"  \n<!DOCTYPE html><html>challenge</html>", {})
+
+    client = UrllibHttpClient(transport=transport)
+
+    with pytest.raises(HttpError) as exc:
+        client.get_json("https://example.test/jobs")
+    assert "(looks like HTML)" in str(exc.value)
+
+
+def test_empty_body_is_reported_as_empty() -> None:
+    def transport(request, timeout):
+        return HttpResponse(204, b"   ", {})
+
+    client = UrllibHttpClient(transport=transport)
+
+    with pytest.raises(HttpError) as exc:
+        client.post_json("https://example.test/jobs", {"offset": 0})
+    assert "status=204" in str(exc.value)
+    assert "empty body" in str(exc.value)
+
+
+def test_text_that_is_not_json_is_labelled_not_json() -> None:
+    def transport(request, timeout):
+        return HttpResponse(200, b"Service unavailable\n", {})
+
+    client = UrllibHttpClient(transport=transport)
+
+    with pytest.raises(HttpError) as exc:
+        client.get_json("https://example.test/jobs")
+    assert "(not JSON)" in str(exc.value)
+
+
 def test_default_transport_marks_timeouts_as_uncertain(monkeypatch) -> None:
     def boom(*_args, **_kwargs):
         raise TimeoutError("timed out")

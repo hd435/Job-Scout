@@ -315,9 +315,9 @@ Tests use temporary databases, a fake HTTP client, and a fake Telegram transport
 
 Technical reachability, HTTP 200 responses, and permissive `robots.txt` rules do **not** establish permission for recurring automated access.
 
-- This build is fixture-first and runs no schedule.
-- A manual live smoke test is acceptable only where the source's terms permit it.
-- **No source is currently approved for recurring production polling.** Terms review is required per source before M2/M5.
-- The six-source terms review is in [docs/source-access.md](./docs/source-access.md). It found that Palantir and Wise prohibit automated monitoring or copying without written permission, that Barclays, Lloyds and Arm permit personal use but condition copying or storing their content on written permission, and that Monzo publishes no website-terms document at all.
+- Recurring polling is controlled by configuration, and this repository ships with sources enabled; running it against an employer is your own risk decision.
+- The operator of this deployment has accepted that risk on a blanket personal-use basis (D-066). That is a recorded risk acceptance, not a claim that any site's terms grant permission.
+- The access evidence gathered during discovery is kept in [docs/source-access.md](./docs/source-access.md). It found that Palantir and Wise prohibit automated monitoring or copying without written permission, that Barclays, Lloyds and Arm permit personal use but condition copying or storing their content on written permission, and that Monzo publishes no website-terms document at all.
+- If you clone this repository, read that evidence and make your own decision. Robots rules, rate limits, and no evasion remain engineering requirements: run at a polite cadence and do not use this tool to get around bot protection.
 
 Job-Scout never bypasses CAPTCHAs, authentication, or bot protection, and it only links to official employer or ATS listings.

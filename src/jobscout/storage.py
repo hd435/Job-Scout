@@ -33,6 +33,10 @@ from .retention import PruneReport, RetentionPolicy, cutoff
 
 _MISSING_LOCATION = LocationResult(qualifies=False, reason="location_missing", ambiguous=True)
 
+# A failure notice is sent once per episode, with a bounded number of delivery retries
+# when the previous attempt did not reach Telegram at all.
+FAILURE_NOTICE_MAX_ATTEMPTS = 3
+
 _MIGRATION_1 = """
 CREATE TABLE sources (
     id TEXT PRIMARY KEY,
@@ -130,7 +134,17 @@ ALTER TABLE sources ADD COLUMN failure_notice_at TEXT NULL;
 ALTER TABLE sources ADD COLUMN failure_notice_outcome TEXT NULL;
 """
 
-_MIGRATIONS: tuple[str, ...] = (_MIGRATION_1, _MIGRATION_2, _MIGRATION_3, _MIGRATION_4)
+_MIGRATION_5 = """
+ALTER TABLE sources ADD COLUMN failure_notice_attempts INTEGER NOT NULL DEFAULT 0;
+"""
+
+_MIGRATIONS: tuple[str, ...] = (
+    _MIGRATION_1,
+    _MIGRATION_2,
+    _MIGRATION_3,
+    _MIGRATION_4,
+    _MIGRATION_5,
+)
 
 
 def utc_now_iso() -> str:
@@ -294,6 +308,7 @@ class Storage:
             skipped_count=row["skipped_count"],
             failure_notice_at=row["failure_notice_at"],
             failure_notice_outcome=row["failure_notice_outcome"],
+            failure_notice_attempts=row["failure_notice_attempts"],
         )
 
     def list_source_states(self) -> list[SourceState]:
@@ -356,9 +371,11 @@ class Storage:
         if result.complete:
             assignments.append("last_success_at = ?")
             params.append(result.finished_at)
-            # A completed scan ends the failure episode, so a new streak notifies again.
+            # A completed scan ends the failure episode, so a new streak notifies again
+            # with a fresh attempt budget.
             assignments.append("failure_notice_at = NULL")
             assignments.append("failure_notice_outcome = NULL")
+            assignments.append("failure_notice_attempts = 0")
         else:
             assignments.append("last_error_at = ?")
             assignments.append("last_error_summary = ?")
@@ -424,18 +441,35 @@ class Storage:
         )
         return cursor.rowcount == 1
 
-    def claim_failure_notice(self, source_id: str, *, now: str, threshold: int) -> bool:
-        """Reserve the single failure notice for a source's current failure episode.
+    def claim_failure_notice(
+        self,
+        source_id: str,
+        *,
+        now: str,
+        threshold: int,
+        max_attempts: int = FAILURE_NOTICE_MAX_ATTEMPTS,
+    ) -> bool:
+        """Reserve the failure notice for a source's current failure episode.
 
-        Returns True only for the caller that claimed it, so a streak of failures sends
-        one notice rather than one per scan (D-010, D-038).
+        One notice per episode (D-010, D-038). A notice whose delivery *failed* may be
+        retried, because the most likely cause of a failed send is the same outage being
+        reported — without this, one failed attempt silences the episode for ever. An
+        `ambiguous` outcome is never retried (D-024), and retries stop after
+        `max_attempts` so a permanently unreachable chat cannot loop.
         """
         cursor = self._conn.execute(
             """
-            UPDATE sources SET failure_notice_at = ?, failure_notice_outcome = 'pending'
-            WHERE id = ? AND failure_notice_at IS NULL AND consecutive_failures >= ?
+            UPDATE sources
+            SET failure_notice_at = ?,
+                failure_notice_outcome = 'pending',
+                failure_notice_attempts = failure_notice_attempts + 1
+            WHERE id = ? AND consecutive_failures >= ?
+              AND (
+                    failure_notice_at IS NULL
+                 OR (failure_notice_outcome = 'failed' AND failure_notice_attempts < ?)
+              )
             """,
-            (now, source_id, threshold),
+            (now, source_id, threshold, max_attempts),
         )
         return cursor.rowcount == 1
 

@@ -7,7 +7,7 @@ import pytest
 
 from jobscout.config import SourceConfig
 from jobscout.models import JobStatus
-from jobscout.storage import Storage
+from jobscout.storage import FAILURE_NOTICE_MAX_ATTEMPTS, Storage
 
 
 @pytest.fixture
@@ -31,11 +31,11 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             )
         }
-        assert version == 4
+        assert version == 5
         assert {"sources", "scans", "jobs", "notifications"} <= tables
 
     with Storage.open(path) as storage:
-        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 5
 
 
 def test_open_creates_missing_parent_directory(tmp_path: Path) -> None:
@@ -106,6 +106,73 @@ def test_transaction_rolls_back_on_error(store: Storage) -> None:
         raise RuntimeError("boom")
 
     assert store.get_source_state("temp") is None
+
+
+def _failing_source(store: Storage, failures: int = 3) -> None:
+    store.ensure_source(
+        SourceConfig(id="palantir", employer="Palantir Technologies", adapter="lever", options={})
+    )
+    store.connection.execute(
+        "UPDATE sources SET consecutive_failures = ? WHERE id = 'palantir'", (failures,)
+    )
+
+
+def test_failure_notice_is_claimed_once_per_episode(store: Storage) -> None:
+    _failing_source(store)
+
+    assert store.claim_failure_notice("palantir", now="t1", threshold=3)
+    assert not store.claim_failure_notice("palantir", now="t2", threshold=3)
+
+    store.record_failure_notice_outcome("palantir", outcome="sent")
+
+    assert not store.claim_failure_notice("palantir", now="t3", threshold=3)
+    assert store.get_source_state("palantir").failure_notice_attempts == 1
+
+
+def test_failed_notice_may_be_retried_but_ambiguous_may_not(store: Storage) -> None:
+    _failing_source(store)
+
+    assert store.claim_failure_notice("palantir", now="t1", threshold=3)
+    store.record_failure_notice_outcome("palantir", outcome="failed")
+    assert store.claim_failure_notice("palantir", now="t2", threshold=3)
+
+    store.record_failure_notice_outcome("palantir", outcome="ambiguous")
+    assert not store.claim_failure_notice("palantir", now="t3", threshold=3), (
+        "an ambiguous send may have been delivered, so it is never retried (D-024)"
+    )
+
+
+def test_failed_notice_retries_stop_at_the_attempt_cap(store: Storage) -> None:
+    _failing_source(store)
+    claims = 0
+    for index in range(10):
+        if not store.claim_failure_notice("palantir", now=f"t{index}", threshold=3):
+            break
+        claims += 1
+        store.record_failure_notice_outcome("palantir", outcome="failed")
+
+    assert claims == FAILURE_NOTICE_MAX_ATTEMPTS
+    assert store.get_source_state("palantir").failure_notice_attempts == FAILURE_NOTICE_MAX_ATTEMPTS
+
+
+def test_notice_below_threshold_is_never_claimed(store: Storage) -> None:
+    _failing_source(store, failures=2)
+
+    assert not store.claim_failure_notice("palantir", now="t1", threshold=3)
+
+
+def test_completed_scan_resets_the_attempt_budget(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer")])
+    _failing_source(store)
+    assert store.claim_failure_notice("palantir", now="t1", threshold=3)
+    store.record_failure_notice_outcome("palantir", outcome="failed")
+
+    scan([record("a", "Graduate Software Engineer")])
+
+    state = store.get_source_state("palantir")
+    assert state.consecutive_failures == 0
+    assert state.failure_notice_attempts == 0
+    assert state.failure_notice_outcome is None
 
 
 def test_closed_job_row_keeps_identity(store: Storage, scan, record) -> None:

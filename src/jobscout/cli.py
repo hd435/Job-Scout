@@ -784,9 +784,14 @@ def _print_status(source: SourceConfig, state: SourceState | None, storage: Stor
     if state.next_run_at:
         print(f"  Next run: {state.next_run_at}")
     if state.failure_notice_at:
+        attempts = (
+            f", attempt {state.failure_notice_attempts}"
+            if state.failure_notice_attempts > 1
+            else ""
+        )
         print(
             f"  Failure notice: {state.failure_notice_outcome or 'pending'}"
-            f" at {state.failure_notice_at}"
+            f" at {state.failure_notice_at}{attempts}"
         )
     if state.last_error_summary:
         print(f"  Last error: {state.last_error_at} - {state.last_error_summary}")

@@ -450,7 +450,7 @@ Rules:
 - An exception raised outside the adapter's own error handling is recorded as a failed scan with a `scheduler error:` summary, so the failure streak, the three-failure notice, and `status` all reflect it. Delivery and failure-notice work is wrapped per source, so a delivery or notice problem cannot abort the pass.
 - A failed or partial scan never establishes baseline, alerts new roles, or increments closure misses.
 - Bounded retries run inside a scan; exhausted retries produce a failed scan and a source failure count.
-- Three consecutive source failures trigger one failure notice in M2, with no repeated spam until recovery.
+- Three consecutive source failures trigger one failure notice, with no repeated spam until recovery. A notice whose delivery failed is retried up to three times per episode (the failure that blocked the notice is usually the one being reported); an ambiguous notice is never retried, and a completed scan resets the budget (D-060).
 - The status command must distinguish success, empty success, partial, and failed.
 - Notification failures are handled by a persisted state machine (`pending`, `sent`, `ambiguous`, `failed`). Exactly-once external delivery is not assumed: an ambiguous outcome is recorded and not retried automatically (D-024), transient failures stay `pending` for a later pass, permanent rejections become `failed`, and a `sent` row is never re-sent.
 - Trial measurement is a read-only projection over `scans`, `sources`, and `notifications` (`jobscout report`, D-064). No heartbeat or measurement-only state is recorded, so "availability" means "scans appeared when the cadence said they should".

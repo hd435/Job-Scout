@@ -18,7 +18,7 @@ from jobscout.models import (
 from jobscout.notices import FailureNoticeSender, format_failure_notice
 from jobscout.scheduler import Scheduler
 from jobscout.sources.base import build_job
-from jobscout.storage import Storage
+from jobscout.storage import FAILURE_NOTICE_MAX_ATTEMPTS, Storage
 
 START = "2026-10-23T09:00:00Z"
 
@@ -1008,7 +1008,8 @@ def test_the_in_memory_backoff_expires_so_the_source_is_retried(
     assert store.get_source_state("palantir").last_scan_status == "success"
 
 
-def test_a_raising_notice_transport_is_recorded_as_failed_and_not_retried(store: Storage) -> None:
+def test_a_raising_notice_transport_is_recorded_as_failed_and_retried(store: Storage) -> None:
+    """A failed send used to silence the episode; it is now retried on a later pass."""
     clock = StepClock()
     transport = RaisingTransport()
     scheduler = _failing_scheduler(store, clock, transport)
@@ -1019,14 +1020,82 @@ def test_a_raising_notice_transport_is_recorded_as_failed_and_not_retried(store:
         clock.advance(minutes=30)
 
     state = store.get_source_state("palantir")
-    assert transport.attempts == 1
+    assert transport.attempts == 2, "pass 3 and pass 4 each attempted the notice"
     assert state.failure_notice_outcome == "failed"
-    assert notices[2].notice is not None
-    assert notices[2].notice.outcome == "failed"
+    assert state.failure_notice_attempts == 2
+    assert notices[2].notice is not None and notices[2].notice.outcome == "failed"
     assert "socket closed" in (notices[2].notice.error or "")
-    assert all(
-        n.notice is None or not n.notice.attempted for n in (notices[0], notices[1], notices[3])
+    assert notices[3].notice is not None and notices[3].notice.outcome == "failed"
+
+
+def test_a_failed_notice_is_delivered_once_the_transport_recovers(
+    store: Storage, fake_transport
+) -> None:
+    """The outage that breaks the scan also breaks the notice; recovery must deliver it."""
+    clock = StepClock()
+    transport = fake_transport(
+        [
+            DeliveryResult(DeliveryOutcome.PERMANENT, error="network down"),
+            DeliveryResult(DeliveryOutcome.PERMANENT, error="network still down"),
+        ]
     )
+    scheduler = _failing_scheduler(store, clock, transport)
+
+    for _ in range(4):  # failures 1-2 are below the threshold; 3 claims and fails
+        scheduler.run_once()
+        clock.advance(minutes=30)
+    state = store.get_source_state("palantir")
+    assert state.failure_notice_outcome == "failed"
+    assert len(transport.sent) == 2, "both attempts failed to deliver"
+
+    clock.advance(minutes=30)
+    delivered = scheduler.run_once()[0]
+
+    state = store.get_source_state("palantir")
+    assert delivered.notice is not None and delivered.notice.outcome == "sent"
+    assert state.failure_notice_outcome == "sent"
+    assert state.failure_notice_attempts == 3
+    assert len(transport.sent) == 3, "one attempt per pass, exactly one of them delivered"
+
+
+def test_notice_retries_stop_after_the_bounded_number_of_attempts(store: Storage) -> None:
+    clock = StepClock()
+    transport = RaisingTransport()
+    scheduler = _failing_scheduler(store, clock, transport)
+
+    for _ in range(8):
+        scheduler.run_once()
+        clock.advance(minutes=30)
+
+    state = store.get_source_state("palantir")
+    assert transport.attempts == FAILURE_NOTICE_MAX_ATTEMPTS
+    assert state.failure_notice_attempts == FAILURE_NOTICE_MAX_ATTEMPTS
+    assert state.failure_notice_outcome == "failed"
+
+
+def test_a_completed_scan_resets_the_notice_attempt_budget(store: Storage) -> None:
+    clock = StepClock()
+    failing = ScriptedAdapter([result("palantir", ScanStatus.FAILED, error="boom")])
+    scheduler = make_scheduler(
+        store,
+        app_config(palantir()),
+        clock,
+        adapters={"scripted": failing},
+        notice_sender=FailureNoticeSender(RaisingTransport(), clock=clock),
+    )
+    for _ in range(4):
+        scheduler.run_once()
+        clock.advance(minutes=30)
+    assert store.get_source_state("palantir").failure_notice_attempts == 2
+
+    healthy = ScriptedAdapter([result("palantir", jobs=(job("palantir"),))])
+    scheduler._adapter_factory = lambda _adapter_id: healthy  # noqa: SLF001 - test seam
+    scheduler.run_once()
+
+    state = store.get_source_state("palantir")
+    assert state.failure_notice_attempts == 0
+    assert state.failure_notice_at is None
+    assert state.failure_notice_outcome is None
 
 
 def test_a_failure_that_cannot_be_recorded_is_reported_and_isolated(

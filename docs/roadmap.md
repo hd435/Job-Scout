@@ -339,13 +339,22 @@ organised by iteration, one file each in [iterations/](./iterations/).
 
 | Release | Theme | State |
 |---|---|---|
-| v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Running** on the operator's machine |
+| v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Delivered**; the local scheduled task is currently disabled while v0.5 changes land |
 | **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **Approved 2026-10-24 — see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md)** |
 | v0.6 | Scale: ~100 employers in batches, per-host politeness, compact status, alert-volume policy | Not started |
 
 Coverage beyond the six researched employers is the Product Owner's ongoing operational work
 (D-066), not a milestone. The roadmap stays one screen; per-iteration detail lives in the
 iteration file it links to.
+
+**Two notes on the historical sections below.** They are the record of how v0.1–v0.4 were built,
+and some of their gates have since been superseded:
+
+- Per-source terms review is no longer a deployment gate. The Product Owner accepted the access
+  risk on a blanket personal-use basis (D-066); robots rules, rate limits and no evasion remain
+  engineering requirements.
+- The retention horizons (D-025) are now ratified as implemented (D-067), so the "not yet
+  ratified" blockers recorded under M5.2/M5.3 are closed.
 
 ---
 

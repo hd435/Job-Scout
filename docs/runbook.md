@@ -75,6 +75,11 @@ it lives outside Git, so a fresh clone is unaffected.
 | Pass log | `data/ops/logs/schedule.log` |
 | Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
 
+**Current state: the task exists but is disabled.** It was disabled on 2026-10-24 so that v0.5
+changes land without a scan running mid-edit. Re-enable it with
+`schtasks /Change /TN "Job-Scout scan" /ENABLE` when you want the beta running again; the
+definition and the database are untouched while it is off.
+
 The task runs `jobscout schedule --once`; each pass scans only sources whose cadence has
 elapsed (30 minutes), delivers any queued alerts, and exits. `MultipleInstancesPolicy` is
 `IgnoreNew`, so an overlapping pass is skipped rather than stacked — and the source claim in

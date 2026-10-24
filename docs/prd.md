@@ -37,7 +37,7 @@ Relevant early-career roles are scattered across employer career sites and ATS b
 
 The intended outcome is:
 
-- The user does not need to check the six selected employers manually.
+- The user does not need to check each employer's careers page manually every day.
 - New matching roles arrive as clear, actionable Telegram messages.
 - The same role is not repeatedly announced.
 - The user can trust that a quiet period means no new matches, not a broken monitor.
@@ -60,12 +60,19 @@ The MVP is intended to cover these six source entries:
 
 These are **source entries**, not guarantees that a matching role is open at any particular time. Counts and titles change.
 
+They are the **seeded starting set**, kept because each was researched and validated during discovery. The MVP coverage target is roughly 100 enabled employers (D-066), reached by adding configuration rather than code from v0.5 onwards; the six above are therefore no longer the definition of "MVP complete".
+
 ### 4.2 Release definitions
 
-- **First usable version:** one source (Palantir) plus Telegram delivery, proving the end-to-end user experience. This is an incremental release, not a reduction in MVP scope.
-- **MVP complete:** all six intended sources are operational and the acceptance criteria in section 12 are met. Removing or substituting a source requires an explicit Product Owner re-scope; it is not an automatic completion path.
+Releases are cumulative; each one is usable on its own and none reduces MVP scope.
 
-A Palantir-first implementation sequence is a delivery strategy only. It does not change the intended six-source product scope.
+| Release | Definition | Status |
+|---|---|---|
+| **v0.4 — personal beta** | Two sources (Lloyds Graduate, Monzo) scanning on a local schedule with Telegram delivery, an on-demand current-matches digest, and a read-only operating scorecard. Proves the end-to-end experience for one operator. | Delivered |
+| **v0.5 — configurable scope** | Sources, role families, seniority, employment types, locations and exclusions are chosen in configuration rather than code; failure reports are visible and recoverable; documentation describes the product as it is. This is the release that makes a clone usable by someone else. | In progress |
+| **v0.6 — MVP complete** | Roughly 100 enabled employers covering the six intended sources and beyond, satisfying section 12. Removing or substituting a source requires an explicit Product Owner re-scope; the coverage target is a milestone, not a stopping point, because adding employers is ongoing operational work (D-066). | Not started |
+
+v0.5's increments and acceptance criteria are specified in [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md).
 
 ### 4.3 Exclusions
 
@@ -80,8 +87,8 @@ The MVP does not include:
 - Automatic applications or recruiter contact.
 - A user-facing source-health dashboard. A minimal status check is sufficient.
 - Salary or visa-sponsorship filtering. Salary is displayed when available; sponsorship is recorded when exposed but does not filter alerts.
-- Coverage of employers outside the six named sources without Product Owner approval.
-- A digest mode or quiet hours. Both are approved as out of scope for the MVP.
+- Coverage of employers outside the intended set without Product Owner approval.
+- **Batched alerting:** no digest of *new* alerts, no quiet hours, no daily roll-up. Both remain out of scope (D-070). An **on-demand, read-only current-matches digest** (`jobscout digest`) is in scope, because it reports roles already discovered rather than batching alerts, and it does not create notification rows or alter baseline state.
 
 ## 5. Decision status
 
@@ -91,25 +98,25 @@ This section separates what is evidenced from what is approved or still unresolv
 
 Verified as of 2026-10-22; detailed evidence is in [docs/sources.md](./sources.md):
 
-- The six intended sources are technically accessible through official employer or ATS endpoints or sitemaps.
+- The six researched sources are technically accessible through official employer or ATS endpoints or sitemaps; live validation has since passed for Monzo (Greenhouse) and Lloyds Graduate (Workday).
 - Every usable source exposes a stable job identifier, enabling deduplication by source and source job ID.
 - Early-career volume is concentrated in Wise, Palantir, Barclays, and Lloyds Graduate; Monzo and Arm provide smaller but relevant coverage.
 - Field completeness is strong for title, employer, location, URL, and description; salary and closing-date coverage is uneven.
 - Access constraints exist: Wise's query-string job pages and Arm's search-results path are disallowed by robots.txt; Workday endpoints carry a rate-limit risk; Palantir's Lever API requests a crawl delay.
 - Several researched employers are not MVP-ready: Revolut and Skyscanner are blocked by bot protection; Faculty has no current openings; HSBC's UK coverage and feed completeness are unproven; Accenture's Workday endpoint returned HTTP 429; Anthropic, Bank of England, and Synthesia currently offer little early-career volume.
 
-**Important distinction:** successful technical access is not permission for recurring automated access. Terms-of-service review for the six selected sources remains outstanding. Palantir is the first M1 source; its terms review is a production gate, not a prerequisite for local fixture-based development.
+**Important distinction:** successful technical access is not permission for recurring automated access. The Product Owner has accepted this risk on a blanket personal-use basis (D-066); the earlier per-source review in [docs/source-access.md](./source-access.md) remains as evidence of what was found, but it is no longer a production gate.
 
 ### 5.2 Approved product decisions
 
 | Decision | Status |
 |---|---|
 | One Telegram chat for the MVP | Approved |
-| Six-employer intended MVP coverage: Wise, Palantir, Barclays, Lloyds Graduate, Monzo, Arm | Approved |
+| Coverage target of roughly 100 employers, seeded by Wise, Palantir, Barclays, Lloyds Graduate, Monzo and Arm; expansion is ongoing operational work (D-066) | Approved |
 | Official employer careers pages and ATS endpoints only; no aggregators | Approved |
 | Baseline: the first complete scan per source is silent; an optional current-matches summary is allowed; alerts are only for matching roles first observed in later complete scans | Approved |
 | A role is new when first observed in a complete scan after that source's baseline scan has completed; a partial-scan observation does not make it alert-eligible | Approved |
-| Immediate alert per new matching role; no digest | Approved |
+| Immediate alert per new matching role; no batched digest of new alerts (an on-demand digest of current matches is allowed) | Approved |
 | Alert fields: title, employer, location, salary if available, closing date if available, link | Approved |
 | Target seniority: graduate, entry-level, early-career; approved seniority and unrelated-family exclusions | Approved |
 | Target location: London roles, UK-wide remote roles, and UK hybrid roles anywhere in the UK; non-UK remote roles excluded | Approved |
@@ -130,10 +137,15 @@ These items are not yet approved and must not be treated as settled implementati
 
 | Open item | Why it matters | Needed by |
 |---|---|---|
-| **Notification delivery policy for ambiguous Telegram outcomes** | Telegram has no idempotency key. A timeout can occur after delivery, so exactly-once external delivery cannot be guaranteed. The choice is between retrying ambiguous sends (rare duplicates possible) and not retrying (rare missed alerts possible). | Before M2 |
-| **Retention period for job descriptions and notification history** | Data minimisation is approved, but the concrete retention period is not. It must be decided before unattended production. | Before M5 |
-| **Exact matching keyword and synonym list** | The product categories and exclusions are approved, but the exact terms are an implementation default to validate in the M1 dry run. | During M1 |
-| **Repository visibility and licence for future self-hosting** | The personal MVP is unaffected, but friends cannot clone a private repository without access. | Before M6 / self-host release |
+| **Exact matching keyword and synonym list** | The product categories and exclusions are approved, but the exact terms remain an implementation default; they are now extended per clone through `[matching]` configuration rather than edited in code (D-026 stays open). | Ongoing tuning |
+| **Alert volume shaping at ~100 sources** | Immediate per-role alerting is approved for two sources. At ~100 employers the volume may become unusable; re-open only when the observed volume justifies it (D-070). | After v0.6 coverage |
+
+Resolved since the previous revision, recorded here so the section is not silently stale:
+
+- **Ambiguous Telegram outcomes:** never retried; a `failed` send is retried up to three attempts per failure episode before the notice is abandoned (D-024, D-060). Implemented in v0.5 increment 0.1.
+- **Retention periods:** ratified as implemented — closed-role content 30 days, closed identity 365 days, scans 90 days, delivery error text 90 days (D-067).
+- **Repository visibility and licence:** private during the personal beta, MIT at the self-host release (D-071).
+- **Access posture at scale:** blanket personal-use risk acceptance by the Product Owner (D-066). This is a risk decision, not a claim that a site's terms grant permission, and robots rules, rate limits and non-evasion remain engineering requirements.
 
 ### 5.4 Unresolved assumptions, risks, and dependencies
 
@@ -147,7 +159,7 @@ These items are not yet approved and must not be treated as settled implementati
 
 **Risks and dependencies**
 
-- Terms-of-service review for all six sources has not been completed.
+- Terms-of-service review for the researched sources has not been completed; the Product Owner accepted this risk on a blanket personal-use basis instead (D-066).
 - Workday rate limits and pagination may affect Barclays and Lloyds reliability.
 - Wise and Arm depend on HTML page structure, which can change without notice.
 - Source identifiers can change when an employer reposts a role; this may produce an alert for an existing job.
@@ -161,7 +173,7 @@ These items are not yet approved and must not be treated as settled implementati
 
 ## 6. Intended user journey
 
-1. **One-time setup.** The user configures the six sources, the Telegram destination, and the role/location preferences.
+1. **One-time setup.** The user configures the enabled sources, the Telegram destination, and the role, seniority, employment-type and location preferences.
 2. **Baseline.** On the first complete scan, the system records existing roles without sending individual alerts. The user may request a one-time summary of current matches.
 3. **Ongoing monitoring.** The system checks the sources on a roughly 30-minute rhythm and compares each role's stable source ID with previously seen IDs. Only complete scans can make a newly discovered role alert-eligible.
 4. **Matching.** New roles are evaluated against the agreed role families, seniority, and location rules. A role that does not match is stored but not announced.
@@ -174,18 +186,18 @@ These items are not yet approved and must not be treated as settled implementati
 
 | ID | Requirement |
 |---|---|
-| **FR-1 Source coverage** | The system must monitor the six intended employers and must not silently omit a configured source. Coverage changes require Product Owner approval. |
+| **FR-1 Source coverage** | The system must monitor every configured source, must reach the coverage target of roughly 100 enabled employers, and must not silently omit a configured source. Sources are added through configuration, not code, from v0.5 onwards. |
 | **FR-2 Role representation** | Each role must retain its source, stable source job ID, employer, title, raw and normalized location, official URL, description, and, where available, posted date, closing date, salary, and remote/hybrid status. |
 | **FR-3 New-role detection** | A role is new only when it is first observed in a complete scan after that source's baseline scan has completed. A role first observed only in a partial scan is not alert-eligible until a complete scan observes it. |
 | **FR-4 Matching** | The system must apply the approved role-family, seniority, internship, and location rules and must explain why a role was included, excluded, or flagged as ambiguous. Ambiguous cases are not silently broadened into matches. |
 | **FR-5 First-run behaviour** | The first complete scan of a source must establish a silent baseline without individual alerts for existing roles. A partial or failed scan must not establish or complete a baseline. An optional one-time current-matches summary may be requested. |
-| **FR-6 Deduplication** | The system must send at most one alert per source job ID per Telegram chat in normal operation and must not create duplicates in deterministic retry and restart paths. Ambiguous Telegram outcomes must be recorded and handled under the approved notification policy; exactly-once external delivery is not guaranteed. |
+| **FR-6 Deduplication** | The system must send at most one alert per source job ID per Telegram chat in normal operation and must not create duplicates in deterministic retry and restart paths. An ambiguous Telegram outcome is recorded and never retried; a failed send is retried at most three times per failure episode; exactly-once external delivery is not guaranteed. |
 | **FR-7 Notification content** | Each alert must contain title, employer, location, salary if available, closing date if available, and a link to the official listing. Missing optional fields must be omitted cleanly. |
 | **FR-8 Notification timing** | A matching new role must be delivered as soon as practical after detection, without waiting for a digest. If delivery pacing is required, alerts must not be dropped. |
 | **FR-9 Failure isolation** | A failure in one source must not prevent the other sources from being checked. Retries must not create duplicate alerts or overwhelm the source. |
 | **FR-10 Status visibility** | The user must be able to check the last successful scan, last scan completeness, last error, consecutive failures, and recent alert activity per source. This does not require a dashboard. |
 | **FR-11 Persistence** | Seen source IDs, baseline state, scan history, notification history, and source status must survive restarts. |
-| **FR-12 Configuration** | Routine changes to sources, filters, and the Telegram destination should be possible through configuration rather than code changes. |
+| **FR-12 Configuration** | A clone must be able to choose its sources, role families, seniority, employment types, locations and exclusions through configuration rather than code. Only adding a structurally new *kind* of source may still require an adapter. |
 | **FR-13 Closure handling** | A role absent from two consecutive complete scans must be marked closed. Failed or partial scans never increment closure misses. Closure alerts are not required in the MVP. |
 | **FR-14 Security and compliance** | Secrets must not enter source control or logs. The system must respect source access restrictions and must not bypass CAPTCHAs, authentication, or bot protection. |
 | **FR-15 Auditability** | The system should retain enough match/decision context to review why a role was or was not alerted. This supports tuning and debugging without building a dashboard. |
@@ -209,7 +221,7 @@ These items are not yet approved and must not be treated as settled implementati
 
 **Approved exclusions:** senior, lead, principal, staff, head, director, vice president, and manager roles unless they are explicitly part of a graduate programme; sales, marketing, human resources, legal, and pure accounting/audit roles outside the target families; roles requiring a PhD unless explicitly early-career.
 
-The exact keyword and synonym list is an implementation default to be reviewed in the M1 dry run. Changes to that list must not expand the approved categories or remove the approved exclusions.
+The exact keyword and synonym list is an implementation default, reviewed against live roles and extendable per clone through `[matching]` configuration. Changes to that list must not expand the approved categories or remove the approved exclusions.
 
 ### 8.2 Location rules
 
@@ -251,7 +263,7 @@ The exact keyword and synonym list is an implementation default to be reviewed i
 - Deterministic retries and restarts must not create duplicate alerts. Ambiguous external delivery outcomes are recorded and handled under the approved notification policy; exactly-once delivery is not promised.
 - A role that disappears and later reappears with the same source ID is not re-announced by default.
 - A repost with a new source ID may be announced as new. This is an accepted MVP limitation and should be monitored for duplicate-like noise.
-- Cross-source duplicates are not expected for the six-employer set, but if the same employer appears through two sources, a duplicate heuristic may be needed later.
+- Cross-source duplicates are not expected across the seeded sources, but if the same employer appears through two sources, a duplicate heuristic may be needed later.
 
 ### 9.3 Updates, closures, and scan completeness
 
@@ -278,11 +290,11 @@ The exact keyword and synonym list is an implementation default to be reviewed i
 - **Single-user operation:** one Telegram chat; no multi-user account model in the MVP.
 - **Continuous operation:** the service should run continuously and check sources on a roughly 30-minute rhythm. Delivery is best-effort, not a real-time guarantee.
 - **Source access:** use official employer or ATS endpoints only. Do not use aggregators or third-party job databases.
-- **Permission versus access:** technical accessibility does not establish permission for recurring automated access. Terms of service for all six sources must be reviewed before production use.
+- **Permission versus access:** technical accessibility does not establish permission for recurring automated access. The Product Owner has accepted this risk on a blanket personal-use basis for this single-user deployment (D-066); each deployed source records its access basis, and robots rules, rate limits and non-evasion remain engineering requirements.
 - **Source-specific constraints:** Wise query-string job pages and Arm search-results paths must not be crawled; Palantir's crawl delay must be respected; Workday rate limits must be respected.
 - **Secrets:** the Telegram token and chat ID must be stored outside source control and must not appear in logs or error messages.
 - **Data minimisation:** store only what is needed for job state, deduplication, notification history, and basic source status. Do not collect CVs, application data, or unrelated personal information.
-- **Retention:** data minimisation is approved; a concrete retention policy must be proposed and approved before unattended production. Until then, retain only what is needed for deduplication, operational diagnosis, and notification history.
+- **Retention:** the implemented horizons are ratified — closed-role content cleared 30 days after closure, closed identity deleted 365 days after closure, scans 90 days, delivery error text 90 days (D-025, D-067). Pruning is an explicit operator command, never automatic.
 - **Failure isolation:** one source failure must not stop the others; the status check must make the failure visible.
 - **Restart safety:** persisted state must prevent duplicate alerts in deterministic restart paths; ambiguous Telegram outcomes must be recorded and handled under the approved notification policy.
 - **Least exposure:** no public administrative interface is required for the MVP; inbound exposure should be minimised.
@@ -307,18 +319,18 @@ The exact keyword and synonym list is an implementation default to be reviewed i
 | **AC-11** | No Telegram token or chat ID appears in the repository or logs. |
 | **AC-12** | A matching new role triggers a Telegram alert after scan completion, without waiting for a digest. Proposed latency thresholds are in section 13. |
 
-### 12.2 MVP complete (all six sources)
+### 12.2 MVP complete (coverage target reached)
 
 | ID | Criterion |
 |---|---|
-| **AC-13** | All six intended sources are configured and complete at least one complete scan. |
-| **AC-14** | No source is silently omitted; removing or substituting a source requires an explicit Product Owner re-scope. |
+| **AC-13** | Every source enabled in configuration is configured, enabled, and completes at least one complete scan; the six researched sources all count towards the coverage target, which is reached at roughly 100 enabled employers (D-066). |
+| **AC-14** | No enabled source is silently omitted; a source that is disabled or failing is visible in `jobscout status` and in the operating report, and adding coverage never breaks an existing source. |
 | **AC-15** | For each source, the scanner reports records seen and parsed and either matches the source-reported total or sitemap count, or records an explicit discrepancy reason; fixture counts are exact. |
 | **AC-16** | A cross-source fixture matrix shows matching and location rules applied consistently across adapters. |
-| **AC-17** | No duplicate alerts occur in deterministic retry/restart and cross-source fixture tests; ambiguous Telegram outcomes are recorded and handled under the approved notification policy. |
+| **AC-17** | No duplicate alerts occur in deterministic retry/restart and cross-source fixture tests; an ambiguous Telegram outcome is recorded and never retried, and a failed one is retried at most three times per failure episode (D-024, D-060). |
 | **AC-18** | A source failure is isolated, visible in status, and does not create duplicate alerts. |
-| **AC-19** | Terms-of-service review is documented for each deployed source; unresolved permission blocks deployment of that source. |
-| **AC-20** | The service completes a seven-day unattended run; the proposed reliability threshold is in section 13. |
+| **AC-19** | Each deployed source records an access basis: its public endpoint, the engineering hygiene applied (robots rules, rate limits, no evasion), and the Product Owner's blanket personal-use risk acceptance (D-066). This is recorded rather than reviewed per source, and it does not assert that any site's terms grant permission. |
+| **AC-20** | The service completes a seven-day unattended run and the operating report states measured cycle coverage, recording the hours the host was actually available — host downtime is reported separately from scheduler failure, and the reliability target in section 13 is not claimed unless it is measured. |
 | **AC-21** | The user can inspect last successful scan, last scan completeness, last error, consecutive failures, and recent alert activity per source. |
 | **AC-22** | A role first observed only in a partial scan is not alerted until a complete scan sees it. |
 | **AC-23** | A partial or failed scan never increments closure misses or marks a role closed. |
@@ -348,35 +360,34 @@ The number of sources, number of stored jobs, and number of messages sent are **
 
 | Risk | Impact | Current position |
 |---|---|---|
-| Terms of service do not permit recurring automated access | A source may need to be removed or accessed differently | Not yet reviewed; must be resolved before production |
-| Workday rate limits or pagination changes | Barclays/Lloyds scans may be incomplete or fail | API worked in validation; 429 behaviour must be handled |
+| Terms of service do not permit recurring automated access | A source may need to be removed or accessed differently | Accepted as a personal-use risk by the Product Owner (D-066); not a claim that any site grants permission |
+| Workday rate limits or pagination changes | Barclays/Lloyds scans may be incomplete or fail | Validated live for Lloyds; 429 handling implemented; Barclays not yet validated |
 | Wise or Arm page structure changes | Parsing may silently miss or misread roles | HTML-based access; needs fixtures and failure detection |
-| Matching is too broad or too narrow | Noise or missed roles undermines the product | Needs a dry-run sample and tuning |
-| First-run baseline is misunderstood | User may think the bot is broken or receive a flood | Approved silent baseline plus optional summary |
-| Telegram delivery ambiguity | A timeout can cause a rare duplicate or missed alert | Notification policy must be approved; ambiguous outcomes must be recorded |
+| Matching is too broad or too narrow | Noise or missed roles undermines the product | Dry-run samples reviewed; tuning continues as observations arrive |
+| First-run baseline is misunderstood | User may think the bot is broken or receive a flood | Approved silent baseline plus an on-demand current-matches digest |
+| Telegram delivery ambiguity | A timeout can cause a rare duplicate or missed alert | Ambiguous outcomes are recorded and never retried; failed sends retry up to three times (D-024, D-060) |
 | Partial scan mistaken for source shrinkage | Roles could be incorrectly closed | Only complete scans count toward closure; partial and failed scans never do |
 | Telegram token leakage | Security and privacy incident | Secrets must stay out of source control and logs |
-| Host or scheduler failure | Alerts stop silently | Needs status visibility and failure notification |
+| Host or scheduler failure | Alerts stop silently | Failure notices, `jobscout status` and the operating report; host sleep still reduces cycle coverage |
 | Source ID changes on repost | Duplicate-like alerts | Accepted MVP limitation; monitor |
-| Broad scope creep | Delays a usable personal MVP | Six sources only; no multi-user, AI ranking, or dashboard |
+| Broad scope creep | Delays a usable personal MVP | Configuration over code; no multi-user, AI ranking, or dashboard |
 
 ### 14.2 Dependencies
 
-- Telegram bot token and chat ID, before M2.
-- Confirmed permission or acceptable terms for each of the six sources before recurring production use.
-- An approved notification delivery policy for ambiguous Telegram outcomes, before M2.
-- An approved retention policy, before unattended production.
-- A continuously available host and a reliable way to run the service unattended, before M5.
+- Telegram bot token and chat ID: in place for the personal beta.
+- A recorded access basis per deployed source (endpoint, hygiene, risk acceptance); no per-source permission gate (D-066).
+- The notification delivery policy for ambiguous Telegram outcomes: decided and implemented (D-024, D-060).
+- The retention policy: ratified as implemented (D-067).
+- A continuously available host and a reliable way to run the service unattended: a local Windows scheduled task for the personal beta only.
 - A persistent store for seen roles, baseline/scan state, and notification history.
-- Review of the exact matching keyword list during the M1 dry run.
+- Configurable matching terms, so a clone can change scope without editing code (v0.5).
 
 ### 14.3 Open questions
 
-1. How should ambiguous Telegram delivery outcomes be handled: retry and accept rare duplicates, or do not retry and accept rare misses?
-2. What retention period should apply to job descriptions and notification history?
-3. Should the repository become public or licensed for friends to clone, and when?
-4. Which exact keyword and synonym list should be approved after the M1 dry-run review?
-5. What source-permission evidence is required before recurring automated access is considered acceptable?
+1. At roughly 100 sources, does immediate per-role alerting still serve the user, or is batching needed (D-070)?
+2. Which exact keyword and synonym list should become the shipped default for a new clone, as distinct from this operator's preferences?
+3. When should the repository become public and MIT-licensed for self-hosting (D-071)?
+4. How much per-source access evidence is worth keeping now that access is blanket-accepted (D-066)?
 
 ## 15. Technical considerations for engineering planning
 
@@ -390,4 +401,4 @@ The approved architecture direction is recorded in [docs/architecture.md](./arch
 - The product requires secure handling of the Telegram token and chat ID.
 - Matching and location normalisation need a reviewable ruleset and fixture-based tests before source expansion.
 - Telegram delivery ambiguity must be handled explicitly; exactly-once external delivery is not assumed.
-- Implementation of Telegram, scheduling, deployment, and non-Palantir adapters is deferred to later milestones; M1 is local and Palantir-only.
+- Implementation status, current scope and the next increment are tracked in [docs/roadmap.md](./roadmap.md) and [docs/iterations/](./iterations); this section lists constraints, not a delivery plan.
