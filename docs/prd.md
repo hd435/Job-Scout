@@ -302,6 +302,7 @@ does not override the ambiguity rule. See [configuration.md](./configuration.md)
 - **Failure notice:** one concise message after three consecutive failed scans of a source; no repeated failure spam until recovery. A recovery notice is optional.
 - **Shared connectivity outage:** when several sources fail because the connection never opened, they produce one aggregated notice rather than one each, with a two-hour quiet window for further sources caught by the same outage (D-086). Timeouts and per-source errors keep their own notice. Individual source health in `status` and the report is unaffected.
 - **Delivery self-check:** `jobscout notify-test` proves the configured Telegram path with one labelled message and records the result outside the alert history (D-088). It does not substitute for a real alert.
+- **Journey rehearsal:** `jobscout rehearsal` runs detection, matching, queueing, formatting, delivery and recording against synthetic records in a throwaway database (D-089). It is a pre-flight check for a new deployment, not evidence for AC-3: only a genuinely new matching role from a live source satisfies that.
 - **No re-alerts:** updates, salary changes, description changes, and closures do not trigger alerts by default.
 
 ## 11. Operational, security, and compliance requirements

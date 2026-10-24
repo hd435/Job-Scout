@@ -2,15 +2,20 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state:** a two-source personal beta is running (Lloyds Graduate and Monzo) with recurring local scans, Telegram alerts and a one-off current-matches digest. Six employer sources are implemented; Palantir, Lloyds Graduate and Monzo are live-validated. The current iteration is **v0.5 (configurable scope)** — see [docs/iterations/v0.5-configurable-scope.md](docs/iterations/v0.5-configurable-scope.md) — and [docs/README.md](docs/README.md) explains which document owns what.
+**Current state:** v0.5 (configurable scope) and v0.6 (scale-out machinery) are delivered, and a limited personal-use beta is running on the maintainer's machine with 14 enabled employers. The **coverage target is not met** — roughly 17 catalogued employers against an intended ~100 — and the seven-day reliability measurement is still in progress, so the MVP is not complete. What *is* ready is the thing this document describes: one person can install it, choose their own scope, and receive alerts. See [docs/pilot.md](./docs/pilot.md) for the tester briefing.
 
-Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan: [docs/roadmap.md](./docs/roadmap.md). Documentation map: [docs/README.md](./docs/README.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
+Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan and history: [docs/roadmap.md](./docs/roadmap.md). Documentation map: [docs/README.md](./docs/README.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
 
 ## Requirements
 
 - Python 3.12 or newer. No runtime dependencies beyond the standard library.
+- A clone of this repository. Install it **editable** (`pip install -e .`) — the validation fixtures live under `tests/fixtures/` and are not packaged, so an installed copy cannot run `validate --fixture`.
 
-## Install
+## Set up your own deployment (about 15 minutes)
+
+This is the whole path. Each step says what you should see before moving on.
+
+**1. Install.**
 
 ```bash
 python -m venv .venv
@@ -21,6 +26,77 @@ source .venv/bin/activate
 
 python -m pip install -e ".[dev]"
 ```
+
+**2. Create your own Telegram bot** and note the token and your chat id.
+
+1. In Telegram, message `@BotFather`, send `/newbot`, choose a name and a username ending in
+   `bot`. Copy the token it gives you (looks like `123456789:AA...`).
+2. Send your new bot any message, then open
+   `https://api.telegram.org/bot<your-token>/getUpdates` in a browser and read
+   `"chat": {"id": ...}`. Group ids are negative.
+
+**3. Put the credentials in `.env`** (gitignored; `.env.example` is the template).
+
+```bash
+cp .env.example .env    # Windows PowerShell: Copy-Item .env.example .env
+```
+
+**4. Prove delivery works before anything else.**
+
+```bash
+python -m jobscout notify-test
+```
+
+Expect `Delivery check: sent` and one labelled message in Telegram. If it fails, the error names
+the cause and nothing else has been touched — fix this before going further.
+
+**5. Choose your scope**, then check it.
+
+```bash
+cp config.example.toml config.toml   # then edit: sources, families, locations
+python -m jobscout config validate --config config.toml
+python -m jobscout config show     --config config.toml
+```
+
+`config.example.toml` explains the five choices and their valid values. **Which employers you
+scan is your decision** — the example starts with six and leaves the rest off.
+
+**6. Prove the whole alert journey** before waiting for a real role. This runs detection,
+matching, queueing, formatting, delivery and recording against synthetic records in a throwaway
+database, using your own credentials and preferences:
+
+```bash
+python -m jobscout rehearsal --config config.toml
+```
+
+Expect one clearly synthetic alert in Telegram and `Result: PASS`. Add `--dry-run` to see the
+message without sending it.
+
+**7. Establish the baseline.** The first complete scan of each source records what is already
+open, silently:
+
+```bash
+python -m jobscout scan --source <id> --dry-run --config config.toml
+```
+
+Repeat per source (`jobscout sources list` shows the ids you enabled), or take them all at once
+with a manual scheduler pass:
+
+```bash
+python -m jobscout schedule --once --config config.toml
+```
+
+**8. See what is already out there.** Alerts only start with the *next* genuinely new role, so
+this is how the first session shows value:
+
+```bash
+python -m jobscout summary --current --config config.toml
+python -m jobscout digest --dry-run --config config.toml
+python -m jobscout digest --config config.toml
+```
+
+**9. Run it on a schedule.** See [docs/pilot.md](./docs/pilot.md) for a five-minute task on
+Windows, macOS and Linux, plus how to check on it and what to report if something looks wrong.
 
 ## Usage
 
@@ -34,7 +110,7 @@ python -m jobscout scan --source lloyds_graduate --dry-run --fixture tests/fixtu
 # Recorded Greenhouse snapshot (synthetic fixture: proves parsing, not live shapes)
 python -m jobscout scan --source monzo --dry-run --fixture tests/fixtures/greenhouse_monzo.json
 
-# Live scan of the Palantir Lever board (only where the source's terms permit it)
+# Live scan of one configured source (contacts that employer's public board)
 python -m jobscout scan --source palantir --dry-run
 
 # Scan and deliver alerts for new matching roles via Telegram
@@ -46,7 +122,7 @@ python -m jobscout deliver
 # Run the sources that are due, then exit (no daemon, nothing in the background)
 python -m jobscout schedule --once
 
-# Run the scheduler loop (M5.4 owns running this unattended)
+# Run the scheduler loop in the foreground (a scheduled task normally does this for you)
 python -m jobscout schedule --max-iterations 1
 
 # Inspect what retention would remove, then remove it (never runs automatically)
@@ -65,6 +141,10 @@ python -m jobscout digest
 # Prove the Telegram delivery path with one labelled message (no job, no alert state)
 python -m jobscout notify-test --dry-run
 python -m jobscout notify-test
+
+# Prove the whole journey - detect, match, queue, deliver, record - with synthetic records
+python -m jobscout rehearsal --dry-run
+python -m jobscout rehearsal
 ```
 
 ## First usable session
@@ -81,9 +161,13 @@ python -m jobscout digest             # send them to the configured chat
 
 `jobscout notify-test` answers a different question — "can this machine reach my chat at all?"
 — with one message that says it is a delivery check rather than a role. It records the attempt
-in a `delivery_checks` table, never in the alert history, and it changes no job state. It is
-worth keeping the distinction in mind: a passing check proves the token, chat id and transport
-work, while only a genuinely new matching role proves the matching-to-alert path (D-088).
+in a `delivery_checks` table, never in the alert history, and it changes no job state.
+
+`jobscout rehearsal` goes one level further: it runs a first scan (silent baseline), a second
+scan containing one extra matching role, and delivery of the resulting alert, all against
+synthetic records in a throwaway database. That is the only way to see the whole chain work
+before a real employer happens to post something. What it cannot show is that a live employer
+will post a **relevant** role — only a genuine new role proves that (D-089).
 
 ## Live validation (any configured source)
 

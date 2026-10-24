@@ -349,6 +349,15 @@ the coverage is not. Coverage beyond the six researched employers is the Product
 ongoing operational work (D-066), measured per batch by the report rather than by a release
 name. Adding a release number for it would imply a development milestone that does not exist.
 
+**A deliberate reordering (2026-10-24).** The second-tester pilot — the first half of **M6**, "a
+friend can clone and run an independent deployment" — now runs **ahead of** the M5 seven-day
+reliability gate rather than after it. Reasoning: the scheduler's own reliability is already
+evidenced (it fires on schedule and exits cleanly; the failures observed were host connectivity
+and a sitemap page cap), while what the pilot actually tests is setup, configuration and
+relevance, none of which depend on 95% versus 90% cycle coverage. The seven-day measurement
+continues in parallel and its result will be reported honestly; **inviting a tester is not
+declaring MVP complete**, and AC-20 stays outstanding until it is measured.
+
 **Two notes on the historical sections below.** They are the record of how v0.1–v0.4 were built,
 and some of their gates have since been superseded:
 

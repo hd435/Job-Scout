@@ -1001,6 +1001,22 @@ class Storage:
         ).fetchone()
         return int(row["total"])
 
+    def exclusion_reasons(self, source_ids: Sequence[str] | None = None) -> tuple[str, ...]:
+        """The stored `match_reason` of every open role that was excluded.
+
+        Read-only, one query. The caller aggregates it into an explanation of why nothing
+        matched, which is the question a new operator asks first.
+        """
+        sql = "SELECT match_reason FROM jobs WHERE status = 'open' AND match_decision = 'no_match'"
+        params: tuple[object, ...] = ()
+        if source_ids:
+            placeholders = ",".join("?" * len(source_ids))
+            sql += f" AND source_id IN ({placeholders})"
+            params = tuple(source_ids)
+        return tuple(
+            row["match_reason"] for row in self._conn.execute(sql, params) if row["match_reason"]
+        )
+
     def source_coverage(self, *, since: str) -> dict[str, SourceCoverage]:
         """Open roles, matches and reviews per source, plus matches first seen in a window.
 
@@ -1080,6 +1096,23 @@ class Storage:
         if cursor.rowcount == 0:
             return None
         return int(cursor.lastrowid)
+
+    def notification_counts(self, chat_id: str | None = None) -> dict[str, int]:
+        """How many notification rows exist, by status, optionally for one chat.
+
+        Used to prove what a rehearsal recorded, and to say honestly whether this
+        deployment has ever sent an alert.
+        """
+        if chat_id is None:
+            rows = self._conn.execute(
+                "SELECT status, count(*) AS n FROM notifications GROUP BY status"
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT status, count(*) AS n FROM notifications WHERE chat_id = ? GROUP BY status",
+                (chat_id,),
+            ).fetchall()
+        return {row["status"]: int(row["n"]) for row in rows}
 
     def list_pending_notifications(
         self, chat_id: str, *, limit: int = 50

@@ -27,6 +27,7 @@ from .config import (
     load_telegram_config,
     missing_access_note_warnings,
 )
+from .diagnostics import summarise_exclusions
 from .digest import build_digest
 from .http import FixtureHttpClient, PacedHttpClient, UrllibHttpClient
 from .matching import MatchingRules, preferences_fingerprint, split_pinned_cities
@@ -42,6 +43,7 @@ from .models import (
 )
 from .notices import FailureNoticeSender
 from .notifier import Notifier, format_delivery_check, redact
+from .rehearsal import RehearsalResult, run_rehearsal
 from .report import DEFAULT_WINDOW_DAYS, build_trial_report, format_trial_report
 from .retention import RetentionPolicy
 from .scanner import run_scan
@@ -64,6 +66,7 @@ EXIT_FAILED = 2
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 VALIDATION_ARTIFACT_ROOT = PROJECT_ROOT / "data"
+REHEARSAL_ROOT = PROJECT_ROOT / "data" / "rehearsal"
 DEFAULT_VALIDATION_FIXTURES = {
     "palantir": PROJECT_ROOT / "tests" / "fixtures" / "palantir_jobs.json",
     "monzo": PROJECT_ROOT / "tests" / "fixtures" / "monzo_validation.json",
@@ -96,6 +99,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_digest(args)
         if args.command == "notify-test":
             return _cmd_notify_test(args)
+        if args.command == "rehearsal":
+            return _cmd_rehearsal(args)
         if args.command == "sources":
             return _cmd_sources(args)
         if args.command == "config":
@@ -309,6 +314,22 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     notify_test.add_argument("--db", type=Path, help="SQLite database path")
     notify_test.add_argument("--config", type=Path, help="TOML configuration file")
+
+    rehearsal = subparsers.add_parser(
+        "rehearsal",
+        help="rehearse detect -> match -> alert -> deliver in a scratch database",
+    )
+    rehearsal.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="run the whole journey but print the alert instead of sending it",
+    )
+    rehearsal.add_argument(
+        "--keep",
+        action="store_true",
+        help="keep the scratch database and payloads for inspection",
+    )
+    rehearsal.add_argument("--config", type=Path, help="TOML configuration file")
 
     sources = subparsers.add_parser(
         "sources",
@@ -662,6 +683,123 @@ def _cmd_notify_test(args: argparse.Namespace) -> int:
     return EXIT_FAILED
 
 
+def _cmd_rehearsal(args: argparse.Namespace) -> int:
+    """Exercise detect -> match -> queue -> format -> send -> record, in a scratch database."""
+    app = _load(args.config)
+    telegram = None if args.dry_run else _optional_telegram()
+    if not args.dry_run and telegram is None:
+        print(
+            "error: Telegram is not configured, so delivery cannot be rehearsed.",
+            file=sys.stderr,
+        )
+        print(
+            "       Use --dry-run to rehearse everything except the send, or set"
+            " JOBSCOUT_TELEGRAM_TOKEN and JOBSCOUT_TELEGRAM_CHAT_ID (see .env.example).",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+
+    notifier = _build_notifier(telegram) if telegram else None
+    result = run_rehearsal(
+        app,
+        scratch_dir=REHEARSAL_ROOT,
+        chat_id=telegram.chat_id if telegram else None,
+        notifier=notifier,
+        keep=args.keep,
+    )
+    _print_rehearsal(
+        result,
+        app=app,
+        dry_run=args.dry_run,
+        chat_id=telegram.chat_id if telegram else None,
+    )
+    return EXIT_OK if result.complete else EXIT_DEGRADED
+
+
+def _print_rehearsal(
+    result: RehearsalResult, *, app: AppConfig, dry_run: bool, chat_id: str | None
+) -> None:
+    baseline, follow_up = result.baseline, result.follow_up
+    print(f"Rehearsal database: {result.database}")
+    print("Synthetic records only; your live database is not opened.")
+    print(f"Rules: {_describe_matching(app.matching)}")
+    print()
+    print("1. First complete scan of a new source (baseline)")
+    print(
+        f"   {baseline.status} complete=yes seen={baseline.records_seen}"
+        f" new={baseline.new_jobs} alerts={baseline.notifications_queued}"
+    )
+    print(
+        "   "
+        + (
+            "silent baseline confirmed: existing roles recorded, no alert raised"
+            if result.baseline_was_silent
+            else "WARNING the baseline raised an alert; that is a defect"
+        )
+    )
+    print()
+    print("2. Second scan, one new matching role on the board")
+    print(
+        f"   {follow_up.status} complete=yes seen={follow_up.records_seen}"
+        f" new={follow_up.new_jobs} alerts={follow_up.notifications_queued}"
+    )
+    if result.detected_new_role:
+        print("   new role detected and one alert queued")
+    else:
+        print("   no alert was queued, so the journey stops here")
+        print("   the decisions this rehearsal made under your preferences:")
+        for title, decision, reasons in result.decisions:
+            detail = f" ({reasons})" if reasons else ""
+            print(f"     - {title}: {decision}{detail}")
+        print(
+            "   a London graduate role excluded by your scope is not a defect:"
+            " change the scope in your config (see: jobscout config show)"
+        )
+    print()
+    print("3. Delivery through the configured Telegram transport")
+    if result.delivery is None:
+        print("   dry run: nothing was sent, no Telegram request was made")
+    else:
+        delivery = result.delivery
+        print(
+            f"   sent={delivery.sent} failed={delivery.failed}"
+            f" ambiguous={delivery.ambiguous} retrying={delivery.retrying}"
+        )
+        if result.delivery_error:
+            print(f"   error: {result.delivery_error}")
+    for message in result.preview:
+        print("   message:")
+        for line in message.splitlines():
+            print(f"     {line}")
+    print()
+    print("4. Recorded notification")
+    counts = result.notification_counts or {"(none)": 0}
+    summary = ", ".join(f"{status}={count}" for status, count in sorted(counts.items()))
+    print(f"   {summary}")
+    if result.sent_message_id:
+        print(f"   telegram message id: {result.sent_message_id}")
+    print()
+
+    if result.complete:
+        verb = "rehearsed (not sent)" if dry_run else "delivered"
+        print(
+            f"Result: PASS - detection, matching, queueing, formatting and recording all ran;"
+            f" the alert was {verb}."
+        )
+        if dry_run:
+            print("Run again without --dry-run to send one synthetic alert to your own chat.")
+        else:
+            print(f"One clearly synthetic alert was sent to chat {chat_id}.")
+        print(
+            "This does not prove that a live employer will post a matching role:"
+            " only a genuine new role does that."
+        )
+    else:
+        print("Result: INCOMPLETE - the journey did not run end to end. See above.")
+    if result.scratch_kept:
+        print(f"Scratch files kept for inspection: {result.database.parent}")
+
+
 def _check_outcome(result: DeliveryResult) -> str:
     """Name a one-off delivery test's outcome with the delivery state machine's vocabulary."""
     if result.outcome is DeliveryOutcome.SENT:
@@ -800,6 +938,7 @@ def _cmd_summary(args: argparse.Namespace) -> int:
 
     with Storage.open(db_path) as storage:
         printed = False
+        total_matches = 0
         for source in sources:
             state = storage.get_source_state(source.id)
             if state is None:
@@ -807,10 +946,62 @@ def _cmd_summary(args: argparse.Namespace) -> int:
             printed = True
             matches = storage.list_jobs_by_decision(source.id, MatchOutcome.MATCH)
             reviews = storage.list_jobs_by_decision(source.id, MatchOutcome.NEEDS_REVIEW)
+            total_matches += len(matches)
             _print_summary(source, state, matches, reviews)
         if not printed:
             print("No scans recorded yet. Run: jobscout scan --source palantir --dry-run")
+            return EXIT_OK
+        _explain_quiet_summary(
+            storage,
+            sources=sources,
+            matches=total_matches,
+            enabled=[source.id for source in app.enabled_sources()],
+        )
     return EXIT_OK
+
+
+def _explain_quiet_summary(
+    storage: Storage,
+    *,
+    sources: Sequence[SourceConfig],
+    matches: int,
+    enabled: Sequence[str],
+) -> None:
+    """Say why there is nothing to show, or why nothing was announced (D-090).
+
+    A new operator's two likely confusions are "nothing matched" and "it matched but never told
+    me". Both are indistinguishable from a broken install unless the product explains itself.
+    """
+    if matches == 0:
+        reasons = storage.exclusion_reasons([source.id for source in sources])
+        print()
+        print("Nothing currently matches your preferences.")
+        if not reasons:
+            print("  No excluded roles are stored for these sources yet, so scan one first:")
+            print("    jobscout scan --source <id> --dry-run")
+            return
+        summaries = summarise_exclusions(reasons)
+        print(f"  Excluded roles are stored with their reason. {len(reasons)} excluded role(s):")
+        width = max((len(item.label) for item in summaries), default=0)
+        for item in summaries[:6]:
+            print(f"    {item.label.ljust(width)}  {item.count}")
+        print("  Your scope is the usual cause. To see it:  jobscout config show")
+        print("  To widen it, edit [preferences] in your config (docs/configuration.md).")
+        return
+
+    if sum(storage.notification_counts().values()) == 0:
+        print()
+        print(f"{matches} role(s) match, and no alert has ever been sent for them.")
+        print(
+            "  That is the silent baseline working: the first complete scan of a source records"
+            " existing roles without alerting."
+        )
+        print("  Alerts start with the next genuinely new matching role. To see these roles now:")
+        print("    jobscout digest --dry-run   then   jobscout digest")
+    unused = [source_id for source_id in enabled if source_id not in {s.id for s in sources}]
+    if unused:
+        print()
+        print(f"Enabled but not shown above: {', '.join(unused)}")
 
 
 def _cmd_status(args: argparse.Namespace) -> int:

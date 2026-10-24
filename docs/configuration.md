@@ -92,7 +92,8 @@ Rules, so the list stays predictable at a hundred entries:
 uses your own directory *instead* ? it is your list, not an addition to the shipped one. A
 `[[sources]]` block in the config file still replaces whatever list applies, which is what a config
 written before v0.6 means and keeps meaning. `disable = ["wise", "arm"]` narrows any of those lists
-without touching the files:
+without touching the files. `config.example.toml` in the repository root is a commented, working
+starting point for all of section 4:
 
 ```toml
 [jobscout]

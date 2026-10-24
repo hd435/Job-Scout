@@ -1,0 +1,58 @@
+Prepare Job-Scout for a second-tester pilot
+
+The product can already be configured and run by one person; what it could not do was
+explain itself to somebody who did not build it, or prove its central promise before a
+lucky new role appeared. This closes both, without adding a subsystem.
+
+1. The whole alert journey can now be rehearsed (D-089). `jobscout rehearsal` runs a
+   silent baseline, a second scan containing one additional matching role, and delivery
+   of the resulting alert - with three synthetic Lever records in a throwaway database
+   under data/rehearsal/. It is deleted on success, kept on failure so the delivery error
+   and payloads survive for diagnosis. The employer is literally named "Job-Scout
+   Rehearsal (synthetic)" and the URL is under example.invalid, so the message cannot be
+   mistaken for a role. It runs under the operator's own matching rules, so it reports the
+   truth when their scope excludes a London graduate role instead of pretending the
+   pipeline failed.
+
+   Verified end to end on the operator's machine: baseline silent, one new role detected,
+   one alert delivered to the real chat (Telegram message id 10), one notification row
+   recorded as sent. The live database was not opened: notifications stayed at 0, all
+   4 420 jobs and 17 sources untouched.
+
+2. A quiet result now explains itself (D-090). `jobscout summary --current` prints the
+   most common reasons roles were excluded when nothing matches, and states plainly that
+   a silent baseline explains matches with no alert history. Both were previously
+   indistinguishable from a broken install.
+
+3. Onboarding is a path rather than a pile of references. README leads with nine ordered
+   steps - install, own bot, prove delivery, choose scope, prove the journey, baseline,
+   see what is open, schedule - each saying what you should see before moving on. New
+   config.example.toml is a commented, validating starting point that explains the five
+   decisions and starts narrow; new docs/pilot.md is the tester briefing, including what
+   is theirs (bot, database, config, source choices), why the maintainer's personal-use
+   risk decision does not transfer, and how to run and check a five-minute schedule.
+
+   The scheduling recipe was verified rather than assumed: `schtasks /TR` breaks on paths
+   with spaces, so the documented Windows form uses New-ScheduledTaskAction plus
+   Register-ScheduledTask over a small run-once.cmd, which was registered, run, checked
+   for exit code and log output, and removed.
+
+4. Documentation corrected again where it described a product that no longer exists: the
+   README headline (two-source beta, six sources, "current iteration v0.5"), the
+   architecture permission boundary that still said no source was approved for recurring
+   polling, and the stale "terms permit" and scheduler-ownership notes. The roadmap now
+   records the deliberate reordering - M6's pilot ahead of the M5 reliability gate - with
+   the reasoning, and states that inviting a tester is not declaring MVP complete.
+
+Version metadata: 0.6.0, and a description that no longer says "M1: local Palantir dry
+run" - both were actively unhelpful in a bug report.
+
+Not done, deliberately: no catalogue expansion, no packaging or licence change, no
+review-triage subsystem, no seniority loosening. The seven-day measurement continues in
+the background; its result and the AC-20 gate remain outstanding.
+
+Tests: 673 pass, lint and format clean, including new coverage for the rehearsal
+(baseline silence, detection, recording, failure evidence, narrow-scope honesty, live-DB
+isolation) and for the summary explanations.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

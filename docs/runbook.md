@@ -325,7 +325,8 @@ Rules:
 - Read the dry run before applying. Its counts predict **one** real invocation under the same
   `--batch-size`/`--max-batches`, not the whole backlog.
 - A run that prints "More historical data remains" is incomplete by design; run it again.
-- Do not add `prune` to Task Scheduler while the horizons are unratified.
+- `prune` stays a manual command. The horizons are ratified (D-067), but a scheduled prune buys nothing: the command is bounded, idempotent and safe to run whenever you want the space back.
+- A second person running their own deployment should follow [pilot.md](./pilot.md) rather than this section: their task, config, database and source choices are their own.
 - `prune` never deletes open roles, source rows, or any scan a role or source still points at,
   so deduplication, reopening, and closure stay correct.
 

@@ -23,7 +23,7 @@ M1 is local and Palantir-only. It includes persistence and dry-run behaviour. It
 
 Explicit non-goals: microservices, message queues, an ORM, a web UI, AI ranking, multi-user accounts, browser automation, CAPTCHA bypass, and application tracking.
 
-**Permission boundary:** technical access, HTTP 200 responses, and permissive robots rules do not establish permission for recurring automated access. No source is approved for recurring production polling until its terms are reviewed and accepted. M1 should be fixture-first; a manual live smoke test is acceptable only where the source's terms permit it. M1 must not run a recurring schedule.
+**Permission boundary:** technical access, HTTP 200 responses, and permissive robots rules do not establish permission for recurring automated access. **Superseded in part (D-066):** the per-source terms review that once gated recurring polling was replaced by the Product Owner's blanket personal-use risk acceptance for a single-user, single-machine deployment; each deployed source records its access basis in its catalogue entry (D-087). Robots rules, rate limits and non-evasion remain engineering requirements, and the acceptance does not extend to a public or multi-user service.
 
 ## 2. System boundaries and data flow
 
@@ -532,7 +532,7 @@ Rules:
 
 - Optional and separate from CI.
 - Verify current source availability and approximate counts.
-- Run only where terms permit; do not make live recurring polling part of M1.
+- Manual only: no test suite makes a live request. Recurring polling happens through `schedule`, never through tests.
 
 **Production-like tests (later)**
 
@@ -564,7 +564,7 @@ Rules:
 | Arm | Sitemap and job pages reachable | `/search-jobs/` disallowed | Not approved; terms review required |
 | Monzo | Greenhouse JSON reachable | None observed | Not approved; terms review required |
 
-**No source is approved for recurring production access yet.** M1 is local and Palantir-only. Fixture-based development is permitted; a manual live smoke test is allowed only if the source's terms permit it. M1 must not schedule recurring scans.
+**This table records the M1-era position and is kept as evidence.** The status column is historical: the per-source review it refers to was replaced by D-066 (a blanket personal-use acceptance for this single-user deployment), and each source now records its access basis in its catalogue entry (D-087). The robots findings in the table still constrain the adapters.
 
 ## 11. Confirmed facts, assumptions, and outstanding validation
 

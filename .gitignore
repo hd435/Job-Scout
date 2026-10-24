@@ -20,5 +20,9 @@ data/
 .env.*
 !.env.example
 
+# A personal configuration (see config.example.toml) and the rehearsal scratch files
+config.toml
+schedule.log
+
 .idea/
 .vscode/

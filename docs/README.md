@@ -9,6 +9,7 @@ change has an obvious home and reviewers know which file to trust.
 | [architecture.md](./architecture.md) | How it is built: components, contracts, schema, failure handling | With design changes |
 | [configuration.md](./configuration.md) | The operator's reference for every configuration key, including `[preferences]` | Whenever the schema changes |
 | [runbook.md](./runbook.md) | How to operate a running instance: start, stop, status, recovery, retention workflow | With operational changes |
+| [pilot.md](./pilot.md) | The second-tester briefing: what is theirs, the journey to try, scheduling on any OS, what to report | With the pilot |
 | [decisions.md](./decisions.md) | Append-only log of product and technical decisions (D-nnn) | Append only |
 | [roadmap.md](./roadmap.md) | The release view: what shipped, what is next, in one screen | Per release |
 | [iterations/](./iterations/) | One file per delivery iteration: scope, increments, acceptance criteria, exit state | Written once, then immutable |
@@ -22,6 +23,7 @@ change has an obvious home and reviewers know which file to trust.
 - *"How is it built / why this design?"* → `architecture.md`, then `decisions.md`
 - *"What are we building next?"* → `roadmap.md`, then the current file in `iterations/`
   (v0.5 configurable scope, v0.6 scale out)
+- *"I am a different person trying to run this"* → [pilot.md](./pilot.md), then `README.md`
 - *"Is it running, and how do I stop or fix it?"* → `runbook.md`
 - *"Why was this decision made?"* → `decisions.md` (search the D-number cited in code comments)
 

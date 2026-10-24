@@ -1,0 +1,78 @@
+# Job-Scout configuration — a starting point, not a recommendation.
+#
+# Copy this file to `config.toml` (or anywhere you like) and edit it, then use it with
+# `--config`:
+#
+#   python -m jobscout config validate --config config.toml
+#   python -m jobscout config show     --config config.toml
+#
+# Every key here is optional. A missing file means the built-in defaults: every employer in
+# the shipped catalogue, and the shipped matching rules.
+#
+# The comments explain the choices you are actually making. There are only five:
+#   1. where your database lives
+#   2. which employers you scan            -> the catalogue plus `disable`
+#   3. which role families matter to you   -> [preferences].role_families
+#   4. what counts as early career for you -> [preferences].employment_types, seniority
+#   5. where you would work                -> [preferences.locations]
+
+[jobscout]
+database = "data/jobscout.db"
+
+# `config.toml` is gitignored, so your personal scope cannot be committed by accident. Keep it
+# outside the repository if you prefer; nothing requires it to live here.
+
+# The employers come from the catalogue: src/jobscout/catalogue/, one file per employer.
+# `jobscout sources list` shows them all. Scanning an employer means sending requests to its
+# public job board from your machine — that decision is yours, and it is not covered by
+# anyone else's risk assessment.
+#
+# This example starts with the six researched employers and leaves the rest off, because a
+# narrow start is easier to reason about: fewer requests, and a match you can attribute.
+disable = [
+    "anthropic", "contentful", "datadog", "deliveroo", "elastic",
+    "gitlab", "gocardless", "graphcore", "stripe", "tide", "truelayer",
+]
+#
+# Uncomment and edit to narrow further, e.g. two employers you actually care about:
+# disable = ["anthropic", "contentful", "datadog", "deliveroo", "elastic", "gitlab",
+#            "gocardless", "graphcore", "stripe", "tide", "truelayer",
+#            "arm", "barclays", "palantir", "wise"]
+#
+# Disabling keeps the employer's history and its file; it is one list, not a deletion.
+
+# Point at your own directory of employer files instead of the shipped catalogue.
+# catalogue = "sources"
+
+[preferences]
+# Families that may alert. Valid names:
+#   data, software, quant, finance, consulting, business_analysis
+# Remove the ones you do not want. Anything outside the list is stored but never alerted.
+role_families = ["data", "software"]
+
+# What counts as an early-career role for you. Valid names:
+#   graduate_scheme, internship, placement, apprenticeship, entry_level_permanent
+# Drop "internship" if you are not looking for internships.
+employment_types = ["graduate_scheme", "internship", "placement", "entry_level_permanent"]
+
+# Titles containing these words are never alerted. Examples:
+# title_exclusions = ["apprentice", "phd", "12 month"]
+
+# Seniority words that exclude a role outright. Leaving this out keeps the approved default
+# list (senior, lead, principal, staff, head, director, vp, chief, manager, ...). Setting it to
+# [] would allow senior titles — rarely what you want.
+# seniority_exclusions = ["senior", "lead", "principal", "staff", "head", "director"]
+
+[preferences.locations]
+# "uk"             any UK location, plus UK remote and UK hybrid  (the shipped default)
+# "pinned"         only the cities you list, plus UK remote/hybrid if you leave those on
+# "uk_plus_pinned" the whole UK plus specific cities outside it
+mode = "pinned"
+
+# Required when mode = "pinned". UK city names are matched with ambiguity handling; a name
+# that is not recognised is matched against the raw location text.
+cities = ["London"]
+
+# Include roles advertised as remote within the UK / hybrid with no city named.
+remote_uk = true
+hybrid_uk = true
