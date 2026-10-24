@@ -48,6 +48,9 @@ from .report import DEFAULT_WINDOW_DAYS, build_trial_report, format_trial_report
 from .retention import RetentionPolicy
 from .scanner import run_scan
 from .scheduler import Scheduler, SourceRun
+from .service.app import BotApp
+from .service.bot import BotApi, BotApiError, PollingLoop
+from .service.store import ServiceStore
 from .sources import AdapterError, get_adapter
 from .storage import Storage, utc_now_iso
 from .telegram import TelegramTransport
@@ -101,6 +104,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_notify_test(args)
         if args.command == "rehearsal":
             return _cmd_rehearsal(args)
+        if args.command == "bot":
+            return _cmd_bot(args)
         if args.command == "sources":
             return _cmd_sources(args)
         if args.command == "config":
@@ -330,6 +335,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="keep the scratch database and payloads for inspection",
     )
     rehearsal.add_argument("--config", type=Path, help="TOML configuration file")
+
+    bot = subparsers.add_parser(
+        "bot",
+        help="run the hosted Telegram service (poll for users, scan, notify)",
+    )
+    bot.add_argument(
+        "--once",
+        action="store_true",
+        help="poll Telegram once, then exit (for a smoke test or a supervisor)",
+    )
+    bot.add_argument(
+        "--max-iterations",
+        type=int,
+        default=None,
+        help="stop after N poll cycles (tests and bounded runs)",
+    )
+    bot.add_argument("--db", type=Path, help="SQLite database path")
+    bot.add_argument("--config", type=Path, help="TOML configuration file")
 
     sources = subparsers.add_parser(
         "sources",
@@ -798,6 +821,97 @@ def _print_rehearsal(
         print("Result: INCOMPLETE - the journey did not run end to end. See above.")
     if result.scratch_kept:
         print(f"Scratch files kept for inspection: {result.database.parent}")
+
+
+def _cmd_bot(args: argparse.Namespace) -> int:
+    """Run the hosted service: poll Telegram, scan what is due, notify each subscriber."""
+    try:
+        telegram = load_telegram_config()
+    except ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        print(
+            "       The bot needs JOBSCOUT_TELEGRAM_TOKEN; the chat id is not used in "
+            "service mode because each user has their own.",
+            file=sys.stderr,
+        )
+        return EXIT_FAILED
+
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    sources = app.enabled_sources()
+    if not sources:
+        print("error: no employers are enabled, so the bot has nothing to offer", file=sys.stderr)
+        return EXIT_FAILED
+
+    print(f"Database: {db_path}")
+    print(f"Offered employers: {len(sources)} ({', '.join(s.id for s in sources)})")
+    print("Polling Telegram for updates. Ctrl+C to stop.")
+
+    storage = Storage.open(db_path)
+    store = ServiceStore(storage)
+    try:
+        api = BotApi(telegram.token)
+        notifier = _build_notifier(telegram)
+        bot_app = BotApp(
+            api,
+            storage,
+            store,
+            sources=sources,
+            notifier=notifier,
+            log=_bot_log,
+        )
+        scheduler = Scheduler(
+            storage,
+            app,
+            http_client=_paced(app, UrllibHttpClient()),
+            notifier=notifier,
+            chat_id=None,
+            sleep=time.sleep,
+            rules=app.matching,
+        )
+
+        def tick() -> None:
+            runs = scheduler.run_once()
+            if runs:
+                _print_source_runs(runs)
+                bot_app.notify()
+
+        loop = PollingLoop(
+            api,
+            on_update=bot_app.handle_update,
+            on_tick=tick,
+            sleep=time.sleep,
+            offset_store=lambda: _read_bot_offset(storage),
+            offset_saver=lambda offset: _save_bot_offset(storage, offset),
+        )
+        if args.once:
+            handled = loop.poll_once()
+            tick()
+            print(f"Handled {handled} update(s).")
+            return EXIT_OK
+        loop.run(max_iterations=args.max_iterations)
+    except KeyboardInterrupt:
+        print("Stopped.")
+        return EXIT_OK
+    except BotApiError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+    finally:
+        store.close()
+    return EXIT_OK
+
+
+def _bot_log(message: str) -> None:
+    stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    print(f"[{stamp}] {message}", flush=True)
+
+
+def _read_bot_offset(storage: Storage) -> int | None:
+    return storage.read_meta("bot_offset")
+
+
+def _save_bot_offset(storage: Storage, offset: int) -> None:
+    storage.write_meta("bot_offset", str(offset))
 
 
 def _check_outcome(result: DeliveryResult) -> str:

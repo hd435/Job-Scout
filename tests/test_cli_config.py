@@ -18,7 +18,9 @@ def write_config(tmp_path: Path, body: str) -> Path:
     return path
 
 
-def test_show_reports_the_built_in_defaults(capsys) -> None:
+def test_show_reports_the_built_in_defaults(capsys, monkeypatch, tmp_path) -> None:
+    # Discovery would otherwise pick up a config.toml in the working directory.
+    monkeypatch.setattr("jobscout.config.DEFAULT_CONFIG_PATH", tmp_path / "absent.toml")
     exit_code = run_cli("config", "show")
     out = capsys.readouterr().out
 

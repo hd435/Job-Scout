@@ -1,10 +1,39 @@
 # Running Job-Scout as an independent tester
 
-This is the briefing for the second-tester pilot. It assumes you are a different person from the
+This is the briefing for the tester pilot. It assumes you are a different person from the
 maintainer, with your own job search, your own machine, and no interest in how the code was built.
 
 The point of the pilot is **not** to prove the software is finished. It is to find out whether
 someone who did not build it can get to a useful result unaided, and what breaks when they try.
+
+## If you were invited to the hosted bot
+
+You need nothing installed. Open the bot in Telegram and press **Start**.
+
+The five steps are: kinds of role → early-career types → location → employers → confirm. Each is a
+button press, and `/settings` lets you change any of it later.
+
+What to expect, so silence does not read as breakage:
+
+- **You are told about roles that appear after you set up.** Roles that were already open do not
+  produce an alert — ask for those with `/digest` at any time.
+- **Nothing for a few days is normal.** These employers post a handful of early-career roles a
+  month between them.
+- `/status` tells you whether monitoring is running and how many employers are being scanned.
+- Alerts arrive as ordinary Telegram messages with the role, employer, location and a link to the
+  employer's own page.
+
+What to report: anything confusing, anything that arrived that should not have, anything that
+looked like it should have arrived and did not, and whether you would keep it switched on. If
+something looks wrong, `/status` output and roughly when it happened is enough.
+
+**One thing that is yours, not the maintainer's:** which employers you follow. The bot offers
+groups of employers; enabling one means the *service* will read that employer's public job board on
+your behalf. If you would rather follow fewer, follow fewer.
+
+## If you are self-hosting the CLI
+
+The rest of this document is for that path.
 
 ---
 

@@ -527,3 +527,94 @@ looking at before the list grows further.
   drift when a source goes quiet.
 
 Nothing here is deployed by the repository: the task in section 2a was created by the operator.
+
+## 9. Running the hosted service (D-091…D-096)
+
+`jobscout bot` serves invited users. It shares the adapters, matching, pacing and notifier with the
+CLI; what is new is Telegram inbound, the per-user layer, and continuous operation.
+
+### 9.1 Use its own database
+
+```bash
+python -m jobscout bot --config config.toml --db data/service.db
+```
+
+**Run the service against a separate database file from the personal beta.** Both modes write
+`notifications`, and both would address the operator's own chat, so sharing one file means the
+personal schedule and the service can each alert about the same role. One file per deployment keeps
+the two independent, and the CLI keeps working against `data/jobscout.db` exactly as before.
+
+The service scans only the sources the config enables, so **the offered employer set is the
+operator's choice** (D-094): narrow it with `[jobscout] disable` before inviting anyone.
+
+```bash
+python -m jobscout bot --once --config config.toml --db data/service.db   # one poll, then exit
+```
+
+### 9.2 As a long-running process
+
+Linux, `/etc/systemd/system/jobscout-bot.service`:
+
+```ini
+[Unit]
+Description=Job-Scout Telegram service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jobscout
+WorkingDirectory=/srv/jobscout
+EnvironmentFile=/srv/jobscout/.env
+ExecStart=/srv/jobscout/.venv/bin/python -m jobscout bot --config config.toml --db data/service.db
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable --now jobscout-bot
+journalctl -u jobscout-bot -f          # the bot logs one line per notable event
+```
+
+Windows: the same idea as section 3 — a `run-bot.cmd` wrapper running `jobscout bot`, registered
+with `New-ScheduledTaskAction` and restarted by the task's restart-on-failure setting.
+
+One process is enough at pilot scale: polling is long-poll based (no inbound port, no certificate),
+and a scan happens only when a source is due.
+
+### 9.3 Backups and restore
+
+Nightly, from cron or Task Scheduler:
+
+```bash
+sqlite3 /srv/jobscout/data/service.db ".backup '/srv/jobscout/backup/service-$(date +%F).db'"
+```
+
+Copy that file off the machine. Restore is: stop the service, put the file back as
+`data/service.db`, start the service. **Do the restore once** before inviting anyone — an untested
+backup is a hope, not a backup.
+
+### 9.4 Monitoring
+
+- One external heartbeat (a free service pinging a URL, or a "did the bot log today" check).
+- `jobscout report --days 7 --db data/service.db` for scans and delivery outcomes.
+- A source that fails three times still sends the operator a failure notice, and a shared
+  connectivity outage still produces one aggregated notice (D-086).
+
+### 9.5 User operations
+
+| Task | How |
+|---|---|
+| See who is subscribed | `sqlite3 data/service.db "select u.id, u.chat_id, u.paused, count(s.source_id) from service_users u left join service_subscriptions s on s.user_id=u.id group by u.id"` |
+| See what a user was told | `store.list_alerts(user_id)` in Python, or query `notifications` by `chat_id` |
+| Remove a user on request | Ask them to send `/delete`; if they cannot, delete the row and their rows in `service_preferences`, `service_subscriptions`, `service_sessions` and `notifications` |
+| Change offered employers | edit `[jobscout] disable` in the service config and restart |
+
+### 9.6 What the service does not do
+
+No web UI, no Mini App, no password reset (there is no password), no per-user custom employers, no
+digest of new alerts, no quiet hours. Users are invited by the operator; there is no public signup,
+because a public signup would turn the source-access question into a free-for-all (D-094).

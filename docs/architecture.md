@@ -590,3 +590,85 @@ Rules:
 - Telegram delivery behaviour and ambiguous-outcome handling.
 - Seven-day unattended reliability.
 - Retention and privacy review before production.
+
+## 12. Service mode (D-091…D-096)
+
+The hosted service is a second entry point over the same core, not a second product. What it adds
+is inbound Telegram, a per-user layer, and an operational shape for running continuously.
+
+### 12.1 Process model
+
+One process, `jobscout bot`, does three things in a single loop:
+
+```text
+        ┌──────────────────────────────────────────────────────────┐
+        │  jobscout bot (one process, one SQLite file)             │
+        │                                                          │
+        │  poll getUpdates ──► dispatch ──► conversation ──► reply │
+        │        ▲                              │                  │
+        │        │                              └─► user settings  │
+        │        │                                                 │
+        │  scheduler pass (when a source is due) ──► ingest ──┐    │
+        │                                                     ▼    │
+        │                              per-user evaluation ──► notify
+        └──────────────────────────────────────────────────────────┘
+```
+
+- **Long polling**, not a webhook: no domain, no TLS certificate, no inbound port, no public
+  attack surface. `getUpdates` blocks for ~20 seconds, and the loop only checks due sources after
+  a poll returns, which bounds reply latency without a separate thread.
+- **One SQLite file**, WAL mode, one writer. A single process means the scanner's "one writer"
+  assumption still holds; the service does not add concurrency, it adds a request handler.
+- **No queue.** A notification row *is* the queue (`pending` → `sent`/`failed`/`ambiguous`), which
+  is the state machine already proven in the personal beta.
+- The scheduler, adapters, pacing, scanner and notifier are used unchanged.
+
+### 12.2 Per-user layer
+
+Four tables, all additive (migration 7):
+
+| Table | Holds | Key |
+|---|---|---|
+| `service_users` | Telegram user id, chat id, created/paused/deleted timestamps | `telegram_user_id` unique |
+| `service_preferences` | The user's scope as JSON, in the same shape as `[preferences]`, plus its fingerprint | `user_id` |
+| `service_subscriptions` | Which employers this user follows, and their watermark | `(user_id, source_id)` |
+| `service_sessions` | The in-progress wizard draft, so a restart mid-setup does not lose the user's place | `user_id` |
+
+Preferences are stored in the *config file's own shape* and parsed by the existing
+`parse_preferences` → `build_rules`, so the bot cannot invent a scope the CLI could not express,
+and both modes produce identical decisions for identical settings.
+
+`jobs.match_decision` keeps its meaning for the CLI operator and is **not** used to decide a
+user's alerts (D-092). A user's record of what they were told is the `notifications` row, which
+now also stores the match reason so the operator can answer "why did I get this?".
+
+### 12.3 Notification pass
+
+After each ingest, one pass per active user:
+
+1. Candidate roles: `source_id` in the user's subscriptions, `status = 'open'`, `id > watermark`,
+   and observed in a complete scan (partial-scan observations stay ineligible, as before).
+2. Evaluate `match_job(job, user_rules)` — a pure function, no storage.
+3. `MATCH` → `create_pending_notification(chat_id, job_id)`, whose unique key gives at-most-one
+   alert per user per role; the reason is stored alongside.
+4. Advance the watermark to the highest candidate id, whether or not anything matched, so the
+   next pass does not re-scan the same rows.
+
+`needs_review` roles are **not** notified to users: review is an operator tuning tool, and putting
+it in front of a user would be noise masquerading as an alert.
+
+### 12.4 Isolation
+
+- Every read and write in the service layer takes an explicit `user_id`; there is no method that
+  returns "all preferences".
+- The notification pipeline is keyed by `(chat_id, job_id)`, and a chat id belongs to exactly one
+  user, so one user's alert can never be addressed to another.
+- Cross-tenant tests are the guard: two users with overlapping and disjoint scopes, asserting
+  that decisions, digests, notifications and deletion do not cross (`tests/test_service_notify.py`,
+  `tests/test_service_bot.py`).
+
+### 12.5 Operating shape
+
+Backups are a nightly `sqlite3 .backup` plus an offsite copy; monitoring is one external heartbeat
+plus the existing failure notices; a restore drill is part of the runbook. There is deliberately
+no metrics stack, no queue, no second process and no Postgres at pilot scale.

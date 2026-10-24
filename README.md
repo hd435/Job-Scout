@@ -2,7 +2,12 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state:** v0.5 (configurable scope) and v0.6 (scale-out machinery) are delivered, and a limited personal-use beta is running on the maintainer's machine with 14 enabled employers. The **coverage target is not met** — roughly 17 catalogued employers against an intended ~100 — and the seven-day reliability measurement is still in progress, so the MVP is not complete. What *is* ready is the thing this document describes: one person can install it, choose their own scope, and receive alerts. See [docs/pilot.md](./docs/pilot.md) for the tester briefing.
+**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered, and a limited personal-use beta is running on the maintainer's machine with 14 enabled employers. The **coverage target is not met** — roughly 17 catalogued employers against an intended ~100 — and the seven-day reliability measurement is still in progress, so the MVP is not complete.
+
+Two ways to use it:
+
+- **Self-hosted CLI** — clone, configure, run a scheduled task. This document is that path.
+- **Hosted Telegram bot** — an invited user presses Start and configures everything in chat, with nothing to install. See [docs/runbook.md](./docs/runbook.md) §9 for the operator side and [docs/pilot.md](./docs/pilot.md) for the invited-user side.
 
 Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/architecture.md](./docs/architecture.md). Decisions: [docs/decisions.md](./docs/decisions.md). Delivery plan and history: [docs/roadmap.md](./docs/roadmap.md). Documentation map: [docs/README.md](./docs/README.md). Source research: [docs/sources.md](./docs/sources.md). Access terms per source: [docs/source-access.md](./docs/source-access.md).
 
@@ -10,6 +15,19 @@ Product requirements: [docs/prd.md](./docs/prd.md). Technical design: [docs/arch
 
 - Python 3.12 or newer. No runtime dependencies beyond the standard library.
 - A clone of this repository. Install it **editable** (`pip install -e .`) — the validation fixtures live under `tests/fixtures/` and are not packaged, so an installed copy cannot run `validate --fixture`.
+
+## The hosted bot (no installation)
+
+If someone has invited you to a Job-Scout bot, you do not need any of this repository:
+
+1. Open the bot in Telegram and press **Start** (or send `/start`).
+2. Answer five button questions: role families, early-career types, location, employers, confirm.
+3. That's it. You are told about matching roles that appear **after** setup; `/digest` shows what
+   already matches, `/status` says whether monitoring is working, `/pause` stops alerts, and
+   `/delete` removes your data.
+
+Running the service is an operator job: [docs/runbook.md](./docs/runbook.md) §9 covers the process,
+its own database, backups and user administration.
 
 ## Set up your own deployment (about 15 minutes)
 

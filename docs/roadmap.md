@@ -343,6 +343,7 @@ organised by iteration, one file each in [iterations/](./iterations/).
 | **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **Delivered 2026-10-24** — increments 0.1–0.4; see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) |
 | **v0.6** | **Scale out: catalogue files, per-host pacing, compact status, coverage measurement** | **Delivered 2026-10-24** — see [iterations/v0.6-scale-out.md](./iterations/v0.6-scale-out.md); alert-volume policy stays deferred (D-070) |
 | **MVP complete** | Roughly 100 enabled employers, plus the reliability measurement in AC-20 | **Outstanding** — 17 catalogued and 14 enabled on 2026-10-24, after expansion batch 1 |
+| **v0.7 — hosted service** | An invited user configures and uses Job-Scout entirely in Telegram: no Python, no TOML, no scheduler (D-091…D-096) | **In progress** — the service exists; the invited pilot has not started |
 
 Delivered engineering capability is not the same as MVP completion: the machinery is finished,
 the coverage is not. Coverage beyond the six researched employers is the Product Owner's

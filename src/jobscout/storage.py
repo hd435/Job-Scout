@@ -162,6 +162,47 @@ CREATE TABLE delivery_checks (
 );
 """
 
+_MIGRATION_7 = """
+CREATE TABLE service_users (
+    id INTEGER PRIMARY KEY,
+    telegram_user_id INTEGER NOT NULL UNIQUE,
+    chat_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    paused INTEGER NOT NULL DEFAULT 0,
+    watermark INTEGER NOT NULL DEFAULT 0,
+    deleted_at TEXT NULL
+);
+
+CREATE TABLE service_preferences (
+    user_id INTEGER PRIMARY KEY REFERENCES service_users(id) ON DELETE CASCADE,
+    settings_json TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE service_subscriptions (
+    user_id INTEGER NOT NULL REFERENCES service_users(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL,
+    subscribed_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, source_id)
+);
+
+CREATE TABLE service_sessions (
+    user_id INTEGER PRIMARY KEY REFERENCES service_users(id) ON DELETE CASCADE,
+    step TEXT NOT NULL,
+    draft_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE service_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+ALTER TABLE notifications ADD COLUMN reason TEXT NULL;
+ALTER TABLE notifications ADD COLUMN user_id INTEGER NULL;
+"""
+
 _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_1,
     _MIGRATION_2,
@@ -169,6 +210,7 @@ _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_4,
     _MIGRATION_5,
     _MIGRATION_6,
+    _MIGRATION_7,
 )
 
 
@@ -504,6 +546,25 @@ class Storage:
         )
 
     # outage notices and delivery checks ------------------------------------
+
+    def read_meta(self, key: str) -> int | None:
+        """Small operator-level values, such as the bot's Telegram update offset."""
+        row = self._conn.execute("SELECT value FROM service_meta WHERE key = ?", (key,)).fetchone()
+        if row is None:
+            return None
+        try:
+            return int(row["value"])
+        except (TypeError, ValueError):
+            return None
+
+    def write_meta(self, key: str, value: str) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO service_meta (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
+        )
 
     def last_outage_notice_at(self, *, chat_id: str) -> str | None:
         """When an aggregated connectivity notice last reached this chat.
@@ -1000,6 +1061,48 @@ class Storage:
             (source_id, str(decision), str(JobStatus.OPEN)),
         ).fetchone()
         return int(row["total"])
+
+    def list_new_jobs(
+        self, source_ids: Sequence[str], *, after_id: int, limit: int = 500
+    ) -> list[StoredJob]:
+        """Open roles first observed in a complete scan after `after_id`, oldest first.
+
+        Service mode's candidate query: a user is told about roles that appeared after their
+        subscription watermark, never about roles that were already there (D-095). Partial-scan
+        observations are excluded by `first_complete_scan_id`, exactly as in the CLI path.
+        """
+        if not source_ids:
+            return []
+        placeholders = ",".join("?" * len(source_ids))
+        rows = self._conn.execute(
+            f"""
+            SELECT * FROM jobs
+            WHERE id > ? AND status = 'open' AND first_complete_scan_id IS NOT NULL
+              AND source_id IN ({placeholders})
+            ORDER BY id
+            LIMIT ?
+            """,
+            (after_id, *source_ids, limit),
+        ).fetchall()
+        return [_row_to_stored_job(row) for row in rows]
+
+    def open_jobs_for(self, source_ids: Sequence[str], *, limit: int = 2000) -> list[StoredJob]:
+        """Every open role for some sources, for an on-demand digest."""
+        if not source_ids:
+            return []
+        placeholders = ",".join("?" * len(source_ids))
+        rows = self._conn.execute(
+            f"""
+            SELECT * FROM jobs WHERE status = 'open' AND source_id IN ({placeholders})
+            ORDER BY id DESC LIMIT ?
+            """,
+            (*source_ids, limit),
+        ).fetchall()
+        return [_row_to_stored_job(row) for row in rows]
+
+    def highest_job_id(self) -> int:
+        row = self._conn.execute("SELECT coalesce(max(id), 0) FROM jobs").fetchone()
+        return int(row[0])
 
     def exclusion_reasons(self, source_ids: Sequence[str] | None = None) -> tuple[str, ...]:
         """The stored `match_reason` of every open role that was excluded.

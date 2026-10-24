@@ -73,6 +73,20 @@ Releases are cumulative; each one is usable on its own and none reduces MVP scop
 | **v0.6 — scale-out machinery** | The engineering capability to reach the coverage target without a code change per employer: catalogue files, per-host pacing, compact status, and per-source coverage measurement. It does **not** add employers. | **Delivered 2026-10-24** |
 | **MVP complete — coverage target** | Roughly 100 enabled employers, satisfying section 12. Removing or substituting a source requires an explicit Product Owner re-scope; the coverage target is a milestone, not a stopping point, because adding employers is ongoing operational work (D-066). | **Outstanding** — 17 catalogued, 14 enabled as of 2026-10-24 |
 
+### 4.2a Deployment modes
+
+The same product runs in two modes, sharing one matching engine, one set of adapters and one
+database schema (D-091):
+
+| Mode | Who uses it | How they configure it | Surface |
+|---|---|---|---|
+| **Local CLI** | The operator/maintainer, and anyone self-hosting from a clone | `config.toml`, catalogue files, a scheduled task | `jobscout …` commands |
+| **Hosted service** | Invited users with no installation | A Telegram button wizard | A Telegram bot: alerts plus `/status`, `/pause`, `/digest`, `/delete` |
+
+The hosted service does not replace the CLI: scanning, source validation, retention and reporting
+stay operator commands, and a service deployment is operated through them. Inviting a user is a
+deployment decision, not a claim that the MVP coverage or reliability gates have been met.
+
 Delivered engineering capability and MVP completion are two different things, and the
 distinction matters here: v0.5 and v0.6 were both delivered while the coverage target — the
 thing that makes the product *minimally useful* — is still 14 employers into roughly 100.
@@ -91,15 +105,20 @@ The MVP does not include:
 
 - Saved jobs, application tracking, or interview tracking.
 - AI ranking, semantic recommendations, or generated application content.
-- A web or mobile application.
-- Multi-user accounts, subscriptions, or shared deployments.
+- A web or mobile application, **and no Telegram Mini App** for now: the bot's buttons must prove sufficient first (D-096).
+- **Per-user custom sources**: a hosted user chooses from the operators's curated employers, because a source an operator has not vetted cannot be polled on someone else's behalf (D-094). Self-hosters keep full catalogue freedom.
 - Job aggregators, LinkedIn, Indeed, or other third-party job databases.
 - Browser automation, CAPTCHA bypass, login bypass, or evasion of bot protection.
 - Automatic applications or recruiter contact.
-- A user-facing source-health dashboard. A minimal status check is sufficient.
+- A user-facing source-health dashboard. Each user gets a one-line status; the detailed health view stays with the operator.
 - Salary or visa-sponsorship filtering. Salary is displayed when available; sponsorship is recorded when exposed but does not filter alerts.
 - Coverage of employers outside the intended set without Product Owner approval.
-- **Batched alerting:** no digest of *new* alerts, no quiet hours, no daily roll-up. Both remain out of scope (D-070). An **on-demand, read-only current-matches digest** (`jobscout digest`) is in scope, because it reports roles already discovered rather than batching alerts, and it does not create notification rows or alter baseline state.
+- **Batched alerting:** no digest of *new* alerts, no quiet hours, no daily roll-up. Both remain out of scope (D-070). An **on-demand** current-matches digest is in scope (`jobscout digest` in the CLI, `/digest` in the bot), because it reports roles already discovered rather than batching alerts, and it does not create notification rows or alter baseline state.
+
+**Revised 2026-10-25 (D-091):** "multi-user accounts, subscriptions or shared deployments" was
+previously excluded. A hosted, invited-user service is now in scope for the reasons in section
+4.2a. Multi-user *accounts in the sense of passwords, profiles or roles* remain out of scope:
+identity is the Telegram account (D-093).
 
 ## 5. Decision status
 
@@ -213,6 +232,12 @@ Resolved since the previous revision, recorded here so the section is not silent
 | **FR-14 Security and compliance** | Secrets must not enter source control or logs. The system must respect source access restrictions and must not bypass CAPTCHAs, authentication, or bot protection. |
 | **FR-15 Auditability** | The system should retain enough match/decision context to review why a role was or was not alerted. This supports tuning and debugging without building a dashboard. |
 | **FR-16 Scan completeness** | Every source scan must report success, empty success, partial, or failure. Only a complete scan may establish baseline, make a newly discovered role alert-eligible, or count toward closure. |
+| **FR-17 Service identity** | In service mode a user is identified by their Telegram account in a private chat. First contact creates them; no password, email or name is collected. Group and channel chats are refused. |
+| **FR-18 Self-service configuration** | A user must be able to choose role families, employment types, location scope and employers entirely through chat, review the result, and change it later, without installing anything or contacting the operator. |
+| **FR-19 Shared scanning, per-user decisions** | Each source must be scanned once per cadence regardless of how many users subscribe, and each user's own rules must decide what they are told. A user must never receive another user's decisions, preferences or notifications. |
+| **FR-20 Subscription semantics** | Subscribing or changing preferences must not alert roles that already existed. Alerts apply to roles first observed in a complete scan after the user's subscription watermark; roles already open are available through an on-demand digest. |
+| **FR-21 User control** | A user must be able to check whether monitoring is working, pause and resume it, request the current matches, and delete their account and data without operator involvement. |
+| **FR-22 Operator control** | The operator must be able to choose which employers the hosted service offers, scan and validate sources, inspect per-user notification history, and delete a user on request. |
 
 ## 8. Matching and location rules
 
@@ -356,8 +381,18 @@ does not override the ambiguity rule. See [configuration.md](./configuration.md)
 | **AC-23** | A partial or failed scan never increments closure misses or marks a role closed. |
 | **AC-24** | A valid empty source response is recorded as empty success, not failure, and does not by itself close existing roles. |
 
-## 13. Proposed success measures
+### 12.3 Hosted service (D-091…D-096)
 
+| ID | Criterion |
+|---|---|
+| **AC-25** | A new Telegram user completes `/start` → preferences → confirmation in one conversation, with no operator involvement, and ends with a saved scope and an explicit statement of what will happen next. |
+| **AC-26** | A saved scope sets the subscription watermark to the newest stored role, so nothing already open is announced as new; `/digest` lists the roles already matching under that scope. |
+| **AC-27** | Two users with overlapping and disjoint scopes receive only their own decisions: fixtures assert that neither is notified for the other's matches and that neither can read the other's preferences or notification history. |
+| **AC-28** | Scanning one source once serves every subscriber of it: with N users on one employer the pass makes one set of source requests, and each user's alert count is independent of N. |
+| **AC-29** | `/pause` stops alerts without losing the subscription or duplicate-alerting on resume; `/delete` removes the user's preferences, subscriptions, notifications and session, and nothing of theirs remains. |
+| **AC-30** | A non-private chat is refused with an explanation and no user record is created. |
+
+## 13. Proposed success measures
 These are **proposals for approval**, not commitments.
 
 | Measure | Proposed target | How it would be measured |
@@ -371,6 +406,16 @@ These are **proposals for approval**, not commitments.
 | Alert volume | Within a Product Owner-agreed daily range | Daily count; tune after week one |
 | Time to first relevant alert | Under 24 hours after deployment | First alert timestamp and user review |
 | Directional outcome | At least one application or interview traceable to an alert within four weeks | Self-reported |
+
+Service-mode measures (they need the hosted deployment, and are only measurable there):
+
+| Measure | Proposed target | How it would be measured |
+|---|---|---|
+| Setup completion unaided | ≥80% of invited users finish `/start` and confirm a scope without contacting the operator | User records with saved preferences; operator's message log |
+| Time to a configured scope | Under 5 minutes from first contact | `created_at` to preferences `updated_at` |
+| Alert relevance | ≥70% positive on a one-tap 👍/👎 reply added when the pilot needs it | Replies stored against the notification |
+| 14-day retention | ≥50% of invited users still unpaused after two weeks | `paused` and last-interaction timestamps |
+| Operator support load | Under one message per user per week | Operator's own count |
 
 The number of sources, number of stored jobs, and number of messages sent are **not** success measures by themselves.
 

@@ -175,7 +175,10 @@ def test_status_reports_operational_state_without_secrets(db, capsys) -> None:
     assert "chat" not in out.casefold()
 
 
-def test_status_reports_built_in_matching_rules(db, capsys) -> None:
+def test_status_reports_built_in_matching_rules(db, capsys, monkeypatch, tmp_path) -> None:
+    # A config.toml in the working directory would change the effective rules; assert the
+    # built-in defaults rather than whatever the developer has locally.
+    monkeypatch.setattr("jobscout.config.DEFAULT_CONFIG_PATH", tmp_path / "absent.toml")
     exit_code = run_cli("status", "--db", str(db))
     out = capsys.readouterr().out
 
