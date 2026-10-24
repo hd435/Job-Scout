@@ -527,6 +527,7 @@ def run_live_check(
             captured_at=captured_at,
             max_records=max_records,
             lines=lines,
+            record=_validation_record(source, profile, scan, ok, captured_at),
         )
 
     return ValidationOutcome(
@@ -614,6 +615,36 @@ def _report_lines(
     return tuple(lines)
 
 
+def _validation_record(
+    source: SourceConfig,
+    profile: ValidationProfile,
+    scan: ScanResult,
+    ok: bool,
+    captured_at: str,
+) -> dict[str, Any]:
+    """What `sources list` shows: whether this source has ever been checked, and when."""
+    return {
+        "source_id": source.id,
+        "adapter": source.adapter,
+        "captured_at": captured_at,
+        "ok": ok,
+        "records_seen": scan.records_seen,
+        "records_parsed": scan.records_parsed,
+        "complete": scan.complete,
+        "request_budget": profile.request_budget,
+    }
+
+
+def read_validation_record(directory: Path, source_id: str) -> dict[str, Any] | None:
+    """The latest validation result for a source, or None if it has never been checked."""
+    path = directory / f"{source_id}-latest.json"
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
 def ensure_artifacts_location(directory: Path, root: Path) -> Path:
     """Public seam: validate an artifact directory before any work happens."""
     _ensure_within(directory, root)
@@ -628,6 +659,7 @@ def _write_artifacts(
     captured_at: str,
     max_records: int,
     lines: tuple[str, ...],
+    record: dict[str, Any],
 ) -> tuple[Path, Path]:
     directory.mkdir(parents=True, exist_ok=True)
     stamp = captured_at.replace(":", "").replace("-", "")
@@ -638,6 +670,11 @@ def _write_artifacts(
     )
     sample_path.write_text(json.dumps(sample, indent=2, ensure_ascii=False), encoding="utf-8")
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # One mutable marker per source, so "has this ever been validated?" survives the
+    # timestamped artifacts it sits beside (V06-4).
+    (directory / f"{source_id}-latest.json").write_text(
+        json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     return sample_path, report_path
 
 
@@ -703,6 +740,7 @@ __all__ = [
     "build_sample",
     "compare_payloads",
     "profile_for",
+    "read_validation_record",
     "ensure_artifacts_location",
     "run_live_check",
 ]

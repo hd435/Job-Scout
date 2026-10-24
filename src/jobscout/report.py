@@ -40,6 +40,10 @@ class SourceTrial:
     last_success_at: str | None
     next_run_at: str | None
     enabled: bool = True
+    open_roles: int = 0
+    matches: int = 0
+    reviews: int = 0
+    matched_in_window: int = 0
 
     @property
     def coverage(self) -> float:
@@ -99,6 +103,7 @@ def build_trial_report(
 
     facts = storage.list_scan_facts(since=since)
     tallies = storage.count_notifications_by_status(since=since)
+    coverage = storage.source_coverage(since=since)
 
     trials: list[SourceTrial] = []
     for state in storage.list_source_states():
@@ -126,6 +131,10 @@ def build_trial_report(
                 last_success_at=state.last_success_at,
                 next_run_at=state.next_run_at,
                 enabled=state.enabled,
+                open_roles=getattr(coverage.get(state.id), "open_roles", 0),
+                matches=getattr(coverage.get(state.id), "matches", 0),
+                reviews=getattr(coverage.get(state.id), "reviews", 0),
+                matched_in_window=getattr(coverage.get(state.id), "matched_in_window", 0),
             )
         )
 
@@ -165,6 +174,27 @@ def format_trial_report(report: TrialReport) -> str:
         )
         lines.append(f"  gaps {_format_gaps(source)}")
         lines.append(f"  state {_format_state(source)}")
+        lines.append(
+            f"  coverage {source.open_roles} role(s) stored, {source.matches} matching,"
+            f" {source.reviews} in review, {source.matched_in_window} matched first seen"
+            " in the window"
+        )
+        lines.append("")
+
+    if report.sources:
+        lines.append(
+            f"Coverage in total: {sum(s.open_roles for s in report.sources)} role(s),"
+            f" {sum(s.matches for s in report.sources)} matching,"
+            f" {sum(s.reviews for s in report.sources)} in review,"
+            f" {sum(s.matched_in_window for s in report.sources)} matched first seen"
+            " in the window"
+        )
+        silent = [s.source_id for s in report.sources if s.enabled and not s.matches]
+        if silent:
+            lines.append(
+                "Enabled sources with no current matches (candidates to narrow or drop):"
+                f" {', '.join(sorted(silent))}"
+            )
         lines.append("")
 
     tally = report.deliveries

@@ -393,7 +393,10 @@ def test_artifacts_do_not_overwrite_an_earlier_run(
 
     assert first.sample_path != second.sample_path
     assert first.sample_path.exists() and second.sample_path.exists()
-    assert len(list(sample_dir.glob("*.json"))) == 2
+    assert len(list(sample_dir.glob("*-live-*.json"))) == 2
+    assert len(list(sample_dir.glob("*-latest.json"))) == 1, (
+        "the latest marker is one file per source, not one per run"
+    )
 
 
 # validate any configured source -------------------------------------------
@@ -576,7 +579,7 @@ def test_cli_runs_the_check_without_opening_a_database(
     assert exit_code == cli.EXIT_OK
     assert "Result: PASS" in out
     assert "Database: not opened" in out
-    assert len(list(sample_dir.glob("*.json"))) == 1
+    assert len(list(sample_dir.glob("*-live-*.json"))) == 1
     assert not (tmp_path / "jobscout.db").exists()
 
 

@@ -30,16 +30,75 @@ python -m jobscout config validate   # load and report problems, exit 2 if it wi
 but can never take effect (an unknown adapter, the same employer configured twice, a pinned town
 the city list does not know). An unloadable file exits `2`.
 
+At scale, three views answer "what is happening?":
+
+| Command | Answers |
+|---|---|
+| `jobscout sources list` | every source with adapter, cadence, last scan, matches, and whether it has been validated (and when) |
+| `jobscout status --brief` | one line per source: state, consecutive failures, next run, match/review counts, and the error only if it is failing *now* |
+| `jobscout status --source <id>` | the full block for one source |
+
+`validate` writes `data/validation/<id>-latest.json` beside its timestamped artifacts, which is
+what the `validated` column reads. A source never validated shows `never`; one whose last check
+failed shows `FAILED`; a successful check older than 30 days is counted as stale.
+
 ## 2. `[jobscout]`
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `database` | string | `data/jobscout.db` | SQLite file. Relative paths resolve from the working directory |
+| `catalogue` | string | none | Directory of employer files to use **instead of** the six shipped with the package. Relative paths resolve from the config file's directory |
+| `disable` | array of ids | `[]` | Turn catalogue sources off without editing the catalogue files |
 
-## 3. `[[sources]]`
+## 3. The employer catalogue (D-081)
 
-One table per employer. Listing any `[[sources]]` block **replaces** the built-in list, so keep
-every source you want to run.
+Employers are files, not code. The package ships one per employer in `src/jobscout/catalogue/`:
+`arm.toml`, `barclays.toml`, `lloyds_graduate.toml`, `monzo.toml`, `palantir.toml`, `wise.toml`.
+Adding the seventh is one more file.
+
+A catalogue file describes exactly one employer:
+
+```toml
+# Optional comment explaining the feed, and anything a reviewer should know.
+id = "example"
+employer = "Example Ltd"
+adapter = "greenhouse"        # lever | greenhouse | workday | sitemap_html
+cadence_minutes = 30          # optional, default 30
+enabled = true                # optional, default true
+
+[options]
+board = "example"
+uk_employer = true
+```
+
+Rules, so the list stays predictable at a hundred entries:
+
+- One employer per file, and the file must not contain a `[[sources]]` list.
+- Files are read in filename order, so the source list is alphabetical and stable.
+- Every file is validated when the configuration loads: a bad option fails with the file name,
+  the source id and the key.
+- Two files claiming the same `id` are an error naming both files.
+
+**Which list applies.** The bundled catalogue is the default. `[jobscout] catalogue = "sources"`
+uses your own directory *instead* ? it is your list, not an addition to the six. A `[[sources]]`
+block in the config file still replaces whatever list applies, which is what a config written
+before v0.6 means and keeps meaning. `disable = ["wise", "arm"]` narrows any of those lists
+without touching the files:
+
+```toml
+[jobscout]
+database = "data/jobscout.db"
+catalogue = "sources"
+disable = ["wise"]
+```
+
+`jobscout sources list` prints every source that results, with its adapter, state and ? from
+`validate` ? whether it has ever been checked.
+
+## 3a. `[[sources]]` in the config file
+
+One table per employer, for an override or a one-off experiment. Listing any `[[sources]]` block
+**replaces** the catalogue, so keep every source you want to run.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
@@ -189,6 +248,36 @@ hybrid_uk = true
 
 This is why the beta alerts on London and UK-remote roles only, and why a Manchester-only or
 Edinburgh-only role is listed as excluded rather than alerted.
+
+## 4a. `[pacing]` (D-082)
+
+One pacer per process, shared by every source, so coverage can grow without bursts.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `default_seconds` | number | `0.5` | Minimum gap between two requests to the same host, whichever source makes them |
+| `max_requests` | integer | `5000` | Hard ceiling on requests per process; a scan that hits it fails loudly instead of crawling on |
+| `[pacing.hosts]` | table | `{}` | Per-host overrides, by hostname only (no scheme, no port) |
+
+```toml
+[pacing]
+default_seconds = 0.5
+max_requests = 5000
+
+[pacing.hosts]
+"careers.arm.com" = 1.0
+```
+
+Two different mechanisms pace traffic, and they are not duplicates:
+
+- `sources.options.request_delay_seconds` paces **one source's own** page fetches, inside the
+  adapter. Raise it for a board with hundreds of pages.
+- `[pacing]` guarantees a floor **between any two requests to the same host**, whatever source
+  makes them. It is what stops two tenants on one ATS host, or a board and a sitemap on one
+  domain, from being scanned back to back.
+
+A budget stop is reported as a failed scan with the budget in the message, not as a partial
+scan, because it is a configuration fault rather than one bad page.
 
 ## 5. `[matching]`
 

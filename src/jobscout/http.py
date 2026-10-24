@@ -16,10 +16,11 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlparse
 
 USER_AGENT = "Job-Scout/0.1 (personal job monitor; +https://github.com/hd435/Job-Scout)"
 
@@ -94,6 +95,103 @@ def connection_never_opened(reason: object) -> bool:
         errno.ENETUNREACH,
         errno.EHOSTUNREACH,
     }
+
+
+@dataclass(frozen=True)
+class PacingPolicy:
+    """How hard this process may lean on one host, and on the network as a whole.
+
+    `default_seconds` is the floor between two requests to the same host, whichever source
+    makes them. `hosts` overrides it per hostname (no scheme, no port). `max_requests` is a
+    per-process ceiling so a misconfigured cap cannot turn one pass into a crawl.
+    """
+
+    default_seconds: float = 0.5
+    hosts: Mapping[str, float] = field(default_factory=dict)
+    max_requests: int = 5000
+
+    def interval_for(self, host: str) -> float:
+        return float(self.hosts.get(host, self.default_seconds))
+
+
+DEFAULT_PACING = PacingPolicy()
+
+
+class PacingBudgetExceeded(HttpError):
+    """The per-process request budget ran out; a scan aborts rather than crawling on."""
+
+
+class PacedHttpClient:
+    """Wraps a client and keeps every request to one host at least `interval` apart.
+
+    Adapter-level delays pace one source's own pages. This is the cross-source guarantee:
+    two sources sharing a host (two Workday tenants, an ATS board and a sitemap on the same
+    domain) are spaced by the same clock, so coverage can grow without bursts.
+
+    `clock` and `sleep` are injected so the spacing is testable without waiting.
+    """
+
+    def __init__(
+        self,
+        client: Any,
+        *,
+        policy: PacingPolicy = DEFAULT_PACING,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self._client = client
+        self._policy = policy
+        self._clock = clock
+        self._sleep = sleep
+        self._last: dict[str, float] = {}
+        self.requests = 0
+        self.waited = 0.0
+
+    @property
+    def policy(self) -> PacingPolicy:
+        return self._policy
+
+    def _pace(self, url: str) -> None:
+        if self.requests >= self._policy.max_requests:
+            raise PacingBudgetExceeded(
+                f"per-process request budget of {self._policy.max_requests} exhausted;"
+                f" refused a request to {_host_of(url) or url}",
+                url=url,
+            )
+        self.requests += 1
+        host = _host_of(url)
+        if not host:
+            return
+        interval = self._policy.interval_for(host)
+        if interval <= 0:
+            return
+        last = self._last.get(host)
+        now = self._clock()
+        if last is not None:
+            wait = interval - (now - last)
+            if wait > 0:
+                self.waited += wait
+                self._sleep(wait)
+        self._last[host] = self._clock()
+
+    def get_json(self, url: str) -> Any:
+        self._pace(url)
+        return self._client.get_json(url)
+
+    def get_text(self, url: str) -> str:
+        self._pace(url)
+        return self._client.get_text(url)
+
+    def post_json(self, url: str, payload: dict[str, Any], *, retry: bool = False) -> Any:
+        self._pace(url)
+        return self._client.post_json(url, payload, retry=retry)
+
+
+def _host_of(url: str) -> str:
+    try:
+        return (urlparse(url).hostname or "").casefold()
+    except ValueError:  # pragma: no cover - a malformed URL fails later anyway
+        return ""
 
 
 BODY_HINT_LIMIT = 120

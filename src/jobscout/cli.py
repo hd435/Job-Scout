@@ -13,7 +13,9 @@ import json
 import sys
 import time
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .config import (
@@ -25,7 +27,7 @@ from .config import (
     load_telegram_config,
 )
 from .digest import build_digest
-from .http import FixtureHttpClient, UrllibHttpClient
+from .http import FixtureHttpClient, PacedHttpClient, UrllibHttpClient
 from .matching import MatchingRules, preferences_fingerprint, split_pinned_cities
 from .models import (
     DeliveryOutcome,
@@ -50,6 +52,7 @@ from .validate import (
     DEFAULT_SAMPLE_RECORDS,
     ensure_artifacts_location,
     profile_for,
+    read_validation_record,
     run_live_check,
 )
 
@@ -65,6 +68,7 @@ DEFAULT_VALIDATION_FIXTURES = {
     "lloyds_graduate": PROJECT_ROOT / "tests" / "fixtures" / "workday_lloyds_graduate.json",
 }
 VALIDATION_SOURCES = frozenset(DEFAULT_VALIDATION_FIXTURES)
+VALIDATION_STALE_DAYS = 30
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -164,6 +168,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     status = subparsers.add_parser("status", help="show source and scan status")
     status.add_argument("--source", help="configured source id (default: all sources)")
+    status.add_argument(
+        "--brief", action="store_true", help="one line per source instead of a block each"
+    )
     status.add_argument("--db", type=Path, help="SQLite database path")
     status.add_argument("--config", type=Path, help="TOML configuration file")
 
@@ -315,6 +322,11 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _paced(app: AppConfig, client: Any) -> PacedHttpClient:
+    """Every source-facing client goes through one pacer, so hosts are shared across sources."""
+    return PacedHttpClient(client, policy=app.pacing)
+
+
 def _load(config_path: Path | None) -> AppConfig:
     """Load configuration, surfacing anything the user should know but need not fix now."""
     app = load_config(config_path)
@@ -341,7 +353,9 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     app = _load(args.config)
     source = _resolve_source(app, args.source)
     adapter = get_adapter(source.adapter)
-    http_client = FixtureHttpClient(args.fixture) if args.fixture else UrllibHttpClient()
+    http_client = (
+        FixtureHttpClient(args.fixture) if args.fixture else _paced(app, UrllibHttpClient())
+    )
     db_path = args.db or app.database_path
     notifier = _build_notifier(telegram) if telegram else None
 
@@ -450,7 +464,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_FAILED
-    client = UrllibHttpClient(max_attempts=1)
+    client = _paced(app, UrllibHttpClient(max_attempts=1))
 
     try:
         outcome = run_live_check(
@@ -489,7 +503,7 @@ def _cmd_schedule(args: argparse.Namespace) -> int:
     if telegram is None:
         print("Telegram is not configured: scans run without delivery or failure notices.")
 
-    http_client = UrllibHttpClient()
+    http_client = _paced(app, UrllibHttpClient())
     with Storage.open(db_path) as storage:
         scheduler = Scheduler(
             storage,
@@ -705,10 +719,39 @@ def _cmd_status(args: argparse.Namespace) -> int:
     with Storage.open(db_path) as storage:
         print(f"Database: {db_path}")
         print(f"Matching rules: {_describe_matching(app.matching)}")
+        if args.brief:
+            _print_status_table(app, sources, storage)
+            return EXIT_OK
         for source in sources:
             state = storage.get_source_state(source.id)
             _print_status(source, state, storage)
     return EXIT_OK
+
+
+def _print_status_table(app: AppConfig, sources: Sequence[SourceConfig], storage: Storage) -> None:
+    """One line per source: the view that still works at a hundred of them."""
+    print()
+    rows: list[tuple[str, ...]] = [("id", "state", "fails", "next run", "matches", "last error")]
+    for source in sources:
+        state = storage.get_source_state(source.id)
+        matches = storage.list_jobs_by_decision(source.id, MatchOutcome.MATCH)
+        reviews = storage.list_jobs_by_decision(source.id, MatchOutcome.NEEDS_REVIEW)
+        rows.append(
+            (
+                source.id,
+                _source_state_text(source, state, {s.id for s in app.enabled_sources()}),
+                str(state.consecutive_failures if state else 0),
+                _compact_stamp(state.next_run_at if state else None),
+                f"{len(matches)}+{len(reviews)}r",
+                # Only what is wrong *now*: a recovered error is history, not status.
+                ((state.last_error_summary or "")[:36] or "-")
+                if state and state.consecutive_failures
+                else "-",
+            )
+        )
+    _print_table(rows)
+    print()
+    print("matches = alerts-eligible + needs-review. Use --source <id> for the full block.")
 
 
 def _describe_matching(rules: MatchingRules) -> str:
@@ -729,19 +772,29 @@ def _cmd_sources(args: argparse.Namespace) -> int:
     db_path = args.db or app.database_path
     enabled = {source.id for source in app.enabled_sources()}
 
+    validation_dir = VALIDATION_ARTIFACT_ROOT / "validation"
     print(f"Config: {app.config_path if app.config_path else 'none (built-in defaults)'}")
-    print(f"Sources: {len(app.sources)} configured, {len(enabled)} enabled")
+    print(
+        f"Sources: {len(app.sources)} catalogued, {len(enabled)} enabled,"
+        f" {len(app.sources) - len(enabled)} disabled"
+    )
     if not Path(db_path).exists():
         print(f"Database: {db_path} (not created yet)")
     print()
 
     rows: list[tuple[str, ...]] = [
-        ("id", "employer", "adapter", "every", "state", "last success", "matches")
+        ("id", "employer", "adapter", "every", "state", "last success", "matches", "validated")
     ]
+    tallies = {"failing": 0, "never": 0, "ok": 0, "stale": 0}
     with contextlib.ExitStack() as stack:
         storage = stack.enter_context(Storage.open(db_path)) if Path(db_path).exists() else None
         for source in app.sources:
             state = storage.get_source_state(source.id) if storage else None
+            record = read_validation_record(validation_dir, source.id)
+            verdict = _validation_text(record)
+            tallies[_validation_bucket(record)] += 1
+            if state is not None and state.consecutive_failures:
+                tallies["failing"] += 1
             rows.append(
                 (
                     source.id,
@@ -749,14 +802,56 @@ def _cmd_sources(args: argparse.Namespace) -> int:
                     source.adapter,
                     f"{source.cadence_minutes}m",
                     _source_state_text(source, state, enabled),
-                    (state.last_success_at if state and state.last_success_at else "-"),
+                    _compact_stamp(state.last_success_at if state else None),
                     _source_match_text(storage, source.id),
+                    verdict,
                 )
             )
     _print_table(rows)
+    print()
+    print(
+        f"Validated: {tallies['ok']} ok, {tallies['stale']} older than 30 days,"
+        f" {tallies['never']} never; {tallies['failing']} failing now."
+    )
     if storage is None:
-        print(f"\nState is unknown until the first scan writes {db_path}.")
+        print(f"State is unknown until the first scan writes {db_path}.")
+    print("Validate a source before enabling it: jobscout validate --source <id> --confirm-live")
     return EXIT_OK
+
+
+def _validation_bucket(record: dict[str, Any] | None) -> str:
+    if record is None:
+        return "never"
+    if not record.get("ok"):
+        return "stale"
+    captured = str(record.get("captured_at") or "")
+    return "ok" if _days_since(captured) <= VALIDATION_STALE_DAYS else "stale"
+
+
+def _validation_text(record: dict[str, Any] | None) -> str:
+    if record is None:
+        return "never"
+    stamp = _compact_stamp(str(record.get("captured_at") or ""))
+    verdict = "ok" if record.get("ok") else "FAILED"
+    return f"{stamp} {verdict}" if stamp else verdict
+
+
+def _days_since(stamp: str) -> float:
+    try:
+        moment = datetime.strptime(stamp.replace("Z", "+0000"), "%Y-%m-%dT%H%M%S%z")
+    except ValueError:
+        try:
+            moment = datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        except ValueError:
+            return 0.0
+    return (datetime.now(UTC) - moment).total_seconds() / 86400
+
+
+def _compact_stamp(stamp: str | None) -> str:
+    """`2026-10-24T09:07:50Z` -> `10-24 09:07`, so a table stays readable at 100 rows."""
+    if not stamp or len(stamp) < 16:
+        return stamp or "-"
+    return f"{stamp[5:10]} {stamp[11:16]}"
 
 
 def _source_state_text(source: SourceConfig, state: SourceState | None, enabled: set[str]) -> str:

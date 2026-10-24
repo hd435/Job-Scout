@@ -11,6 +11,7 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from .models import (
     ScanFacts,
     ScanResult,
     ScanStatus,
+    SourceCoverage,
     SourceState,
     StoredJob,
 )
@@ -895,6 +897,44 @@ class Storage:
             (source_id, str(decision), str(JobStatus.OPEN)),
         ).fetchone()
         return int(row["total"])
+
+    def source_coverage(self, *, since: str) -> dict[str, SourceCoverage]:
+        """Open roles, matches and reviews per source, plus matches first seen in a window.
+
+        Read-only and two queries in total: at a hundred sources the report must not turn
+        into a hundred round trips.
+        """
+        coverage: dict[str, SourceCoverage] = {}
+        for row in self._conn.execute(
+            """
+            SELECT source_id,
+                   SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_roles,
+                   SUM(CASE WHEN status = 'open' AND match_decision = 'match'
+                            THEN 1 ELSE 0 END) AS matches,
+                   SUM(CASE WHEN status = 'open' AND match_decision = 'needs_review'
+                            THEN 1 ELSE 0 END) AS reviews
+            FROM jobs GROUP BY source_id
+            """
+        ):
+            coverage[row["source_id"]] = SourceCoverage(
+                source_id=row["source_id"],
+                open_roles=int(row["open_roles"] or 0),
+                matches=int(row["matches"] or 0),
+                reviews=int(row["reviews"] or 0),
+            )
+        for row in self._conn.execute(
+            """
+            SELECT source_id, COUNT(*) AS matched
+            FROM jobs
+            WHERE status = 'open' AND match_decision = 'match' AND created_at >= ?
+            GROUP BY source_id
+            """,
+            (since,),
+        ):
+            current = coverage.get(row["source_id"])
+            if current is not None:
+                coverage[row["source_id"]] = replace(current, matched_in_window=int(row["matched"]))
+        return coverage
 
     def register_miss(self, job_id: int, *, now: str) -> int:
         self._conn.execute(

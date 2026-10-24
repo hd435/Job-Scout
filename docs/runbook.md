@@ -326,15 +326,16 @@ Two reading caveats:
 
 ## 7b. Adding an employer (the expansion procedure)
 
-Adding an employer is configuration plus one bounded check. It was executed end to end for
+Adding an employer is a catalogue file plus one bounded check. It was executed end to end for
 Barclays, Wise and Arm on 2026-10-24, which is how the two wrong URL patterns and the need for a
 Workday search were found — expect the same.
 
 1. **Find the feed.** Decide which shape it is: Lever (`site`), Greenhouse (`board`), Workday
    (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry schema.org `JobPosting`
-   JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
-2. **Write the source block** in `data/ops/config.toml`. For a sitemap site, open its sitemap and
-   copy one real job URL: the `job_url_pattern` must match it and contain `(?P<id>...)`. Do not
+   JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md). A site needing a
+   fifth shape needs an adapter, and that is development, not configuration.
+2. **Write one catalogue file** in your catalogue directory. For a sitemap site, open its sitemap
+   and copy one real job URL: `job_url_pattern` must match it and contain `(?P<id>...)`. Do not
    guess the shape from a synthetic fixture — that is what went wrong twice.
 3. **Check it loads.** Both commands are offline and read-only:
 
@@ -352,7 +353,7 @@ Workday search were found — expect the same.
 
    Read the result, not just `PASS`. `Records: live=0` with "none of N sitemap URL(s) matched"
    means the URL pattern is wrong; a `WARN` about a new field means the adapter may need updating.
-   Artifacts land in `data/validation/` (gitignored).
+   The result is recorded: `sources list` then shows `validated 10-24 09:48 ok`.
 5. **Take the first scan by hand**, with the task disabled, so you can watch it:
 
    ```powershell
@@ -367,7 +368,7 @@ Workday search were found — expect the same.
 
    ```powershell
    schtasks /Change /TN "Job-Scout scan" /ENABLE
-   python -m jobscout sources list --config data\ops\config.toml    # success/complete for every source
+   python -m jobscout status --brief --config data\ops\config.toml
    python -m jobscout summary --config data\ops\config.toml --current
    ```
 
@@ -376,7 +377,50 @@ Workday search were found — expect the same.
    deliberately if you want them, and note the extra volume.
 
 Politeness: keep `request_delay_seconds` at the default or higher for a board with hundreds of
-pages. Arm was raised to 1.0s after ten TLS handshakes timed out at the 0.5s default.
+pages, and use `[pacing.hosts]` when several sources share a host. Arm was raised to 1.0s after ten
+TLS handshakes timed out at the 0.5s default.
+
+## 7c. Expanding in batches, towards ~100 employers
+
+The machinery is ready; the list is operational work (D-066). Work in batches, because a batch that
+adds nothing measurable is a signal worth acting on before the next one.
+
+**Per batch (10–15 employers)**
+
+1. **Pick for one shape.** A batch of Greenhouse boards is far quicker than a mixed batch, because
+   the options are the same and only `board` changes.
+2. **Write the files.** One per employer, `id` = a short stable slug (`acme_graduate`), `employer` =
+   what you want to see in an alert. Copy the nearest existing catalogue file.
+3. **Load-check the batch together** — `config validate` names any file with a bad option, so fix
+   them all in one pass.
+4. **Validate each, live.** `validate --source <id> --confirm-live --live-only` per source. Expect
+   the first batch to teach you something: a URL shape, a `search_text` you need for a huge board,
+   or a WARN about a field the adapter does not model.
+5. **Baseline by hand** only for large sitemap boards (the 400-page cap needs two passes). Everything
+   else can be left to the schedule: the first complete scan is silent.
+6. **Let it run for a day**, then read the report.
+
+**Per batch review**
+
+```powershell
+python -m jobscout report --days 1 --config data\ops\config.toml
+```
+
+- **A source with roles but no matches** is coverage without value under the current scope: either
+  the scope is wrong for that employer (arm under a London-only pin) or the employer does not hire
+  early-career in the target families. Keep it if you expect that to change; otherwise drop it.
+- **A source with no roles at all** is a feed problem, not a scope problem: the URL pattern, the
+  search text, or a board that has moved. Check `sources list` for the last scan status.
+- **A source that keeps failing** is a maintenance cost. Two consecutive days of failures means the
+  feed changed; `validate` will say how.
+
+**Narrowing without deleting**: `disable = ["id", ...]` in the config turns a source off while
+keeping its catalogue file and its history. Use it for anything seasonal; delete the file only when
+you are sure.
+
+**Keep the numbers honest.** `report` counts roles stored and matches, not applications. A hundred
+employers that produce twenty matches is fine; a hundred that produce two means the scope needs
+looking at before the list grows further.
 
 ## 8. Standing posture and limits
 

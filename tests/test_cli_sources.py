@@ -52,7 +52,7 @@ def test_list_before_any_scan_reports_unknown_state(tmp_path: Path, capsys) -> N
     out = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "Sources: 2 configured, 1 enabled" in out
+    assert "Sources: 2 catalogued, 1 enabled, 1 disabled" in out
     assert "not created yet" in out
     assert "enabled, not yet scanned" in out
     assert "disabled" in out

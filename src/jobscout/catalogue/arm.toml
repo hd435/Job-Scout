@@ -1,0 +1,15 @@
+# Arm publishes one urlset and puts the town in the path, with two trailing numbers: a board
+# id and then the job id. Live-validated 2026-10-24: 434 roles.
+id = "arm"
+employer = "Arm"
+adapter = "sitemap_html"
+cadence_minutes = 30
+
+[options]
+sitemap_urls = ["https://careers.arm.com/sitemap.xml"]
+job_url_pattern = '^https://careers\.arm\.com/job/(?P<location>[^/?#]+)/[^/?#]+/(?:\d+/)?(?P<id>\d+)/?$'
+location_from = "url"
+# 434 pages in one pass: slower than the 0.5s default because the first baseline saw TLS
+# handshakes time out at the faster rate.
+request_delay_seconds = 1.0
+uk_employer = true

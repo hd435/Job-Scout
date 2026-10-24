@@ -21,6 +21,7 @@ change has an obvious home and reviewers know which file to trust.
 - *"How do I configure my own scope?"* → `configuration.md` (from v0.5), then `runbook.md`
 - *"How is it built / why this design?"* → `architecture.md`, then `decisions.md`
 - *"What are we building next?"* → `roadmap.md`, then the current file in `iterations/`
+  (v0.5 configurable scope, v0.6 scale out)
 - *"Is it running, and how do I stop or fix it?"* → `runbook.md`
 - *"Why was this decision made?"* → `decisions.md` (search the D-number cited in code comments)
 

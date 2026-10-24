@@ -13,10 +13,12 @@ import os
 import re
 import tomllib
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
+from .http import DEFAULT_PACING, PacingPolicy
 from .matching import (
     DEFAULT_LOCATION_PREFERENCES,
     DEFAULT_RULES,
@@ -58,6 +60,7 @@ class AppConfig:
     config_path: Path | None = None
     matching: MatchingRules = DEFAULT_RULES
     warnings: tuple[str, ...] = ()
+    pacing: PacingPolicy = DEFAULT_PACING
 
     def source(self, source_id: str) -> SourceConfig:
         for source in self.sources:
@@ -68,88 +71,6 @@ class AppConfig:
 
     def enabled_sources(self) -> tuple[SourceConfig, ...]:
         return tuple(source for source in self.sources if source.enabled)
-
-
-DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
-    SourceConfig(
-        id="palantir",
-        employer="Palantir Technologies",
-        adapter="lever",
-        cadence_minutes=30,
-        # The Lever board advertises roles worldwide, so it keeps the conservative location
-        # rules; `uk_employer` is deliberately not set here.
-        options={"site": "palantir"},
-    ),
-    SourceConfig(
-        id="barclays",
-        employer="Barclays",
-        adapter="workday",
-        cadence_minutes=30,
-        options={
-            "host": "barclays.wd3.myworkdayjobs.com",
-            "tenant": "barclays",
-            "site": "External_Career_Site_Barclays",
-            "locale": "en-US",
-            # The external board holds thousands of roles; the site's own search keeps a
-            # scan bounded and relevant. Titles that never say "graduate" are missed, which
-            # is a documented recall limit rather than a silent one.
-            "search_text": "graduate",
-            "uk_employer": True,
-        },
-    ),
-    SourceConfig(
-        id="lloyds_graduate",
-        employer="Lloyds Banking Group",
-        adapter="workday",
-        cadence_minutes=30,
-        options={
-            "host": "lbg.wd3.myworkdayjobs.com",
-            "tenant": "lbg",
-            "site": "Graduate_careers",
-            "locale": "en-US",
-            "uk_employer": True,
-        },
-    ),
-    SourceConfig(
-        id="monzo",
-        employer="Monzo",
-        adapter="greenhouse",
-        cadence_minutes=30,
-        options={"board": "monzo", "uk_employer": True},
-    ),
-    SourceConfig(
-        id="wise",
-        employer="Wise",
-        adapter="sitemap_html",
-        cadence_minutes=30,
-        # Wise publishes a sitemap index; the vacancy child sitemap lists job URLs whose
-        # slug ends in `-jid-<id>`.
-        options={
-            "sitemap_urls": ["https://wise.jobs/sitemap.xml"],
-            "sitemap_child_pattern": "vacanc",
-            "job_url_pattern": r"^https://wise\.jobs/job/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$",
-            "uk_employer": True,
-        },
-    ),
-    SourceConfig(
-        id="arm",
-        employer="Arm",
-        adapter="sitemap_html",
-        cadence_minutes=30,
-        # Arm publishes one urlset and puts the town in the path, so a page without
-        # JSON-LD still yields a location.
-        options={
-            "sitemap_urls": ["https://careers.arm.com/sitemap.xml"],
-            # Live URLs carry two trailing numbers: a board id and then the job id.
-            "job_url_pattern": (
-                r"^https://careers\.arm\.com/job/(?P<location>[^/?#]+)/[^/?#]+/"
-                r"(?:\d+/)?(?P<id>\d+)/?$"
-            ),
-            "location_from": "url",
-            "uk_employer": True,
-        },
-    ),
-)
 
 
 def default_config() -> AppConfig:
@@ -256,6 +177,8 @@ def load_config(path: Path | str | None = None) -> AppConfig:
 
     section = data.get("jobscout", {})
     database_path = Path(section.get("database", DEFAULT_DB_PATH))
+    catalogue_path = _catalogue_path(section, config_path)
+    disabled = _disabled_ids(section)
     raw_sources = data.get("sources") or []
 
     sources: list[SourceConfig] = []
@@ -277,7 +200,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         options = raw.get("options", {})
         if not isinstance(options, dict):
             raise ConfigError(f"sources[{index}].options must be a table")
-        _validate_source_options(source_id, adapter, options)
+        _validate_source_options(source_id, adapter, options, origin=f"sources[{index}]")
         sources.append(
             SourceConfig(
                 id=source_id,
@@ -290,17 +213,74 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         )
 
     if not sources:
-        sources = list(DEFAULT_SOURCES)
+        # The catalogue is the list; `[[sources]]` replaces it entirely, which is how a
+        # config that named one source before v0.6 keeps meaning exactly one source.
+        sources = list(
+            catalogue_directory(catalogue_path)
+            if catalogue_path is not None
+            else bundled_catalogue()
+        )
+    sources = apply_disable(sources, disabled)
     return AppConfig(
         database_path=database_path,
         sources=tuple(sources),
         config_path=config_path,
         matching=parse_rules(data),
         warnings=duplicate_source_warnings(sources),
+        pacing=parse_pacing(data.get("pacing")),
     )
 
 
-def _validate_source_options(source_id: str, adapter: str, options: Mapping[str, Any]) -> None:
+def _catalogue_path(section: Mapping[str, Any], config_path: Path) -> Path | None:
+    """`[jobscout] catalogue = "sources"`, resolved next to the config file."""
+    raw = section.get("catalogue")
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw.strip():
+        raise ConfigError("[jobscout].catalogue must be a directory path")
+    candidate = Path(raw.strip())
+    return candidate if candidate.is_absolute() else config_path.parent / candidate
+
+
+def _disabled_ids(section: Mapping[str, Any]) -> tuple[str, ...]:
+    """`[jobscout] disable = ["id", ...]`: narrow the catalogue without editing its files."""
+    raw = section.get("disable", [])
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise ConfigError("[jobscout].disable must be an array of source ids")
+    return tuple(item.strip() for item in raw if item.strip())
+
+
+def _source_from_table(data: Mapping[str, Any], *, origin: str) -> SourceConfig:
+    """One employer from a parsed catalogue table."""
+    source_id = str(data.get("id", "")).strip()
+    employer = str(data.get("employer", "")).strip()
+    adapter = str(data.get("adapter", "")).strip()
+    if not source_id or not employer or not adapter:
+        raise ConfigError(f"{origin}: id, employer and adapter are all required")
+    cadence = data.get("cadence_minutes", 30)
+    if not isinstance(cadence, int) or isinstance(cadence, bool) or cadence <= 0:
+        raise ConfigError(f"{origin}: cadence_minutes must be a positive integer")
+    options = data.get("options", {})
+    if not isinstance(options, dict):
+        raise ConfigError(f"{origin}: options must be a table")
+    _validate_source_options(source_id, adapter, options, origin=origin)
+    return SourceConfig(
+        id=source_id,
+        employer=employer,
+        adapter=adapter,
+        enabled=bool(data.get("enabled", True)),
+        cadence_minutes=cadence,
+        options=dict(options),
+    )
+
+
+def _validate_source_options(
+    source_id: str,
+    adapter: str,
+    options: Mapping[str, Any],
+    *,
+    origin: str | None = None,
+) -> None:
     """Reject options an adapter does not read, and options it cannot work without.
 
     A source defined by configuration is exactly where a typo is likely, and an ignored
@@ -310,16 +290,17 @@ def _validate_source_options(source_id: str, adapter: str, options: Mapping[str,
     """
     if adapter not in known_adapters():
         return
+    where = f"{origin} (source '{source_id}')" if origin else f"source '{source_id}'"
     unknown = unknown_options(adapter, options)
     if unknown:
         raise ConfigError(
-            f"source '{source_id}': unknown option(s) for the {adapter} adapter:"
+            f"{where}: unknown option(s) for the {adapter} adapter:"
             f" {', '.join(unknown)} (accepted: {describe(adapter)})"
         )
     missing = missing_options(adapter, options)
     if missing:
         raise ConfigError(
-            f"source '{source_id}': the {adapter} adapter needs"
+            f"{where}: the {adapter} adapter needs"
             f" {', '.join(missing)} (accepted: {describe(adapter)})"
         )
 
@@ -384,6 +365,46 @@ _PREFERENCE_KEYS = {
     "locations",
 }
 _LOCATION_KEYS = {"mode", "cities", "remote_uk", "hybrid_uk"}
+
+
+_PACING_KEYS = {"default_seconds", "hosts", "max_requests"}
+
+
+def parse_pacing(section: Any) -> PacingPolicy:
+    """`[pacing]`: the per-host floor between requests and a per-process ceiling.
+
+    Both are safety limits rather than tuning knobs: at 100 sources the default floor is what
+    stops two sources on one host from being scanned back to back.
+    """
+    if section is None:
+        return DEFAULT_PACING
+    if not isinstance(section, dict):
+        raise ConfigError("[pacing] must be a table")
+    unknown = sorted(set(section) - _PACING_KEYS)
+    if unknown:
+        raise ConfigError(
+            f"unknown [pacing] key(s): {', '.join(unknown)}"
+            f" (allowed: {', '.join(sorted(_PACING_KEYS))})"
+        )
+
+    seconds = section.get("default_seconds", DEFAULT_PACING.default_seconds)
+    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds < 0:
+        raise ConfigError(f"[pacing].default_seconds = {seconds!r} must be a number of seconds")
+
+    max_requests = section.get("max_requests", DEFAULT_PACING.max_requests)
+    if isinstance(max_requests, bool) or not isinstance(max_requests, int) or max_requests <= 0:
+        raise ConfigError(f"[pacing].max_requests = {max_requests!r} must be a positive integer")
+
+    hosts_raw = section.get("hosts", {})
+    if not isinstance(hosts_raw, dict):
+        raise ConfigError("[pacing.hosts] must be a table of host = seconds")
+    hosts: dict[str, float] = {}
+    for host, value in hosts_raw.items():
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+            raise ConfigError(f"[pacing.hosts] {host!r} = {value!r} must be a number of seconds")
+        hosts[str(host).strip().casefold()] = float(value)
+
+    return PacingPolicy(default_seconds=float(seconds), hosts=hosts, max_requests=int(max_requests))
 
 
 def parse_rules(data: Mapping[str, Any]) -> MatchingRules:
@@ -493,3 +514,82 @@ def _parse_location_preferences(section: Any) -> LocationPreferences:
         toggles[key] = value
 
     return LocationPreferences(mode=mode, cities=cleaned_cities, **toggles)
+
+
+CATALOGUE_DIR_NAME = "catalogue"
+
+
+def bundled_catalogue() -> tuple[SourceConfig, ...]:
+    """The employers that ship with the package: one TOML file each, no Python to edit."""
+    root = files("jobscout") / CATALOGUE_DIR_NAME
+    return _load_catalogue_entries(root, origin="bundled catalogue")
+
+
+@dataclass(frozen=True)
+class _CatalogueEntry:
+    source: SourceConfig
+    origin: str
+
+
+def _load_catalogue_entries(directory: Any, *, origin: str) -> tuple[SourceConfig, ...]:
+    """Read one employer per `*.toml` file from a catalogue directory.
+
+    A file is a single table: `id`, `employer`, `adapter`, optional `enabled` and
+    `cadence_minutes`, and an `[options]` table. One employer per file keeps a 100-entry
+    catalogue reviewable and free of merge conflicts.
+    """
+    entries: list[SourceConfig] = []
+    seen: dict[str, str] = {}
+    paths = sorted(
+        (entry for entry in directory.iterdir() if str(entry.name).endswith(".toml")),
+        key=lambda entry: str(entry.name),
+    )
+    for path in paths:
+        name = str(path.name)
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+        except tomllib.TOMLDecodeError as exc:
+            raise ConfigError(f"{origin}: invalid TOML in {name}: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ConfigError(f"{origin}: {name} must be a table of source fields")
+        if "sources" in data:
+            raise ConfigError(
+                f"{origin}: {name} must describe one employer with `id`, not a `[[sources]]` list"
+            )
+        source_id = str(data.get("id", "")).strip()
+        if not source_id:
+            raise ConfigError(f"{origin}: {name} has no `id`")
+        if source_id in seen:
+            raise ConfigError(
+                f"{origin}: '{source_id}' appears in both {seen[source_id]} and {name}"
+            )
+        seen[source_id] = name
+        entries.append(_source_from_table(data, origin=f"{origin}/{name}"))
+    return tuple(entries)
+
+
+def catalogue_directory(path: Path) -> tuple[SourceConfig, ...]:
+    """Load an operator's own catalogue directory; a missing directory is an error."""
+    if not path.exists():
+        raise ConfigError(f"catalogue directory not found: {path}")
+    if not path.is_dir():
+        raise ConfigError(f"catalogue must be a directory: {path}")
+    return _load_catalogue_entries(path, origin=str(path))
+
+
+def apply_disable(sources: Sequence[SourceConfig], disabled: Sequence[str]) -> list[SourceConfig]:
+    """Turn catalogue entries off by id, so an operator can narrow without editing files."""
+    known = {source.id for source in sources}
+    unknown = [source_id for source_id in disabled if source_id not in known]
+    if unknown:
+        raise ConfigError(
+            f"disable names unknown source(s): {', '.join(sorted(unknown))}"
+            f" (known: {', '.join(sorted(known))})"
+        )
+    off = set(disabled)
+    return [replace(source, enabled=False) if source.id in off else source for source in sources]
+
+
+# The shipped catalogue, read once at import: every existing reference to `DEFAULT_SOURCES`
+# keeps working, and the files stay the single source of truth.
+DEFAULT_SOURCES: tuple[SourceConfig, ...] = bundled_catalogue()

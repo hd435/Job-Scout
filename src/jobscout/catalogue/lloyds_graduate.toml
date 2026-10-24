@@ -1,0 +1,12 @@
+# Lloyds runs Workday; this is the graduate site rather than the whole group board.
+id = "lloyds_graduate"
+employer = "Lloyds Banking Group"
+adapter = "workday"
+cadence_minutes = 30
+
+[options]
+host = "lbg.wd3.myworkdayjobs.com"
+tenant = "lbg"
+site = "Graduate_careers"
+locale = "en-US"
+uk_employer = true

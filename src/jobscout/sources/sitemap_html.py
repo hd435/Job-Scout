@@ -28,7 +28,7 @@ from datetime import UTC, date, datetime
 from typing import Any, Protocol
 
 from ..config import SourceConfig
-from ..http import HttpError
+from ..http import HttpError, PacingBudgetExceeded
 from ..models import Job, ScanResult, ScanStatus, SkipReason
 from .base import build_job, uk_employer
 from .htmltext import HtmlDocument, strip_html
@@ -203,7 +203,10 @@ class SitemapHtmlAdapter:
         for position, entry in enumerate(to_fetch):
             if position and delay:
                 self._sleep(delay)
-            markup, failure = self._fetch_detail(http_client, entry, delay)
+            try:
+                markup, failure = self._fetch_detail(http_client, entry, delay)
+            except PacingBudgetExceeded as exc:
+                return _failed(config, started_at, exc.summary())
             if markup is None:
                 if failure is not None and failure.status == 404:
                     # The sitemap lists a page that is gone. That is a stale entry, not an
@@ -284,6 +287,10 @@ class SitemapHtmlAdapter:
         for attempt in range(1, DETAIL_ATTEMPTS + 1):
             try:
                 return http_client.get_text(entry.url), None
+            except PacingBudgetExceeded:
+                # A process-level stop, not one bad page: let it abort the scan so the
+                # operator sees it instead of a slow drip of partial scans.
+                raise
             except HttpError as exc:
                 failure = exc
                 if not exc.retryable or attempt == DETAIL_ATTEMPTS:

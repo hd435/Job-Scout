@@ -1,0 +1,8 @@
+id = "monzo"
+employer = "Monzo"
+adapter = "greenhouse"
+cadence_minutes = 30
+
+[options]
+board = "monzo"
+uk_employer = true

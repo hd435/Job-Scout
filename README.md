@@ -155,10 +155,19 @@ title, which leaves the location unknown and the role in `needs_review` rather t
 Requests are spaced by `request_delay_seconds` and capped per scan. Any careers site of that shape
 can be added in configuration alone ? see [docs/configuration.md](./docs/configuration.md).
 
-A `[[sources]]` block replaces the built-in list, so keep every source you want to run. Options are
-validated when the configuration loads: an option the adapter does not read, or a required one
-that is missing, fails with a message naming the source and key. Two enabled sources that watch the
-same employer, or read the same feed, produce a warning, because deduplication is per source id.
+Employers are **catalogue files**, one per employer, shipped in `src/jobscout/catalogue/`. Adding
+one is a new TOML file, not a Python change: `[jobscout] catalogue = "sources"` points at your
+own directory, and `disable = ["id", ...]` turns entries off without editing them. A
+`[[sources]]` block in the config file still replaces the list entirely, which keeps a
+one-source config meaning one source. Options are validated when the configuration loads: an
+option the adapter does not read, or a required one that is missing, fails with a message
+naming the file, the source and the key. Two enabled sources that watch the same employer, or
+read the same feed, produce a warning, because deduplication is per source id.
+
+`jobscout sources list` prints every source with its adapter, state, match counts and whether
+it has been validated (and when); `jobscout status --brief` gives one line per source and shows
+an error only while it is failing. Requests are paced per host across sources ? see `[pacing]`
+in [docs/configuration.md](./docs/configuration.md).
 
 A `--fixture` file feeds list-shaped sources only (Palantir JSON, Workday listing, Monzo board),
 and a paginated Workday fixture stops as `partial` with a visible note instead of looping.
@@ -246,6 +255,14 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 
 **Trial measurement:** `jobscout report --days 7` reads the database and prints a scorecard per source — scans against the cycles its cadence implies, complete/partial/failed counts, longest gap and missed episodes, mean scheduling delay, consecutive failures, and delivery outcomes for the window. It writes nothing and contacts nothing. Availability is inferred from scans per expected cycle; nothing records a process heartbeat, so the report says so rather than claiming the process was up. See [docs/runbook.md](docs/runbook.md) for the operating procedure and the Windows Task Scheduler preparation.
 
+
+## Measuring coverage
+
+`jobscout report --days 7` is a read-only scorecard over what is stored: scans per expected cycle
+per source, gaps, delivery outcomes, and now what each source contributes ? roles stored,
+current matches, roles in review, and matches first seen in the window. It names the enabled
+sources that contribute nothing, which is the signal to narrow the scope or drop an employer
+before the next batch.
 
 ## Data retention
 

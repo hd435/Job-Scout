@@ -39,13 +39,14 @@ def test_defaults_are_usable_without_a_config_file(tmp_path: Path, monkeypatch) 
     config = load_config()
 
     assert config.database_path == default_config().database_path
+    # Catalogue files are read in filename order, so the list is stable and alphabetical.
     assert [source.id for source in config.sources] == [
-        "palantir",
+        "arm",
         "barclays",
         "lloyds_graduate",
         "monzo",
+        "palantir",
         "wise",
-        "arm",
     ]
     assert config.source("palantir").cadence_minutes == 30
 

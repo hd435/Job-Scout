@@ -55,6 +55,9 @@ def write_config(tmp_path: Path, *, source_id: str, options: str = WISE_OPTIONS)
             [
                 "[jobscout]",
                 f'database = "{database}"',
+                "# Tests must not sleep: the pacer is exercised explicitly in test_pacing.py.",
+                "[pacing]",
+                "default_seconds = 0",
                 "",
                 "[[sources]]",
                 f'id = "{source_id}"',

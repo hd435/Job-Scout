@@ -1,0 +1,9 @@
+# Palantir publishes its board through Lever's public postings API.
+id = "palantir"
+employer = "Palantir Technologies"
+adapter = "lever"
+cadence_minutes = 30
+
+[options]
+# Worldwide board: no `uk_employer` relaxation, so the conservative location rules apply.
+site = "palantir"

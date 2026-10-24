@@ -341,7 +341,7 @@ organised by iteration, one file each in [iterations/](./iterations/).
 |---|---|---|
 | v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Delivered**; the local scheduled task was disabled while v0.5 changes landed and is re-enabled at the end of each increment |
 | **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **In progress** — 0.1 delivered, 0.2 delivered; see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) |
-| v0.6 | Scale: ~100 employers in batches, per-host politeness, compact status, alert-volume policy | Not started |
+| **v0.6** | **Scale out: catalogue files, per-host pacing, compact status, coverage measurement** | **Delivered 2026-10-24** — see [iterations/v0.6-scale-out.md](./iterations/v0.6-scale-out.md); alert-volume policy stays deferred (D-070) |
 
 Coverage beyond the six researched employers is the Product Owner's ongoing operational work
 (D-066), not a milestone. The roadmap stays one screen; per-iteration detail lives in the

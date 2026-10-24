@@ -300,6 +300,17 @@ class AlertCandidate:
 
 
 @dataclass(frozen=True)
+class SourceCoverage:
+    """What one source has contributed, for judging whether it is worth keeping."""
+
+    source_id: str
+    open_roles: int = 0
+    matches: int = 0
+    reviews: int = 0
+    matched_in_window: int = 0
+
+
+@dataclass(frozen=True)
 class ScanOutcome:
     """Result of orchestrating one scan: adapter output plus state transitions."""
 

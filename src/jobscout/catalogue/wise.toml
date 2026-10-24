@@ -1,0 +1,12 @@
+# Wise publishes a sitemap index; the vacancy child sitemap lists job URLs whose slug ends in
+# `-jid-<id>`. Live-validated 2026-10-24: 427 roles.
+id = "wise"
+employer = "Wise"
+adapter = "sitemap_html"
+cadence_minutes = 30
+
+[options]
+sitemap_urls = ["https://wise.jobs/sitemap.xml"]
+sitemap_child_pattern = "vacanc"
+job_url_pattern = '^https://wise\.jobs/job/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$'
+uk_employer = true

@@ -19,6 +19,10 @@ jobscout = "jobscout.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# The catalogue is data, not code: one TOML file per employer, shipped with the package.
+jobscout = ["catalogue/*.toml"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
