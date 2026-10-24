@@ -36,6 +36,7 @@ from .htmltext import HtmlDocument, strip_html
 SITEMAP_MAX_DOCUMENTS = 5
 SITEMAP_MAX_DETAIL_FETCHES = 400
 SITEMAP_REQUEST_DELAY = 0.5
+DETAIL_ATTEMPTS = 2
 
 _SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 _UNSET = object()
@@ -197,20 +198,43 @@ class SitemapHtmlAdapter:
 
         jobs: list[Job] = []
         fallback_pages = 0
+        gone: list[_SitemapEntry] = []
+        fetched = 0
         for position, entry in enumerate(to_fetch):
             if position and delay:
                 self._sleep(delay)
-            try:
-                markup = http_client.get_text(entry.url)
-            except HttpError as exc:
-                skipped.append(SkipReason(entry.job_id, "detail_request_failed", exc.summary()))
+            markup, failure = self._fetch_detail(http_client, entry, delay)
+            if markup is None:
+                if failure is not None and failure.status == 404:
+                    # The sitemap lists a page that is gone. That is a stale entry, not an
+                    # incomplete scan: treating it as a skip would stop the source ever
+                    # reaching a complete scan, and therefore ever baselining.
+                    gone.append(entry)
+                    continue
+                summary = failure.summary() if failure is not None else "detail request failed"
+                skipped.append(SkipReason(entry.job_id, "detail_request_failed", summary))
                 continue
+            fetched += 1
             mapped, used_fallback = _map_page(markup, entry, config, spec)
             if isinstance(mapped, SkipReason):
                 skipped.append(mapped)
                 continue
             fallback_pages += int(used_fallback)
             jobs.append(mapped)
+
+        if gone:
+            if not fetched and not observed_only:
+                # Nothing parsed and nothing was confirmed unchanged: the URL shape has
+                # changed rather than the board emptied. Failing is the only safe reading,
+                # because an empty "complete" scan would close roles.
+                return _failed(
+                    config,
+                    started_at,
+                    f"all {len(gone)} detail request(s) returned 404 and no role was"
+                    " confirmed unchanged; options.job_url_pattern may no longer match"
+                    " this site",
+                )
+            notes.append(f"{len(gone)} sitemap URL(s) returned 404 and were treated as removed")
 
         if fallback_pages:
             # Informational: a page without JSON-LD still yields a title and URL, and its
@@ -246,6 +270,27 @@ class SitemapHtmlAdapter:
             error_summary="; ".join(notes) if notes else None,
             observed_ids=observed_ids,
         )
+
+    def _fetch_detail(
+        self, http_client: HtmlClient, entry: _SitemapEntry, delay: float
+    ) -> tuple[str | None, HttpError | None]:
+        """Fetch one job page, retrying a transient failure once.
+
+        A long crawl of a few hundred pages will see the occasional dropped connection, and
+        letting one of those fail the whole scan would keep a sitemap source permanently
+        partial. Permanent failures are not retried.
+        """
+        failure: HttpError | None = None
+        for attempt in range(1, DETAIL_ATTEMPTS + 1):
+            try:
+                return http_client.get_text(entry.url), None
+            except HttpError as exc:
+                failure = exc
+                if not exc.retryable or attempt == DETAIL_ATTEMPTS:
+                    break
+                if delay:
+                    self._sleep(delay)
+        return None, failure
 
     def _collect_entries(
         self,

@@ -406,6 +406,7 @@ def run_live_check(
     allowed_root: Path | None = None,
     max_records: int = DEFAULT_SAMPLE_RECORDS,
     now: str | None = None,
+    allow_missing_fixture: bool = False,
 ) -> ValidationOutcome:
     """Perform exactly one read-only request and judge the result.
 
@@ -413,6 +414,10 @@ def run_live_check(
     the retry policy of the underlying client (the CLI builds it with no retries).
     `allowed_root` confines artifacts to one directory (the gitignored `data/` tree in the
     CLI); the containment check runs before any request is made.
+
+    `allow_missing_fixture` is first contact with a source that has no recorded payload yet:
+    the adapter still parses the live response, but the shape comparison is skipped and the
+    report says so rather than implying a contract was checked.
     """
     captured_at = now or _now_iso()
     profile = profile_for(source)
@@ -423,7 +428,7 @@ def run_live_check(
             error=f"no validation profile for source '{source.id}'",
             lines=(f"No validation profile for source '{source.id}'",),
         )
-    if fixture_payload is None and profile.payload_kind == "json":
+    if fixture_payload is None and profile.payload_kind == "json" and not allow_missing_fixture:
         return ValidationOutcome(
             ok=False,
             source_id=source.id,
@@ -494,10 +499,14 @@ def run_live_check(
         ok = parse_ok and scan.records_seen > 0
     else:
         live_records = profile.records(recording.payload)
-        comparison = compare_payloads(
-            live_records, profile.records(fixture_payload), profile=profile
-        )
-        ok = comparison.ok and parse_ok
+        if fixture_payload is None:
+            comparison = None
+            ok = parse_ok and bool(live_records)
+        else:
+            comparison = compare_payloads(
+                live_records, profile.records(fixture_payload), profile=profile
+            )
+            ok = comparison.ok and parse_ok
 
     lines = _report_lines(
         recording.requests,
@@ -506,6 +515,7 @@ def run_live_check(
         ok,
         require_complete=profile.require_complete,
         payload_kind=profile.payload_kind,
+        live_records=live_records if isinstance(live_records, list) else None,
     )
     sample_path = report_path = None
     if sample_dir is not None:
@@ -550,19 +560,22 @@ def _report_lines(
     *,
     require_complete: bool,
     payload_kind: str = "json",
+    live_records: list[Any] | None = None,
 ) -> tuple[str, ...]:
     lines = [
         f"Request: {requests[0]}" if len(requests) == 1 else f"Requests: {len(requests)}",
     ]
     if len(requests) > 1:
         lines.extend(f"  {url}" for url in requests)
-    if comparison is None:
-        lines.append(
-            f"Records: live={scan.records_seen} (no JSON payload to compare for this adapter)"
-        )
-    else:
+    if comparison is not None:
         lines.append(
             f"Records: live={comparison.live_records} fixture={comparison.fixture_records}"
+        )
+    elif live_records is not None:
+        lines.append(f"Records: live={len(live_records)} (no recorded fixture to compare)")
+    else:
+        lines.append(
+            f"Records: live={scan.records_seen} (no JSON payload to compare for this adapter)"
         )
     lines.append(
         f"Adapter: status={scan.status} complete={'yes' if scan.complete else 'no'}"
@@ -583,10 +596,15 @@ def _report_lines(
             "WARN  scan was partial; incompleteness does not fail this check, but a"
             " production scan would refuse to baseline or alert on it"
         )
-    if comparison is None:
+    if comparison is None and payload_kind == "html":
         lines.append(
             "Shape: not compared (this adapter has no JSON payload; the scan result is"
             " the evidence)"
+        )
+    elif comparison is None:
+        lines.append(
+            "Shape: not compared (no recorded fixture yet: this is a first-contact check of"
+            " the live response, not a contract check)"
         )
     elif not comparison.failures and not comparison.warnings:
         lines.append("Shape: identical to the recorded fixture")

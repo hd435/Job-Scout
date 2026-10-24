@@ -501,6 +501,34 @@ def test_a_json_source_without_a_fixture_is_refused_before_any_request(palantir)
     assert client.gets == []
 
 
+def test_live_only_mode_skips_the_shape_comparison_explicitly(palantir, palantir_payload) -> None:
+    """First contact with a source that has no recorded payload yet."""
+
+    class JsonClient:
+        def __init__(self) -> None:
+            self.gets: list[str] = []
+
+        def get_json(self, url: str) -> Any:
+            self.gets.append(url)
+            return palantir_payload
+
+    client = JsonClient()
+
+    outcome = run_live_check(
+        palantir,
+        fixture_payload=None,
+        client=client,
+        now=CAPTURED_AT,
+        allow_missing_fixture=True,
+    )
+
+    assert outcome.ok is True
+    assert outcome.comparison is None
+    report = "\n".join(outcome.lines)
+    assert "first-contact check" in report
+    assert "not a contract check" in report
+
+
 # CLI wiring ---------------------------------------------------------------
 
 

@@ -90,6 +90,10 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
             "tenant": "barclays",
             "site": "External_Career_Site_Barclays",
             "locale": "en-US",
+            # The external board holds thousands of roles; the site's own search keeps a
+            # scan bounded and relevant. Titles that never say "graduate" are missed, which
+            # is a documented recall limit rather than a silent one.
+            "search_text": "graduate",
             "uk_employer": True,
         },
     ),
@@ -123,7 +127,7 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         options={
             "sitemap_urls": ["https://wise.jobs/sitemap.xml"],
             "sitemap_child_pattern": "vacanc",
-            "job_url_pattern": r"^https://wise\.jobs/jobs/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$",
+            "job_url_pattern": r"^https://wise\.jobs/job/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$",
             "uk_employer": True,
         },
     ),
@@ -136,8 +140,10 @@ DEFAULT_SOURCES: tuple[SourceConfig, ...] = (
         # JSON-LD still yields a location.
         options={
             "sitemap_urls": ["https://careers.arm.com/sitemap.xml"],
+            # Live URLs carry two trailing numbers: a board id and then the job id.
             "job_url_pattern": (
-                r"^https://careers\.arm\.com/job/(?P<location>[^/?#]+)/[^/?#]+/(?P<id>\d+)/?$"
+                r"^https://careers\.arm\.com/job/(?P<location>[^/?#]+)/[^/?#]+/"
+                r"(?:\d+/)?(?P<id>\d+)/?$"
             ),
             "location_from": "url",
             "uk_employer": True,

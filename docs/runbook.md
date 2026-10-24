@@ -70,15 +70,18 @@ it lives outside Git, so a fresh clone is unaffected.
 
 | Piece | Where |
 |---|---|
-| Scope config (Monzo + Lloyds Graduate only) | `data/ops/config.toml` — sources plus the pinned London scope in `[preferences]` (section 2b) |
+| Scope config (the six researched employers) | `data/ops/config.toml` — sources plus the pinned London scope in `[preferences]` (section 2b) |
 | Recurring wrapper | `data/ops/run-once.cmd` |
 | Pass log | `data/ops/logs/schedule.log` |
 | Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
 
-**Current state: the task exists but is disabled.** It was disabled on 2026-10-24 so that v0.5
-changes land without a scan running mid-edit. Re-enable it with
-`schtasks /Change /TN "Job-Scout scan" /ENABLE` when you want the beta running again; the
-definition and the database are untouched while it is off.
+**Current state: enabled and Ready**, running the six researched employers with the pinned London
+scope. Measured on 2026-10-24 straight after baselining: 20 current matches (Palantir 11, Wise 5,
+Lloyds 2, Monzo 2, Barclays 0, Arm 0) and 51 needs-review roles. Arm contributes nothing under a
+London-only scope because almost all its roles are in Cambridge, Lund and Manchester; that is the
+scope working, not a fault.
+
+`schtasks /Change /TN "Job-Scout scan" /DISABLE` stops it without deleting anything.
 
 The task runs `jobscout schedule --once`; each pass scans only sources whose cadence has
 elapsed (30 minutes), delivers any queued alerts, and exits. `MultipleInstancesPolicy` is
@@ -320,6 +323,60 @@ Two reading caveats:
 - Expected cycles assume the machine was meant to be running for the whole window. Scheduled
   downtime (a laptop switched off overnight) shows up as missed episodes; note it in the
   evidence rather than treating it as a defect.
+
+## 7b. Adding an employer (the expansion procedure)
+
+Adding an employer is configuration plus one bounded check. It was executed end to end for
+Barclays, Wise and Arm on 2026-10-24, which is how the two wrong URL patterns and the need for a
+Workday search were found — expect the same.
+
+1. **Find the feed.** Decide which shape it is: Lever (`site`), Greenhouse (`board`), Workday
+   (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry schema.org `JobPosting`
+   JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
+2. **Write the source block** in `data/ops/config.toml`. For a sitemap site, open its sitemap and
+   copy one real job URL: the `job_url_pattern` must match it and contain `(?P<id>...)`. Do not
+   guess the shape from a synthetic fixture — that is what went wrong twice.
+3. **Check it loads.** Both commands are offline and read-only:
+
+   ```powershell
+   python -m jobscout config validate --config data\ops\config.toml
+   python -m jobscout sources list --config data\ops\config.toml
+   ```
+
+4. **Validate it live, bounded.** Never scan an unvalidated source.
+
+   ```powershell
+   # Any source with a known adapter; a JSON source without a recorded fixture needs --live-only.
+   python -m jobscout validate --source <id> --confirm-live --live-only
+   ```
+
+   Read the result, not just `PASS`. `Records: live=0` with "none of N sitemap URL(s) matched"
+   means the URL pattern is wrong; a `WARN` about a new field means the adapter may need updating.
+   Artifacts land in `data/validation/` (gitignored).
+5. **Take the first scan by hand**, with the task disabled, so you can watch it:
+
+   ```powershell
+   schtasks /Change /TN "Job-Scout scan" /DISABLE
+   python -m jobscout scan --source <id> --dry-run --config data\ops\config.toml
+   ```
+
+   The first scan of a large board is `partial` by design when it hits `max_detail_fetches`
+   (400). Run it again: the second pass fetches the remainder and **establishes the baseline
+   silently** — no alerts for existing roles.
+6. **Enable and confirm.**
+
+   ```powershell
+   schtasks /Change /TN "Job-Scout scan" /ENABLE
+   python -m jobscout sources list --config data\ops\config.toml    # success/complete for every source
+   python -m jobscout summary --config data\ops\config.toml --current
+   ```
+
+7. **Expect the scope to hurt.** A new employer may contribute nothing: under the pinned London
+   scope, Arm's 433 roles yield zero matches. That is the preference working. Widen `[preferences]`
+   deliberately if you want them, and note the extra volume.
+
+Politeness: keep `request_delay_seconds` at the default or higher for a board with hundreds of
+pages. Arm was raised to 1.0s after ten TLS handshakes timed out at the 0.5s default.
 
 ## 8. Standing posture and limits
 

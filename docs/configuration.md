@@ -60,7 +60,7 @@ or a required option that is missing, is an error naming the source and the key
 |---|---|---|
 | `lever` | — | `site` (defaults to the source id), `uk_employer` |
 | `greenhouse` | — | `board` (defaults to the source id), `uk_employer` |
-| `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_pages`, `uk_employer` |
+| `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_pages`, `search_text`, `uk_employer` |
 | `sitemap_html` | `job_url_pattern` and `sitemap_urls` (or `sitemap`) | `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches`, `request_delay_seconds`, `uk_employer` |
 
 `uk_employer = true` marks a source whose board only advertises UK roles. It relaxes the
@@ -82,7 +82,15 @@ schema.org `JobPosting` JSON-LD block. A new employer of that shape needs no Pyt
 | `location_from` | `"url"` takes the town from a named group `(?P<location>...)` in `job_url_pattern`, for pages that publish no JSON-LD address. Hyphens become spaces |
 | `max_sitemap_documents` | Cap on sitemap documents per scan (default 5) |
 | `max_detail_fetches` | Cap on job pages fetched per scan (default 400) |
-| `request_delay_seconds` | Pause between job-page requests (default 0.5) |
+| `request_delay_seconds` | Pause between job-page requests (default 0.5). Raise it for a board of several hundred pages |
+
+### 3.3 Workday search (`search_text`)
+
+`search_text` is passed to the site's own search, exactly as the search box would, and the
+listing's reported total reflects it ? so "complete" means complete for that search. Use it when a
+board is much larger than the early-career subset you want: Barclays' external site holds thousands
+of postings, and `search_text = "graduate"` brings a scan down to about 90. The trade is recall: a
+role whose title never contains the search term is never seen.
 
 Behaviour worth knowing before adding a site:
 
@@ -93,6 +101,13 @@ Behaviour worth knowing before adding a site:
   guessing.
 - A scan that matches no URLs, or hits a cap, is `partial`, not `success`. Partial scans never
   establish a baseline, never alert, and never close roles.
+- A detail request that fails transiently is retried once. A URL that returns 404 is treated as a
+  removed role and the scan can still complete, because a stale sitemap entry or one dropped
+  connection must not stop a source from ever baselining (D-079). If every URL 404s and nothing is
+  confirmed unchanged, the scan fails: an empty "complete" scan would close roles.
+- The first scan of a large board is the expensive one. With `max_detail_fetches = 400` a 434-role
+  board needs two passes: the first is `partial` (capped), the second fetches the remainder and
+  completes. After that only changed roles are re-fetched.
 - TOML interprets backslashes inside double-quoted strings. Write a regex in single quotes
   (`'^https://example.test/jobs/(?P<id>\\d+)$'`) or double every backslash.
 

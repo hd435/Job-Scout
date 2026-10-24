@@ -15,9 +15,9 @@ from jobscout.sources.sitemap_html import SitemapHtmlAdapter
 WISE_INDEX = "https://wise.jobs/sitemap.xml"
 WISE_VACANCIES = "https://wise.jobs/vacanciessitemap.xml"
 WISE_PAGES = "https://wise.jobs/pagessitemap.xml"
-WISE_JOB_1 = "https://wise.jobs/jobs/graduate-data-scientist-london-jid-4821"
-WISE_JOB_2 = "https://wise.jobs/jobs/graduate-software-engineer-london-jid-4822"
-WISE_JOB_3 = "https://wise.jobs/jobs/senior-product-manager-london-jid-4823"
+WISE_JOB_1 = "https://wise.jobs/job/graduate-data-scientist-london-jid-4821"
+WISE_JOB_2 = "https://wise.jobs/job/graduate-software-engineer-london-jid-4822"
+WISE_JOB_3 = "https://wise.jobs/job/senior-product-manager-london-jid-4823"
 
 ARM_SITEMAP = "https://careers.arm.com/sitemap.xml"
 ARM_JOB_1 = "https://careers.arm.com/job/cambridge/data-analytics-intern/88121/"
@@ -340,6 +340,95 @@ def test_detail_request_failure_makes_the_scan_partial(wise, fake_html_http) -> 
     assert result.jobs == ()
 
 
+def test_a_transient_detail_failure_is_retried_once(wise, html_payloads) -> None:
+    """One dropped connection in a 400-page crawl must not keep the source partial for ever."""
+
+    class FlakyClient:
+        def __init__(self) -> None:
+            self.gets: list[str] = []
+            self.pages = wise_documents(html_payloads)
+
+        def get_text(self, url: str) -> str:
+            self.gets.append(url)
+            if url == WISE_JOB_1 and self.gets.count(WISE_JOB_1) == 1:
+                raise HttpError("handshake timed out", retryable=True)
+            return str(self.pages[url])
+
+    client = FlakyClient()
+
+    result = wise_adapter().fetch_scan(wise, client)
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.skipped == ()
+    assert [job.source_job_id for job in result.jobs] == ["4821", "4822", "4823"]
+    assert client.gets.count(WISE_JOB_1) == 2
+
+
+def test_a_sitemap_entry_whose_page_is_gone_is_treated_as_removed(wise, html_payloads) -> None:
+    """A stale sitemap URL is not an incomplete scan, and must not block the baseline."""
+
+    class GoneClient:
+        def __init__(self) -> None:
+            self.gets: list[str] = []
+            self.pages = wise_documents(html_payloads)
+
+        def get_text(self, url: str) -> str:
+            self.gets.append(url)
+            if url == WISE_JOB_3:
+                raise HttpError("request rejected", status=404)
+            return str(self.pages[url])
+
+    result = wise_adapter().fetch_scan(wise, GoneClient())
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.skipped == ()
+    assert [job.source_job_id for job in result.jobs] == ["4821", "4822"]
+    assert "returned 404 and were treated as removed" in (result.error_summary or "")
+
+
+def test_every_page_returning_404_fails_the_scan(wise, fake_html_http) -> None:
+    """All 404s means the URL pattern no longer matches reality, not that the board is empty."""
+    sitemap = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"<url><loc>{WISE_JOB_1}</loc><lastmod>2026-10-21</lastmod></url>"
+        f"<url><loc>{WISE_JOB_2}</loc><lastmod>2026-10-21</lastmod></url>"
+        "</urlset>"
+    )
+    gone = HttpError("request rejected", status=404)
+    client = fake_html_http({WISE_INDEX: sitemap, WISE_JOB_1: gone, WISE_JOB_2: gone})
+
+    result = wise_adapter().fetch_scan(wise, client)
+
+    assert result.status is ScanStatus.FAILED
+    assert "all 2 detail request(s) returned 404" in (result.error_summary or "")
+    assert "job_url_pattern may no longer match" in (result.error_summary or "")
+
+
+def test_one_changed_url_that_is_gone_does_not_fail_a_baselined_scan(wise, fake_html_http) -> None:
+    """Regression: a steady-state pass refreshes only what changed.
+
+    With one changed URL, "every attempt 404ed" is not evidence of a broken pattern: the
+    unchanged roles in the same sitemap prove the site still serves pages.
+    """
+    sitemap = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"<url><loc>{WISE_JOB_1}</loc><lastmod>2026-10-22</lastmod></url>"
+        f"<url><loc>{WISE_JOB_2}</loc><lastmod>2026-10-21</lastmod></url>"
+        "</urlset>"
+    )
+    client = fake_html_http(
+        {WISE_INDEX: sitemap, WISE_JOB_1: HttpError("request rejected", status=404)}
+    )
+
+    result = wise_adapter().fetch_scan(wise, client, known={"4822": "2026-10-21"})
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.observed_ids == ("4822",)
+    assert "treated as removed" in (result.error_summary or "")
+
+
 # incremental refresh -----------------------------------------------------
 
 
@@ -472,12 +561,12 @@ def test_a_new_role_alerts_once_and_a_changed_role_updates_quietly(
     updated_sitemap = html_payloads["wise_vacancies_sitemap.xml"].replace(
         "</urlset>",
         "  <url>\n"
-        "    <loc>https://wise.jobs/jobs/graduate-product-analyst-london-jid-4824</loc>\n"
+        "    <loc>https://wise.jobs/job/graduate-product-analyst-london-jid-4824</loc>\n"
         "    <lastmod>2026-10-22</lastmod>\n"
         "  </url>\n"
         "</urlset>",
     )
-    new_job_url = "https://wise.jobs/jobs/graduate-product-analyst-london-jid-4824"
+    new_job_url = "https://wise.jobs/job/graduate-product-analyst-london-jid-4824"
     documents = wise_documents(
         html_payloads,
         **{WISE_VACANCIES: updated_sitemap, new_job_url: html_payloads["wise_job_page.html"]},

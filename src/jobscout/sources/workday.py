@@ -120,7 +120,9 @@ class WorkdayAdapter:
             return _failed(config, started_at, str(exc))
 
         try:
-            postings, total, notes, complete = self._collect_pages(http_client, site, page_size)
+            postings, total, notes, complete = self._collect_pages(
+                http_client, site, page_size, search_text=_search_text(config)
+            )
         except (HttpError, _MalformedPayload) as exc:
             summary = exc.summary() if isinstance(exc, HttpError) else str(exc)
             return _failed(config, started_at, summary)
@@ -180,7 +182,12 @@ class WorkdayAdapter:
         )
 
     def _collect_pages(
-        self, http_client: WorkdayHttpClient, site: _Site, page_size: int
+        self,
+        http_client: WorkdayHttpClient,
+        site: _Site,
+        page_size: int,
+        *,
+        search_text: str = "",
     ) -> tuple[list[dict[str, Any]], int | None, list[str], bool]:
         postings: list[dict[str, Any]] = []
         notes: list[str] = []
@@ -199,7 +206,7 @@ class WorkdayAdapter:
                 site.listing_url,
                 {
                     "appliedFacets": {},
-                    "searchText": "",
+                    "searchText": search_text,
                     "limit": page_size,
                     "offset": offset,
                 },
@@ -291,6 +298,15 @@ class WorkdayAdapter:
 
 class _MalformedPayload(Exception):
     """Raised internally, then reported as a failed scan."""
+
+
+def _search_text(config: SourceConfig) -> str:
+    """The board's own search filter, when the whole board is too broad to scan politely.
+
+    Workday treats it as the site's search box does, and the listing's reported `total`
+    reflects it, so completeness still means complete *for that search*.
+    """
+    return str(config.options.get("search_text") or "").strip()
 
 
 def _site_from(config: SourceConfig, *, page_size: int) -> tuple[_Site, int]:

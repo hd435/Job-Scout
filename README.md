@@ -131,12 +131,12 @@ Exit codes: `0` complete scan and clean delivery, `1` partial scan or a delivery
 
 | Source id | Employer | Adapter | State |
 |---|---|---|---|
-| `palantir` | Palantir Technologies | `lever` | **Live-validated**; not enabled in the personal beta |
-| `barclays` | Barclays | `workday` | Implemented; synthetic fixtures only |
+| `palantir` | Palantir Technologies | `lever` | **Live-validated and running** (309 roles) |
+| `barclays` | Barclays | `workday` | **Live-validated and running** (92 roles for a `graduate` search) |
 | `lloyds_graduate` | Lloyds Banking Group | `workday` | **Live-validated and running**; the `Graduate_careers` site only |
 | `monzo` | Monzo | `greenhouse` | **Live-validated and running** |
-| `wise` | Wise | `sitemap_html` | Implemented; synthetic fixtures only; the vacancies sitemap only |
-| `arm` | Arm | `sitemap_html` | Implemented; synthetic fixtures only; never the `/search-jobs/` path |
+| `wise` | Wise | `sitemap_html` | **Live-validated and running** (427 roles); the vacancies sitemap only |
+| `arm` | Arm | `sitemap_html` | **Live-validated and running** (434 roles); never the `/search-jobs/` path |
 
 `jobscout sources list` prints every configured source with its adapter, cadence and last scan;
 `jobscout config show` prints the effective scope. `--source` is required by `scan` while more
@@ -165,9 +165,13 @@ and a paginated Workday fixture stops as `partial` with a visible note instead o
 Sitemap-driven sources need several documents, so their offline coverage lives in
 `tests/test_adapter_sitemap_html.py`.
 
-**No live request has been made for Barclays, Wise, or Arm.** Their fixtures are synthetic, so they
-prove parsing, pagination, discovery, failure handling and scan safety ? not that the real services
-return those shapes. See [docs/roadmap.md](./docs/roadmap.md) for what still needs live validation.
+All six were validated live on 2026-10-24 and each has completed a scan on the operator's machine.
+Two researched URL shapes turned out to be wrong ? Wise serves `/job/<slug>-jid-<id>` and Arm's
+paths carry two trailing numbers ? which is exactly what the bounded check exists to catch.
+Barclays' external board is far larger than its early-career subset, so that source sets
+`search_text = "graduate"` and its completeness is measured against the search's own total.
+Fixtures stay synthetic: they prove parsing, pagination, discovery, failure handling and scan
+safety, not that the services keep returning those shapes.
 
 ## Telegram credentials
 
@@ -308,7 +312,7 @@ cadence_minutes = 30
 [sources.options]
 sitemap_urls = ["https://wise.jobs/sitemap.xml"]
 sitemap_child_pattern = "vacanc"
-job_url_pattern = '^https://wise\.jobs/jobs/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$'
+job_url_pattern = '^https://wise\.jobs/job/[A-Za-z0-9\-]+?-jid-(?P<id>\d+)/?$'
 
 # Optional, additive-only matching overrides (defaults stay unchanged if omitted)
 [matching]
@@ -318,7 +322,7 @@ extra_exclude_terms = ["unpaid", "commission only"]
 data = ["bioinformatics analyst"]
 ```
 
-Workday sources need `host`, `tenant`, and `site`; `locale`, `page_size` and `max_pages` are optional. Sitemap sources need `sitemap_urls` (or `sitemap`) and a `job_url_pattern` containing a named `(?P<id>...)` group; `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches` and `request_delay_seconds` are optional. Every option is validated at load.
+Workday sources need `host`, `tenant`, and `site`; `locale`, `page_size`, `max_pages` and `search_text` are optional. Sitemap sources need `sitemap_urls` (or `sitemap`) and a `job_url_pattern` containing a named `(?P<id>...)` group; `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches` and `request_delay_seconds` are optional. Every option is validated at load.
 
 ### Your job-search scope: `[preferences]`
 

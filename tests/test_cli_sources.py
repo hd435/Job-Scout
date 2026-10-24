@@ -36,7 +36,7 @@ def write_config(tmp_path: Path) -> Path:
                 "enabled = false",
                 "[sources.options]",
                 'sitemap_urls = ["https://wise.jobs/sitemap.xml"]',
-                "job_url_pattern = '^https://wise.jobs/jobs/[a-z0-9-]+-jid-(?P<id>\\d+)/?$'",
+                "job_url_pattern = '^https://wise.jobs/job/[a-z0-9-]+-jid-(?P<id>\\d+)/?$'",
                 "",
             ]
         ),

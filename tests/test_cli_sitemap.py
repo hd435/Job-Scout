@@ -42,7 +42,7 @@ def wise_http(monkeypatch) -> StaticHtmlClient:
 WISE_OPTIONS = """
 sitemap_urls = ["https://wise.jobs/sitemap.xml"]
 sitemap_child_pattern = "vacanc"
-job_url_pattern = "^https://wise\\\\.jobs/jobs/[A-Za-z0-9\\\\-]+?-jid-(?P<id>\\\\d+)/?$"
+job_url_pattern = "^https://wise\\\\.jobs/job/[A-Za-z0-9\\\\-]+?-jid-(?P<id>\\\\d+)/?$"
 request_delay_seconds = 0
 """
 

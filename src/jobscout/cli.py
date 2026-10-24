@@ -197,6 +197,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_SAMPLE_RECORDS,
         help=f"records kept in the sample (default: {DEFAULT_SAMPLE_RECORDS})",
     )
+    validate.add_argument(
+        "--live-only",
+        action="store_true",
+        help="skip the fixture comparison for a source with no recorded payload yet",
+    )
     validate.add_argument("--config", type=Path, help="TOML configuration file")
 
     schedule = subparsers.add_parser(
@@ -430,10 +435,11 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             print(f"error: cannot read fixture {fixture_path}: {exc}", file=sys.stderr)
             return EXIT_FAILED
-    elif profile.payload_kind == "json":
+    elif profile.payload_kind == "json" and not args.live_only:
         print(
             f"error: no recorded fixture for '{source.id}'."
-            " Pass --fixture <path> with a recorded response so the shape can be compared.",
+            " Pass --fixture <path> for a shape comparison, or --live-only for a"
+            " first-contact check that skips it.",
             file=sys.stderr,
         )
         return EXIT_FAILED
@@ -454,6 +460,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
             sample_dir=sample_dir,
             allowed_root=VALIDATION_ARTIFACT_ROOT,
             max_records=args.max_records,
+            allow_missing_fixture=args.live_only,
         )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)

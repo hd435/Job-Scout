@@ -98,7 +98,7 @@ This section separates what is evidenced from what is approved or still unresolv
 
 Verified as of 2026-10-22; detailed evidence is in [docs/sources.md](./sources.md):
 
-- The six researched sources are technically accessible through official employer or ATS endpoints or sitemaps; live validation has since passed for Monzo (Greenhouse) and Lloyds Graduate (Workday).
+- All six researched sources are live-validated and running: Palantir (Lever, 309 roles), Lloyds Graduate (Workday, 33), Monzo (Greenhouse, 72), Barclays (Workday, 92 for a `graduate` search), Wise (sitemap/JSON-LD, 427) and Arm (sitemap/JSON-LD, 434). Two of the researched URL shapes were wrong: Wise uses `/job/` not `/jobs/`, and Arm carries two trailing numbers.
 - Every usable source exposes a stable job identifier, enabling deduplication by source and source job ID.
 - Early-career volume is concentrated in Wise, Palantir, Barclays, and Lloyds Graduate; Monzo and Arm provide smaller but relevant coverage.
 - Field completeness is strong for title, employer, location, URL, and description; salary and closing-date coverage is uneven.
