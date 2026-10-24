@@ -70,7 +70,7 @@ it lives outside Git, so a fresh clone is unaffected.
 
 | Piece | Where |
 |---|---|
-| Scope config (Monzo + Lloyds Graduate only) | `data/ops/config.toml` |
+| Scope config (Monzo + Lloyds Graduate only) | `data/ops/config.toml` — sources plus the pinned London scope in `[preferences]` (section 2b) |
 | Recurring wrapper | `data/ops/run-once.cmd` |
 | Pass log | `data/ops/logs/schedule.log` |
 | Scheduled task | `Job-Scout scan`, every 5 minutes, current user, interactive |
@@ -119,6 +119,44 @@ Recovery:
 - **Everything looks healthy but no alerts.** Expected unless a genuinely new role appears:
   baselined roles never re-alert, by design. Use `summary --config data\ops\config.toml
   --current` to see what is currently matching.
+- **Fewer matches than expected.** The operating scope is pinned to London (section 2b), so a
+  Manchester-only or Edinburgh-only role is an exclusion, not a miss. `summary` lists matching
+  and needs-review roles; `jobscout config show --config data\ops\config.toml` prints the
+  effective scope.
+
+## 2b. Changing the job-search scope
+
+The scope is configuration, not code. Edit `[preferences]` in `data\ops\config.toml` (the full
+key-by-key reference is [configuration.md](./configuration.md)), then:
+
+```powershell
+python -m jobscout config validate --config data\ops\config.toml   # will it load?
+python -m jobscout config show --config data\ops\config.toml       # what will it do?
+```
+
+Both are read-only and make no network request. The new scope applies from the **next scan** of
+each source, because every scan re-decides every role it sees. Changing preferences never
+re-alerts an existing role: baselines and sent notifications are untouched.
+
+The shipped defaults are `mode = "uk"`, every approved role family, and the five early-career
+employment types. They live in `src/jobscout/matching.py`, so a fresh clone is never silently
+narrowed to one operator's preferences; the London scope below lives only in the gitignored
+ops file.
+
+The beta deliberately runs:
+
+```toml
+[preferences.locations]
+mode = "pinned"
+cities = ["London"]
+remote_uk = true
+hybrid_uk = true
+```
+
+Measured on 2026-10-24 against the 105 roles already stored: this keeps 4 current matches
+(2 Monzo internships and 2 London Lloyds schemes) and excludes 13 Lloyds schemes that sit in
+Manchester, Leeds, Edinburgh, Bristol, Chester and Halifax. Switch `mode` to `"uk"` to widen
+back to the whole UK.
 
 ## 3. Windows Task Scheduler setup (reference for creating or recreating it)
 Two shapes work. **Option B is recommended for a first trial** because supervision comes for

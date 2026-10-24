@@ -339,8 +339,8 @@ organised by iteration, one file each in [iterations/](./iterations/).
 
 | Release | Theme | State |
 |---|---|---|
-| v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Delivered**; the local scheduled task is currently disabled while v0.5 changes land |
-| **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **Approved 2026-10-24 — see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md)** |
+| v0.4 | Personal beta: two live sources, recurring local scans, Telegram digest and alerts | **Delivered**; the local scheduled task was disabled while v0.5 changes landed and is re-enabled at the end of each increment |
+| **v0.5** | **Configurable scope: preferences model, code-free source addition, six researched employers live** | **In progress** — 0.1 delivered, 0.2 delivered; see [iterations/v0.5-configurable-scope.md](./iterations/v0.5-configurable-scope.md) |
 | v0.6 | Scale: ~100 employers in batches, per-host politeness, compact status, alert-volume policy | Not started |
 
 Coverage beyond the six researched employers is the Product Owner's ongoing operational work
@@ -355,6 +355,15 @@ and some of their gates have since been superseded:
   engineering requirements.
 - The retention horizons (D-025) are now ratified as implemented (D-067), so the "not yet
   ratified" blockers recorded under M5.2/M5.3 are closed.
+
+**v0.5 increments**
+
+| Increment | Outcome | Status |
+|---|---|---|
+| **0.1** | Recoverable failure notices (bounded retry after a failed send), honest non-JSON diagnostics, documentation brought into line with the running product | Delivered 2026-10-24 with tests; the failure-notice change came directly from the beta's eleven-scan Lloyds outage |
+| **0.2** | `[preferences]`: role families, employment types, seniority, title exclusions and location scope as configuration; `config show` / `config validate`; the active scope fingerprinted into every stored decision | Delivered 2026-10-24 with tests and [configuration.md](./configuration.md); defaults verified decision-for-decision against the 105 roles in the beta database |
+| **0.3** | Source catalogue: config-only Lever/Greenhouse/Workday definitions, a generic sitemap source replacing the in-code `wise`/`arm` profiles, `sources list`/`add`/`disable`, duplicate-employer guard, `validate` for any configured source | Not started |
+| **0.4** | Barclays, Wise and Arm validated live; all six researched employers baselining on the operator's machine | Not started |
 
 ---
 

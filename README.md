@@ -297,9 +297,54 @@ data = ["bioinformatics analyst"]
 
 Workday sources need `host`, `tenant`, and `site`; `locale` and `page_size` are optional. Sitemap sources select an in-code profile (`wise` or `arm`); `sitemap`, `max_detail_fetches`, and `request_delay_seconds` may override the defaults. Listing a `[[sources]]` block replaces the built-in source list, so keep every source you want to run.
 
-Matching keywords are code-defined and versioned (`matching.RULES_VERSION`); reviewing them is tracked as decision D-026 in the [decision log](./docs/decisions.md).
+### Your job-search scope: `[preferences]`
 
-Filter overrides can only **add**: extra title phrases inside an approved family (`data`, `software`, `quant`, `finance`, `consulting`, `business_analysis`) and extra title exclusions. Terms must be at least two characters and contain a letter or digit. Overrides cannot invent a family, change seniority or location rules, or cancel an approved exclusion — unknown families and unknown keys are rejected when the config loads, and exclusions are checked before matches. When overrides are active the rules version gains a digest (for example `m1.1+1a2b3c4d`), which is stored with every match decision and shown by `jobscout status`.
+Matching keywords live in code and are versioned (`matching.RULES_VERSION`), but *which* of
+the approved rules apply is yours to choose in configuration. Omitting `[preferences]` gives the
+shipped defaults, which are the pre-0.5 behaviour exactly.
+
+```toml
+[preferences]
+# Which approved role families may alert. Unknown names are rejected.
+role_families = ["data", "software", "quant", "finance", "consulting", "business_analysis"]
+
+# Any recognised class the user switched off is excluded; `unknown` and
+# `experienced_hire` are shown for review instead, so the classifier stays visible.
+employment_types = ["graduate_scheme", "internship", "placement", "apprenticeship", "entry_level_permanent"]
+
+# Extra title exclusions, checked before matches.
+title_exclusions = []
+
+# Optional: start from the approved seniority list and add to it, or pass [] to allow
+# senior titles through.
+# seniority_exclusions = ["senior", "lead", "principal"]
+
+[preferences.locations]
+# "uk" (default): any UK location. "pinned": only the cities listed below.
+# "uk_plus_pinned": any UK location, plus the listed cities outside the UK.
+mode = "uk"
+cities = []
+remote_uk = true
+hybrid_uk = true
+```
+
+`[matching]` remains for *additive* terms inside an approved family
+(`extra_family_terms`) and legacy `extra_exclude_terms`. The difference matters: `[matching]`
+adds phrases to a reviewed category, while `[preferences]` chooses among reviewed categories
+and sets the location scope. Neither can invent a category, and unknown keys or values are
+rejected when the configuration loads.
+
+Preference changes take effect on the next scan of each source, because every scan re-decides
+every role it sees. `jobscout config show` prints the effective settings, the sources, and the
+fingerprint of the active preference set; `jobscout config validate` loads the file and warns
+about values that could never take effect (an unknown adapter, the same employer twice, a
+pinned town the city list does not know).
+
+When overrides or non-default preferences are active the rules version gains a digest (for
+example `m1.1+1a2b3c4d`), which is stored with every match decision, so any decision can be
+traced back to the scope that produced it.
+
+The full key-by-key reference is [docs/configuration.md](./docs/configuration.md).
 
 ## Development
 

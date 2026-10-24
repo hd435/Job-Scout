@@ -432,9 +432,11 @@ Outputs:
 
 Rules:
 
-- Role-family categories and seniority exclusions are approved product requirements.
-- Exact keyword and synonym lists are implementation defaults reviewed during M1.
-- Configuration may extend an approved family with extra title phrases (`[matching.extra_family_terms]`) and add title exclusions (`extra_exclude_terms`). Overrides are additive only: unknown family names and unknown keys are rejected, seniority and location rules cannot be changed, and exclusions are evaluated before matches, so configuration can never remove an approved category or exclusion. A rules version carrying an override digest is stored with every decision.
+- Role-family categories, the excluded unrelated families, and the employment-type classes are approved product requirements. Exact keyword and synonym lists are implementation defaults (D-026 stays open).
+- Configuration does two different things, and the split is deliberate. `[matching]` **adds** phrases inside an approved family and extra title exclusions. `[preferences]` **selects** among approved families and employment-type classes, replaces the seniority list, and sets the location scope. Neither can invent a category; unknown keys and values are rejected at load, and exclusions are evaluated before matches, so configuration can never remove an approved exclusion.
+- `build_rules()` fingerprints the whole active scope (additive terms, allowed families, seniority, employment types, location scope) into a digest appended to `RULES_VERSION`. The shipped defaults collapse to the plain identifier, so `m1.1+<digest>` means "this differs from the defaults". That identifier is stored with every decision.
+- Employment type is classified from the title first, then an explicit multi-year experience requirement, then description signals (D-074). A disabled early-career class is excluded; `experienced_hire` and `unknown` are reported for review and never alert.
+- The location scope is applied to the resolver's result rather than replacing it, so ambiguity handling is preserved: a pinned city the city knowledge recognises still needs the collision check (D-065), while a pinned name it does not know is matched against the raw location text (D-075).
 - Ambiguous cases are `needs_review`; they are not silently broadened into matches.
 - Location parsing is a separate pure function with a small UK city/remote/hybrid alias table. No external geocoding.
 - Multi-location roles qualify if any listed location qualifies.

@@ -9,6 +9,8 @@ from typing import Any
 import pytest
 
 import jobscout.cli as cli
+from jobscout.matching import RULES_VERSION
+from jobscout.storage import Storage
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PALANTIR_FIXTURE = FIXTURES / "palantir_jobs.json"
@@ -110,3 +112,31 @@ def test_status_reports_the_next_run(config: Path, board, capsys) -> None:
 
     assert "Next run:" in out
     assert "Failure notice" not in out
+
+
+def test_scheduled_scans_apply_the_configured_preferences(
+    config: Path, board, capsys, tmp_path: Path
+) -> None:
+    """Regression: the scheduler used to fall back to the built-in rules.
+
+    `scan` passed the configured rules through but `schedule` did not, so preference and
+    `[matching]` changes were silently ignored on the path the beta actually runs.
+    """
+    with config.open("a", encoding="utf-8") as handle:
+        handle.write('\n[preferences]\nrole_families = ["finance"]\n')
+
+    cli.main(["schedule", "--once", "--config", str(config)])
+    capsys.readouterr()
+
+    with Storage.open(tmp_path / "schedule.db") as storage:
+        stored = [
+            row["rules_version"]
+            for row in storage.connection.execute("SELECT rules_version FROM jobs")
+        ]
+        decisions = {
+            row["match_decision"]
+            for row in storage.connection.execute("SELECT match_decision FROM jobs")
+        }
+
+    assert stored and all(version.startswith(f"{RULES_VERSION}+") for version in stored)
+    assert decisions == {"no_match"}, "a finance-only scope must exclude Palantir's roles"

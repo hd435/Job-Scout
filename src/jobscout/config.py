@@ -1,9 +1,10 @@
 """Configuration loading.
 
-Defaults are built in so the CLI works with no configuration file. An optional
-TOML file can override the database location and source settings without code
-changes (PRD FR-12). Matching keywords stay in code for M1 and are versioned by
-`matching.RULES_VERSION`.
+Defaults are built in so the CLI works with no configuration file. An optional TOML file
+sets the database location, the sources, and the user's job-search preferences
+(`[preferences]`: role families, seniority, employment types, locations, title
+exclusions). The approved keyword lists stay in code — a typo cannot invent a category —
+and the active set is fingerprinted by `matching.RULES_VERSION` plus a digest.
 """
 
 from __future__ import annotations
@@ -16,7 +17,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .matching import DEFAULT_RULES, MatchingRules, build_rules
+from .matching import (
+    DEFAULT_LOCATION_PREFERENCES,
+    DEFAULT_RULES,
+    LOCATION_MODES,
+    LocationPreferences,
+    MatchingRules,
+    build_rules,
+)
 
 DEFAULT_DB_PATH = Path("data") / "jobscout.db"
 DEFAULT_CONFIG_PATH = Path("config.toml")
@@ -262,22 +270,45 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         database_path=database_path,
         sources=tuple(sources),
         config_path=config_path,
-        matching=parse_matching(data.get("matching")),
+        matching=parse_rules(data),
     )
 
 
 _MATCHING_KEYS = {"extra_family_terms", "extra_exclude_terms"}
+_PREFERENCE_KEYS = {
+    "role_families",
+    "seniority_exclusions",
+    "employment_types",
+    "title_exclusions",
+    "locations",
+}
+_LOCATION_KEYS = {"mode", "cities", "remote_uk", "hybrid_uk"}
 
 
-def parse_matching(section: Any) -> MatchingRules:
-    """Build matching rules from an optional `[matching]` table.
+def parse_rules(data: Mapping[str, Any]) -> MatchingRules:
+    """Build the active ruleset from `[matching]` additions and `[preferences]` choices."""
+    additions = _parse_matching_terms(data.get("matching"))
+    preferences = parse_preferences(data.get("preferences"))
+    if preferences:
+        try:
+            return build_rules(**additions, **preferences)
+        except ValueError as exc:
+            raise ConfigError(f"invalid [preferences] configuration: {exc}") from exc
+    try:
+        return build_rules(**additions)
+    except ValueError as exc:
+        raise ConfigError(f"invalid [matching] configuration: {exc}") from exc
+
+
+def _parse_matching_terms(section: Any) -> dict[str, Any]:
+    """Optional additive terms inside an approved role family and extra exclusions.
 
     Only additive overrides are accepted: extra phrases for an approved role
     family, and extra title exclusions. Unknown keys are rejected so a typo
     cannot silently weaken the approved rules.
     """
     if section is None:
-        return DEFAULT_RULES
+        return {}
     if not isinstance(section, dict):
         raise ConfigError("[matching] must be a table")
     unknown = sorted(set(section) - _MATCHING_KEYS)
@@ -293,8 +324,71 @@ def parse_matching(section: Any) -> MatchingRules:
     excludes = section.get("extra_exclude_terms", [])
     if not isinstance(excludes, list):
         raise ConfigError("[matching.extra_exclude_terms] must be an array of strings")
+    return {"extra_family_terms": families, "extra_exclude_terms": excludes}
 
-    try:
-        return build_rules(extra_family_terms=families, extra_exclude_terms=excludes)
-    except ValueError as exc:
-        raise ConfigError(f"invalid [matching] configuration: {exc}") from exc
+
+def parse_preferences(section: Any) -> dict[str, Any]:
+    """Parse `[preferences]`, rejecting unknown keys and values that cannot take effect.
+
+    Every message names the key and the offending value: a preference that silently
+    does nothing is worse than one that refuses to load.
+    """
+    if section is None:
+        return {}
+    if not isinstance(section, dict):
+        raise ConfigError("[preferences] must be a table")
+    unknown = sorted(set(section) - _PREFERENCE_KEYS)
+    if unknown:
+        raise ConfigError(
+            f"unknown [preferences] key(s): {', '.join(unknown)}"
+            f" (allowed: {', '.join(sorted(_PREFERENCE_KEYS))})"
+        )
+
+    parsed: dict[str, Any] = {}
+    for key in ("role_families", "seniority_exclusions", "employment_types", "title_exclusions"):
+        if key not in section:
+            continue
+        value = section[key]
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise ConfigError(f"[preferences].{key} must be an array of strings")
+        parsed[key] = value
+
+    if "locations" in section:
+        parsed["locations"] = _parse_location_preferences(section["locations"])
+    return parsed
+
+
+def _parse_location_preferences(section: Any) -> LocationPreferences:
+    if not isinstance(section, dict):
+        raise ConfigError("[preferences.locations] must be a table")
+    unknown = sorted(set(section) - _LOCATION_KEYS)
+    if unknown:
+        raise ConfigError(
+            f"unknown [preferences.locations] key(s): {', '.join(unknown)}"
+            f" (allowed: {', '.join(sorted(_LOCATION_KEYS))})"
+        )
+
+    mode = section.get("mode", DEFAULT_LOCATION_PREFERENCES.mode)
+    if not isinstance(mode, str) or mode not in LOCATION_MODES:
+        raise ConfigError(
+            f"[preferences.locations].mode = {mode!r} is not one of {', '.join(LOCATION_MODES)}"
+        )
+
+    cities = section.get("cities", [])
+    if not isinstance(cities, list) or not all(isinstance(city, str) for city in cities):
+        raise ConfigError("[preferences.locations].cities must be an array of strings")
+    cleaned_cities = tuple(city for city in (city.strip() for city in cities) if city)
+    if mode == "pinned" and not cleaned_cities:
+        raise ConfigError(
+            "[preferences.locations].mode = 'pinned' needs at least one entry in"
+            " [preferences.locations].cities; use mode = 'uk' for the whole UK"
+        )
+
+    toggles: dict[str, bool] = {}
+    for key in ("remote_uk", "hybrid_uk"):
+        value = section.get(key, getattr(DEFAULT_LOCATION_PREFERENCES, key))
+        if not isinstance(value, bool):
+            raise ConfigError(f"[preferences.locations].{key} must be true or false")
+        toggles[key] = value
+
+    return LocationPreferences(mode=mode, cities=cleaned_cities, **toggles)

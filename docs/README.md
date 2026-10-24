@@ -7,7 +7,7 @@ change has an obvious home and reviewers know which file to trust.
 |---|---|---|
 | [prd.md](./prd.md) | What the product is and must do: vision, scope, functional requirements, acceptance criteria | Rare, versioned |
 | [architecture.md](./architecture.md) | How it is built: components, contracts, schema, failure handling | With design changes |
-| `configuration.md` | **Planned for v0.5** (created when the schema ships). The operator's reference for every configuration key | Whenever the schema changes |
+| [configuration.md](./configuration.md) | The operator's reference for every configuration key, including `[preferences]` | Whenever the schema changes |
 | [runbook.md](./runbook.md) | How to operate a running instance: start, stop, status, recovery, retention workflow | With operational changes |
 | [decisions.md](./decisions.md) | Append-only log of product and technical decisions (D-nnn) | Append only |
 | [roadmap.md](./roadmap.md) | The release view: what shipped, what is next, in one screen | Per release |

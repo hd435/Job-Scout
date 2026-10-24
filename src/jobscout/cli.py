@@ -26,7 +26,7 @@ from .config import (
 )
 from .digest import build_digest
 from .http import FixtureHttpClient, UrllibHttpClient
-from .matching import MatchingRules
+from .matching import MatchingRules, preferences_fingerprint, split_pinned_cities
 from .models import (
     DeliveryOutcome,
     DeliveryReport,
@@ -82,6 +82,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_report(args)
         if args.command == "digest":
             return _cmd_digest(args)
+        if args.command == "config":
+            return _cmd_config(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -272,6 +274,20 @@ def _build_parser() -> argparse.ArgumentParser:
     digest.add_argument("--db", type=Path, help="SQLite database path")
     digest.add_argument("--config", type=Path, help="TOML configuration file")
 
+    config = subparsers.add_parser(
+        "config",
+        help="inspect the effective configuration and preferences (read-only)",
+    )
+    config_commands = config.add_subparsers(dest="config_command", required=True)
+    config_show = config_commands.add_parser(
+        "show", help="print the effective settings, sources and preferences"
+    )
+    config_show.add_argument("--config", type=Path, help="TOML configuration file")
+    config_validate = config_commands.add_parser(
+        "validate", help="load the configuration and report every problem found"
+    )
+    config_validate.add_argument("--config", type=Path, help="TOML configuration file")
+
     return parser
 
 
@@ -431,6 +447,7 @@ def _cmd_schedule(args: argparse.Namespace) -> int:
             chat_id=telegram.chat_id if telegram else None,
             jitter_seconds=args.jitter_seconds,
             sleep=time.sleep,
+            rules=app.matching,
         )
         print(f"Database: {db_path}")
         if args.once:
@@ -645,10 +662,105 @@ def _describe_matching(rules: MatchingRules) -> str:
     if not rules.has_overrides:
         return f"{rules.version} (built-in defaults)"
     terms = sum(len(value) for value in rules.extra_family_terms.values())
+    if not terms and not rules.extra_exclude_terms:
+        return f"{rules.version} (preferences differ from the defaults)"
     return (
         f"{rules.version} (config overrides: +{terms} family term(s),"
         f" +{len(rules.extra_exclude_terms)} exclusion(s))"
     )
+
+
+def _cmd_config(args: argparse.Namespace) -> int:
+    if args.config_command == "validate":
+        return _config_validate(args)
+    return _config_show(args)
+
+
+def _config_show(args: argparse.Namespace) -> int:
+    app = load_config(args.config)
+    rules = app.matching
+
+    print(f"Config: {app.config_path if app.config_path else 'none (built-in defaults)'}")
+    print(f"Database: {app.database_path}")
+    print(f"Rules: {_describe_matching(rules)}")
+    print(f"Preference fingerprint: {preferences_fingerprint(rules)}")
+    print(f"Sources: {len(app.sources)} configured, {len(app.enabled_sources())} enabled")
+    for source in app.sources:
+        disabled = "" if source.enabled else "  [disabled]"
+        print(
+            f"  - {source.id} ({source.employer}) via {source.adapter}"
+            f", every {source.cadence_minutes}m{disabled}"
+        )
+        for key, value in sorted(source.options.items()):
+            print(f"      {key} = {value!r}")
+
+    print("Preferences:")
+    print(f"  Role families: {', '.join(rules.alerting_families)}")
+    print(f"  Employment types: {', '.join(rules.alerting_employment_types)}")
+    print(f"  Seniority exclusions: {', '.join(rules.seniority_exclusions)}")
+    exclusions = rules.extra_exclude_terms
+    print(f"  Title exclusions: {', '.join(exclusions) if exclusions else 'none'}")
+    locations = rules.locations
+    print(f"  Locations: mode = {locations.mode}")
+    if locations.cities:
+        print(f"    cities: {', '.join(locations.cities)}")
+        known, patterns = split_pinned_cities(locations.cities)
+        if patterns:
+            print(
+                "    text match only (not in the city list, so only an exact name in the"
+                f" raw location counts): {', '.join(patterns)}"
+            )
+        if known:
+            print(f"    resolved through the city list: {', '.join(known)}")
+    print(f"    UK remote included: {'yes' if locations.remote_uk else 'no'}")
+    print(f"    UK hybrid included: {'yes' if locations.hybrid_uk else 'no'}")
+    return EXIT_OK
+
+
+def _config_validate(args: argparse.Namespace) -> int:
+    try:
+        app = load_config(args.config)
+    except ConfigError as exc:
+        print(f"invalid: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+
+    config_path = app.config_path if app.config_path else "none (built-in defaults)"
+    print(f"Config: {config_path}")
+    print(f"Sources: {len(app.sources)} configured, {len(app.enabled_sources())} enabled")
+
+    problems = _config_problems(app)
+    if not problems:
+        print("Result: OK - the configuration loaded and every value can take effect")
+        return EXIT_OK
+    for line in problems:
+        print(f"warning: {line}", file=sys.stderr)
+    print(f"Result: OK with {len(problems)} warning(s)", file=sys.stderr)
+    return EXIT_OK
+
+
+def _config_problems(app: AppConfig) -> list[str]:
+    """Checks that a successful load cannot catch: values that would never take effect."""
+    problems: list[str] = []
+    for source in app.sources:
+        try:
+            get_adapter(source.adapter)
+        except AdapterError as exc:
+            problems.append(f"source '{source.id}': {exc}")
+    employers: dict[str, str] = {}
+    for source in app.enabled_sources():
+        other = employers.setdefault(source.employer.casefold(), source.id)
+        if other != source.id:
+            problems.append(
+                f"sources '{other}' and '{source.id}' both monitor '{source.employer}';"
+                " the same role can then alert twice"
+            )
+    _, patterns = split_pinned_cities(app.matching.locations.cities)
+    for city in patterns:
+        problems.append(
+            f"pinned city '{city}' is not in the location list, so it only matches when the"
+            " source spells it exactly; see docs/configuration.md"
+        )
+    return problems
 
 
 def _resolve_source(app: AppConfig, requested: str | None) -> SourceConfig:

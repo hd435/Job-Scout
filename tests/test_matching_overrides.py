@@ -185,7 +185,7 @@ def test_extra_exclusion_removes_a_role_that_would_otherwise_match() -> None:
     decision = match_job(job, rules)
 
     assert decision.decision is MatchOutcome.NO_MATCH
-    assert "exclude:custom:contract" in decision.reasons
+    assert "exclude:title:contract" in decision.reasons
 
 
 def test_extra_exclusion_leaves_other_titles_alone() -> None:
@@ -202,7 +202,7 @@ def test_extra_exclusion_beats_a_needs_review_outcome() -> None:
     decision = match_job(job, build_rules(extra_exclude_terms=["software engineer"]))
 
     assert decision.decision is MatchOutcome.NO_MATCH
-    assert "exclude:custom:software engineer" in decision.reasons
+    assert "exclude:title:software engineer" in decision.reasons
 
 
 def test_added_terms_cannot_neutralise_an_approved_family_exclusion() -> None:
