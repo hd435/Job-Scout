@@ -156,6 +156,21 @@ local edits is left alone with a warning instead of being overwritten. The datab
 the env file are never touched by an upgrade. `verify.sh` prints the commit now running, which is
 the quickest way to confirm a deployment actually moved.
 
+**The first upgrade after 2026-10-25 needs one manual pull.** The script that runs is the copy on
+disk, and only the pull replaces it — so a VM installed before the pull step existed runs the old
+script once and installs the old code. That is exactly what happened on `job-scot-vnic`: the install
+output had no `== updating /opt/jobscout` section and the service restarted on the previous
+catalogue (76 employers). Bootstrap it once with:
+
+```bash
+sudo git -C /opt/jobscout pull                    # brings in the new install.sh and verify.sh
+sudo /opt/jobscout/deploy/oracle/install.sh       # now prints "updated <old> -> <new>"
+```
+
+From then on `install.sh` alone is enough. If the pull reports "could not fast-forward", the
+checkout has local edits: `sudo git -C /opt/jobscout status` first, because overwriting them is not
+the installer's business.
+
 ## 5. Operating it
 
 | Question | Command |
