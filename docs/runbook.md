@@ -597,9 +597,31 @@ with `New-ScheduledTaskAction` and restarted by the task's restart-on-failure se
 
 | Piece | Value |
 |---|---|
-| Task | `Job-Scout bot`, trigger **At log on for one user**, `MultipleInstances=IgnoreNew`, restart every 1 minute up to 999 times, no execution time limit |
+| Task | `Job-Scout bot`: logon trigger for one user **plus a repeating trigger every 2 minutes**, `MultipleInstances=IgnoreNew`, restart every 1 minute up to 999 times, no execution time limit |
 | Action | `data\ops\run-bot.cmd` → `python.exe -u -m jobscout bot --config data\ops\service-config.toml` |
 | Log | `data\ops\logs\service.log` (the wrapper redirects both streams) |
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "D:\Mini Project\Job-Scout\data\ops\run-bot.cmd" `
+             -WorkingDirectory "D:\Mini Project\Job-Scout"
+$logon   = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$keepalive = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(-5) `
+             -RepetitionInterval (New-TimeSpan -Minutes 2) -RepetitionDuration (New-TimeSpan -Days 3650)
+$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 999 `
+             -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) `
+             -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName "Job-Scout bot" -Action $action -Trigger @($logon, $keepalive) `
+  -Settings $settings -Description "Job-Scout Telegram service: one long-running bot process"
+```
+
+**The repeating trigger is what actually keeps it alive.** Restart-on-failure alone did not: killing
+the bot process by hand left the task `Ready` with no process and nothing restarted after 90
+seconds, and a `Repetition` attached to the logon trigger produced no `NextRunTime` at all. With a
+separate time-based trigger repeating every two minutes and `IgnoreNew`, the bot came back 59
+seconds after being killed (killed 01:15:5x, restarted 01:16:05), and a live bot is never duplicated
+— the scheduler reports `0x80070420` ("already running") and does nothing. `IgnoreNew` also means a
+slow crawl in progress is never disturbed. The repetition only needs the *task* re-registered once;
+it survives reboots.
 
 `-u` is not optional in the wrapper: without it Python buffers stdout when it is not a console, and
 a crash leaves an empty log — which is exactly the state a restart needs to explain.
@@ -614,15 +636,25 @@ Start-ScheduledTask -TaskName "Job-Scout bot"
 ```
 
 A `Register-ScheduledTask` trigger that is not scoped to a user needs elevation ("Access is
-denied"), so the task is registered `-AtLogOn -User <name>` and therefore starts when that user
-signs in. **This deployment is on the operator's own machine, not a cloud host** (D-097): it proves
-the Telegram journey and the operating procedure, not uptime. If the machine is off or signed out,
-nothing is scanned and no one is messaged.
+denied"), so the task is registered `-AtLogOn -User <name>` and therefore also starts when that
+user signs in. **This deployment is on the operator's own machine, not a cloud host** (D-097): it
+proves the Telegram journey and the operating procedure, not uptime. If the machine is off or
+signed out, nothing is scanned and no one is messaged.
 
 One process is enough at pilot scale: polling is long-poll based (no inbound port, no certificate),
-and a scan happens only when a source is due. A source whose crawl is slow (Wise, which walks a
-sitemap) holds the loop while it runs; a first complete pass of the 12 offered employers took about
-25 seconds excluding Wise.
+and a scan happens only when a source is due. **Scans block polling while they run**, which is worth
+knowing before it looks like a bug:
+
+| Pass | Measured 2026-10-25 |
+|---|---|
+| Eleven of the twelve sources | 23 seconds (stripe 719 roles, palantir 309, gitlab 239, graphcore 215) |
+| Wise, first ever pass | **partial**, capped at 400 detail fetches of 428 needed, ~4 minutes |
+| Wise, next pass | **success** — the 400 already-fetched pages are skipped by revision, the remaining 28 fetched, 28 new roles stored |
+
+So a cold Wise crawl is slow and reports `partial` once with an explanation rather than pretending
+to be complete; it completes on its own next pass and needs no intervention. A `partial` scan never
+creates alerts and is not counted as a failure.
+
 
 
 ### 9.3 Backups and restore
@@ -737,6 +769,9 @@ employers, invitations sent by hand. Testers need nothing installed; they open
   pass delivered 0. The synthetic source, roles, scans and subscriber were then deleted.
 - `/digest` listed real early-career London roles already open on the offered boards, so scanning
   and matching work on live data.
+- All 12 offered sources reached a complete scan (`Sources: 12 of 12 scanned successfully last
+  time`), and the 3 362 stored roles produced no new-role alerts because nothing new had appeared
+  since the baseline — which is the correct quiet result, not a fault.
 
 **What is still unproven, and must be said plainly**
 
@@ -745,8 +780,9 @@ employers, invitations sent by hand. Testers need nothing installed; they open
   tester does, and the log will show it (`/status` will then report a last-update time).
 - **A genuine newly discovered role reaching a person.** The delivery path is proven with a
   synthetic role; only a real new posting proves the whole chain.
-- **Uptime.** This is one machine, not a cloud host (D-097). Machine off or user signed out means no
-  scanning and no messages.
+- **Uptime.** This is one machine, not a cloud host (D-097). A dead bot process is restarted within
+  two minutes (verified by killing it), but the machine sleeping, signing out or losing its
+  connection is not covered by anything.
 - **Relevance.** Nothing has been judged by a second human yet.
 - **AC-20**, the seven-day reliability target, remains outstanding and is measured separately on the
   personal beta.

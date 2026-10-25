@@ -1,0 +1,15 @@
+Record how the hosted bot is actually kept alive
+
+Measured on the pilot deployment rather than assumed:
+
+- restart-on-failure alone does not resurrect the bot (killed by hand, task went
+  Ready, nothing restarted after 90 seconds) and a Repetition attached to a
+  logon trigger produced no NextRunTime. A separate time-based trigger repeating
+  every two minutes with IgnoreNew does: the bot came back 59 seconds after
+  being killed and a live one is never duplicated.
+- scans block polling: eleven sources take 23 seconds, while Wise's first pass
+  is partial (400 of 428 detail fetches) and takes minutes, then completes on
+  its next pass by skipping unchanged pages. Documented so a slow start is not
+  mistaken for a hang, and so nobody "fixes" the partial result.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
