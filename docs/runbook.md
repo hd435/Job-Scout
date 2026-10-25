@@ -367,10 +367,15 @@ Adding an employer is a catalogue file plus one bounded check. It was executed e
 Barclays, Wise and Arm on 2026-10-24, which is how the two wrong URL patterns and the need for a
 Workday search were found — expect the same.
 
-1. **Find the feed.** Decide which shape it is: Lever (`site`), Greenhouse (`board`), Workday
-   (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry schema.org `JobPosting`
-   JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md). A site needing a
-   fifth shape needs an adapter, and that is development, not configuration.
+1. **Find the feed.** Decide which shape it is: Lever (`site`), Greenhouse (`board`), Ashby
+   (`board`), Workday (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry
+   schema.org `JobPosting` JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
+   A site needing another shape needs an adapter, and that is development, not configuration.
+   For the one-request shapes (Greenhouse, Ashby, Lever) you do not have to guess: put the
+   candidate on a line of `adapter,slug,Employer` and run
+   `python tools/probe_boards.py --input candidates.txt`. It reports roles, UK roles, roles in a
+   target family and early-career signals for every candidate, in one request each — that is how
+   expansion batch 2 chose its 43 employers (D-100).
 2. **Write one catalogue file** in your catalogue directory. It must carry an `access_note`
    naming the public endpoint it reads and the hygiene applied (D-087) — that is the record AC-19
    asks for, and the loader rejects a file without one. For a sitemap site, open its sitemap
@@ -678,9 +683,11 @@ knowing before it looks like a bug:
 
 | Pass | Measured 2026-10-25 |
 |---|---|
-| Eleven of the twelve sources | 23 seconds (stripe 719 roles, palantir 309, gitlab 239, graphcore 215) |
+| Eleven of the twelve original sources | 23 seconds (stripe 719 roles, palantir 309, gitlab 239, graphcore 215) |
 | Wise, first ever pass | **partial**, capped at 400 detail fetches of 428 needed, ~4 minutes |
 | Wise, next pass | **success** — the 400 already-fetched pages are skipped by revision, the remaining 28 fetched, 28 new roles stored |
+| All 59 offered employers, cold | ~10 minutes: 57 complete, 2 partial (`wise`, `arm`), 0 failed; 10 276 roles in the measurement database |
+| All 59 after warm-up | dominated by the two sitemap crawls, which then fetch almost nothing because unchanged pages are skipped |
 
 So a cold Wise crawl is slow and reports `partial` once with an explanation rather than pretending
 to be complete; it completes on its own next pass and needs no intervention. A `partial` scan never
