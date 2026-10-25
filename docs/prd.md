@@ -113,7 +113,7 @@ The MVP does not include:
 - A user-facing source-health dashboard. Each user gets a one-line status; the detailed health view stays with the operator.
 - Salary or visa-sponsorship filtering. Salary is displayed when available; sponsorship is recorded when exposed but does not filter alerts.
 - Coverage of employers outside the intended set without Product Owner approval.
-- **Batched alerting:** no digest of *new* alerts, no quiet hours, no daily roll-up. Both remain out of scope (D-070). An **on-demand** current-matches digest is in scope (`jobscout digest` in the CLI, `/digest` in the bot), because it reports roles already discovered rather than batching alerts, and it does not create notification rows or alter baseline state.
+- **Batched alerting:** no digest of *new* alerts, no quiet hours, no daily roll-up. Both remain out of scope (D-070). An **on-demand** current-matches digest is in scope (`jobscout digest` in the CLI, `/digest` in the bot), because it reports roles already discovered rather than batching alerts, and it does not create notification rows or alter baseline state. In the bot it is a paginated viewer over every eligible open role in that user's own scope — five per page, no candidate cap, an exact total — not a scheduled summary (D-103).
 
 **Revised 2026-10-25 (D-091):** "multi-user accounts, subscriptions or shared deployments" was
 previously excluded. A hosted, invited-user service is now in scope for the reasons in section
