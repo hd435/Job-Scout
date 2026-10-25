@@ -613,7 +613,7 @@ python -m jobscout bot --once --config config.toml --db data/service.db   # one 
 ```
 
 **The pilot deployment** (2026-10-25) uses `data/ops/service-config.toml` and
-`data/service/service.db`, and offers **59 employers** — the whole catalogue minus `barclays`
+`data/service/service.db`, and offers **76 employers** — the whole catalogue minus `barclays`
 (D-100). The catalogue files and the personal beta are untouched: this is a per-deployment list.
 `barclays` stays out because it is an undocumented Workday endpoint with documented rate-limit
 risk; `arm` and `wise` stay in, because their cold crawls exceed the page budget once and complete

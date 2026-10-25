@@ -50,7 +50,7 @@ Constraints that matter:
 **`VM.Standard.A1.Flex`, 1 OCPU / 6 GB, Ubuntu 24.04 (aarch64), 47 GB boot volume.**
 
 - Ubuntu 24.04 ships **Python 3.12**, exactly our floor, so no PPA or source build is needed.
-- 6 GB leaves room for a cold crawl over 59 employers plus SQLite's page cache; the 1 GB micro shape
+- 6 GB leaves room for a cold crawl over 76 employers plus SQLite's page cache; the 1 GB micro shape
   would work but leaves less headroom, and its 1/8 OCPU makes crawls noticeably slower.
 - The application has **no runtime dependencies** — `dependencies = []` in `pyproject.toml` — so the
   Arm architecture only has to run CPython with the standard library's `sqlite3`, `ssl` and `json`.
