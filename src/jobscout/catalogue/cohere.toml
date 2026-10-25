@@ -1,0 +1,11 @@
+# Cohere ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 116 roles, 37 in the UK,
+# 11 of those in a target role family.
+id = "cohere"
+employer = "Cohere"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/cohere), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "cohere"

@@ -1,0 +1,11 @@
+# Wayve ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 178 roles, 63 in the UK,
+# 27 of those in a target role family.
+id = "wayve"
+employer = "Wayve"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/wayve), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "wayve"

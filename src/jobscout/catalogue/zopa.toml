@@ -1,0 +1,12 @@
+# Zopa ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 34 roles, 30 in the UK,
+# 14 of those in a target role family.
+id = "zopa"
+employer = "Zopa"
+adapter = "lever"
+access_note = "public Lever postings API (api.lever.co/v0/postings/zopa?mode=json), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+site = "zopa"
+uk_employer = true

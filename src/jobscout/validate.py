@@ -139,6 +139,25 @@ VALIDATION_PROFILES: dict[str, ValidationProfile] = {
     "lloyds_graduate": LLOYDS_PROFILE,
 }
 
+# Ashby's board response is `{jobs: [...]}` with a plain-text description, so it is checked the
+# same way as Greenhouse: the envelope, then the fields the adapter maps.
+ASHBY_WATCHED_FIELDS: dict[str, type] = {
+    "id": str,
+    "title": str,
+    "jobUrl": str,
+    "location": str,
+    "descriptionPlain": str,
+    "publishedAt": str,
+    "workplaceType": str,
+    "isListed": bool,
+}
+ASHBY_REQUIRED_FIELDS = ("id", "title", "jobUrl")
+ASHBY_PROFILE = ValidationProfile(
+    watched_fields=ASHBY_WATCHED_FIELDS,
+    required_fields=ASHBY_REQUIRED_FIELDS,
+    records_key="jobs",
+)
+
 # A sitemap source has no JSON payload to compare: its contract is "the board was found,
 # URLs matched, and pages parsed". The budget covers two sitemap documents and three detail
 # pages, with the delay removed because the check must stay quick and small.
@@ -161,6 +180,7 @@ SITEMAP_PROFILE = ValidationProfile(
 ADAPTER_PROFILES: dict[str, ValidationProfile] = {
     "lever": PALANTIR_PROFILE,
     "greenhouse": MONZO_PROFILE,
+    "ashby": ASHBY_PROFILE,
     "workday": LLOYDS_PROFILE,
     "sitemap_html": SITEMAP_PROFILE,
 }

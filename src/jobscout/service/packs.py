@@ -69,13 +69,15 @@ class Pack:
 
 
 #: Packs are built from the sources the operator actually offers, so a pack never names a
-#: source the service is not allowed to scan (D-094).
+#: source the service is not allowed to scan (D-094). A pack appears only when every employer it
+#: names is on offer, which is why adding an employer never needs a change here — only curating a
+#: new pack does. `tests/test_service_packs.py` checks these ids against the shipped catalogue.
 PACK_SPECS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     (
         "researched",
         "Graduate schemes and big employers",
-        "The six employers researched for the MVP: Lloyds Graduate, Barclays, Wise,"
-        " Monzo, Palantir and Arm.",
+        "The employers researched for the MVP: Lloyds Graduate, Barclays, Wise, Monzo,"
+        " Palantir and Arm.",
         ("lloyds_graduate", "barclays", "wise", "monzo", "palantir", "arm"),
     ),
     (
@@ -93,6 +95,35 @@ PACK_SPECS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
             "gitlab",
             "gocardless",
         ),
+    ),
+    (
+        "quant",
+        "Quant, trading and finance",
+        "Trading firms, funds and financial platforms that hire graduates in London:"
+        " Jane Street, Point72, Schonfeld, WorldQuant, Akuna Capital, Zopa.",
+        ("janestreet", "point72", "schonfeld", "worldquant", "akunacapital", "zopa"),
+    ),
+    (
+        "ai",
+        "AI, data and ML",
+        "Labs and product companies working on models and data platforms: Cohere,"
+        " Perplexity, ElevenLabs, Wayve, Synthesia, Databricks, Celonis, Writer.",
+        (
+            "cohere",
+            "perplexity",
+            "elevenlabs",
+            "wayve",
+            "synthesia",
+            "databricks",
+            "celonis",
+            "writer",
+        ),
+    ),
+    (
+        "consulting",
+        "Consulting and professional services",
+        "Consultancies and delivery firms that run graduate intakes: Capco, Thoughtworks.",
+        ("capco", "thoughtworks"),
     ),
 )
 

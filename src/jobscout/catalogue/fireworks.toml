@@ -1,0 +1,11 @@
+# Fireworks AI ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 91 roles, 11 in the UK,
+# 2 of those in a target role family.
+id = "fireworks"
+employer = "Fireworks AI"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/fireworks), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "fireworks"

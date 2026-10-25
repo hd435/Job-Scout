@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import signal
 import sys
 import time
 from collections.abc import Sequence
@@ -49,6 +50,7 @@ from .retention import RetentionPolicy
 from .scanner import run_scan
 from .scheduler import Scheduler, SourceRun
 from .service.app import BotApp
+from .service.backup import backup_database, default_backup_path
 from .service.bot import BotApi, BotApiError, PollingLoop
 from .service.store import ServiceStore
 from .sources import AdapterError, get_adapter
@@ -391,6 +393,25 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     service_status.add_argument("--db", type=Path, help="SQLite database path")
     service_status.add_argument("--config", type=Path, help="TOML configuration file")
+    service_check = service_commands.add_parser(
+        "check", help="exit non-zero when monitoring has gone stale (container health check)"
+    )
+    service_check.add_argument("--db", type=Path, help="SQLite database path")
+    service_check.add_argument("--config", type=Path, help="TOML configuration file")
+    service_check.add_argument(
+        "--max-scan-age-minutes",
+        type=int,
+        default=90,
+        help="treat the deployment as stale when no complete scan finished within this window",
+    )
+    service_backup = service_commands.add_parser(
+        "backup", help="copy the database with SQLite's backup API and verify the copy"
+    )
+    service_backup.add_argument("--db", type=Path, help="SQLite database path")
+    service_backup.add_argument("--config", type=Path, help="TOML configuration file")
+    service_backup.add_argument(
+        "--to", type=Path, help="target file (default: <database dir>/backups/<name>-<stamp>.db)"
+    )
 
     return parser
 
@@ -863,6 +884,7 @@ def _cmd_bot(args: argparse.Namespace) -> int:
     storage = Storage.open(db_path)
     store = ServiceStore(storage)
     try:
+        _install_stop_handler()
         api = BotApi(telegram.token)
         notifier = _build_notifier(telegram)
         bot_app = BotApp(
@@ -912,6 +934,20 @@ def _cmd_bot(args: argparse.Namespace) -> int:
     finally:
         store.close()
     return EXIT_OK
+
+
+def _install_stop_handler() -> None:
+    """Turn SIGTERM into a clean stop, which is how a container or service manager asks.
+
+    Without it a `docker stop` or a restart kills the process mid-scan and leaves SQLite to
+    recover from its journal; with it the loop exits through the same path as Ctrl+C.
+    """
+
+    def stop(_signum: int, _frame: object) -> None:
+        raise KeyboardInterrupt
+
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, stop)
 
 
 def _bot_log(message: str) -> None:
@@ -1301,7 +1337,12 @@ def _print_table(rows: Sequence[tuple[str, ...]]) -> None:
 
 
 def _cmd_service(args: argparse.Namespace) -> int:
-    """The operator's view of the hosted service. Read-only; no dashboard."""
+    """The operator's view of the hosted service. Read-only except `backup`."""
+    command = getattr(args, "service_command", "status")
+    if command == "check":
+        return _service_check(args)
+    if command == "backup":
+        return _service_backup(args)
     app = _load(args.config)
     db_path = args.db or app.database_path
     if not db_path.exists():
@@ -1353,6 +1394,76 @@ def _cmd_service(args: argparse.Namespace) -> int:
         if row["last_scan_status"] != "success":
             reason = row["last_error_summary"] or "not scanned yet"
             print(f"  {row['id']}: {row['last_scan_status'] or 'never scanned'} ({reason[:90]})")
+    return EXIT_OK
+
+
+def _service_check(args: argparse.Namespace) -> int:
+    """Health check for a supervisor: is monitoring still doing anything?
+
+    Deliberately about *monitoring*, not about Telegram: a quiet bot that has not heard from
+    anyone is healthy, while a bot that has stopped scanning is not. Exits non-zero so a
+    container health check or a cron watchdog can restart or alert.
+    """
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    if not db_path.exists():
+        print(f"error: service database not found: {db_path}", file=sys.stderr)
+        return EXIT_FAILED
+
+    now = datetime.now(UTC)
+    with Storage.open(db_path) as storage:
+        last_complete = storage.connection.execute(
+            "SELECT max(finished_at) FROM scans WHERE complete = 1"
+        ).fetchone()[0]
+        last_any = storage.connection.execute("SELECT max(started_at) FROM scans").fetchone()[0]
+        sources = storage.connection.execute(
+            "SELECT count(*) AS total,"
+            " sum(CASE WHEN last_scan_status = 'success' THEN 1 ELSE 0 END) AS healthy"
+            " FROM sources"
+        ).fetchone()
+
+    print(f"Database: {db_path}")
+    print(f"Offered employers: {len(app.enabled_sources())}")
+    if sources is not None:
+        print(f"Sources: {sources['healthy'] or 0} of {sources['total']} healthy")
+
+    if last_complete is None:
+        age_minutes = (
+            now - datetime.fromtimestamp(db_path.stat().st_mtime, UTC)
+        ).total_seconds() / 60
+        if age_minutes <= args.max_scan_age_minutes:
+            print(f"State: starting (no complete scan yet, database {age_minutes:.0f}m old)")
+            return EXIT_OK
+        print(f"State: STALE - no complete scan in a {age_minutes:.0f}m old deployment")
+        return EXIT_FAILED
+
+    reference = last_any or last_complete
+    age = (now - datetime.fromisoformat(str(reference).replace("Z", "+00:00"))).total_seconds() / 60
+    print(f"Last scan started: {reference} ({age:.0f}m ago)")
+    if age > args.max_scan_age_minutes:
+        print(f"State: STALE - nothing scanned for {age:.0f}m (limit {args.max_scan_age_minutes}m)")
+        return EXIT_FAILED
+    print("State: ok")
+    return EXIT_OK
+
+
+def _service_backup(args: argparse.Namespace) -> int:
+    """Take a verified copy of the service database, safe while the bot is running."""
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    target = args.to or default_backup_path(db_path)
+    try:
+        result = backup_database(db_path, target)
+    except FileNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_FAILED
+    print(f"Backup: {result.target} ({result.bytes / 1_048_576:.1f} MB)")
+    print(f"Integrity: {result.integrity}")
+    print("Contents: " + ", ".join(f"{name}={count}" for name, count in result.counts.items()))
+    if not result.ok:
+        print("Result: FAILED - the copy did not pass its integrity check", file=sys.stderr)
+        return EXIT_FAILED
+    print("Result: OK - copy verified. Move it off this machine to make it a backup.")
     return EXIT_OK
 
 

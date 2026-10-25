@@ -1,0 +1,11 @@
+# Celonis ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 217 roles, 19 in the UK,
+# 3 of those in a target role family.
+id = "celonis"
+employer = "Celonis"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io/v1/boards/celonis/jobs?content=true), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "celonis"

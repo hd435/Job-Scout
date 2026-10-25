@@ -36,6 +36,11 @@ DEFAULT_ENV_PATH = Path(".env")
 TELEGRAM_TOKEN_ENV = "JOBSCOUT_TELEGRAM_TOKEN"
 TELEGRAM_CHAT_ID_ENV = "JOBSCOUT_TELEGRAM_CHAT_ID"
 
+# Container and service-manager overrides, so a deployment needs no file on a writable disk
+# apart from its database. Explicit arguments still win.
+DATABASE_ENV = "JOBSCOUT_DATABASE"
+CONFIG_ENV = "JOBSCOUT_CONFIG"
+
 _BOT_TOKEN_SHAPE = re.compile(r"^\d{6,}:[A-Za-z0-9_-]{20,}$")
 
 
@@ -77,7 +82,17 @@ class AppConfig:
 
 
 def default_config() -> AppConfig:
-    return AppConfig(database_path=DEFAULT_DB_PATH, sources=DEFAULT_SOURCES)
+    return AppConfig(database_path=database_override(DEFAULT_DB_PATH), sources=DEFAULT_SOURCES)
+
+
+def database_override(default: Path) -> Path:
+    """`JOBSCOUT_DATABASE` names the database for a container or service manager.
+
+    A deployment should not have to bake machine-specific paths into an image, and a
+    read-only working directory leaves the database as the only thing worth declaring.
+    """
+    value = os.environ.get(DATABASE_ENV, "").strip()
+    return Path(value) if value else default
 
 
 @dataclass(frozen=True)
@@ -164,7 +179,8 @@ def load_telegram_config(
 def load_config(path: Path | str | None = None) -> AppConfig:
     """Load configuration, falling back to built-in defaults."""
     if path is None:
-        candidate = DEFAULT_CONFIG_PATH
+        from_env = os.environ.get(CONFIG_ENV, "").strip()
+        candidate = Path(from_env) if from_env else DEFAULT_CONFIG_PATH
         if not candidate.exists():
             return default_config()
         config_path: Path | None = candidate
@@ -179,7 +195,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         raise ConfigError(f"invalid TOML in {config_path}: {exc}") from exc
 
     section = data.get("jobscout", {})
-    database_path = Path(section.get("database", DEFAULT_DB_PATH))
+    database_path = database_override(Path(section.get("database", DEFAULT_DB_PATH)))
     catalogue_path = _catalogue_path(section, config_path)
     disabled = _disabled_ids(section)
     raw_sources = data.get("sources") or []

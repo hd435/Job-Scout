@@ -484,6 +484,37 @@ HTTP timeout on its 681-role payload, and `stripe` hit a local DNS failure (`get
 Both were transient, not feed changes — worth remembering before diagnosing a single failure as a
 broken source.
 
+**Batch 2 — 2026-10-25 — 43 employers, selected by measurement (D-100).**
+
+664 candidate boards were probed across Greenhouse, Ashby and Lever; 61 answered with at least one
+UK role, and 43 of those also had at least one UK role in a target role family. Candidates whose UK
+roles are all sales, marketing or support were rejected regardless of size, which is why `harvey`
+(29 UK roles), `langchain` and `modal` are absent.
+
+New machinery: an **`ashby` adapter** (public posting API, one request per board, plain-text
+descriptions so early-career signals survive), an `ashby` profile in `validate`, and
+[`tools/probe_boards.py`](../tools/probe_boards.py), which probes a candidate list and reports
+roles, UK roles, family roles and early-career signals. All 43 sources were validated live
+(`--live-only`) before being added.
+
+| Measure | Value |
+|---|---|
+| Catalogue | 17 → **60 employers** |
+| Enabled on the hosted deployment | 12 → **59** (`barclays` the only exclusion) |
+| Sources scanned in the measurement pass | 59 — **57 success, 2 partial, 0 failed** |
+| Roles stored | **10 276** (1 773 in the UK) |
+| Matches / review under the default rules | **62 / 401** |
+| Sources contributing at least one match | **15** |
+
+Largest contributors (stored / UK / matches): `databricks` 896/49/1, `capco` 726/78/0, `stripe`
+719/37/2, `anthropic` 681/50/0, `sumup` 349/76/0, `palantir` 309/45/11, `gitlab` 239/51/0,
+`janestreet` 220/58/0, `celonis` 217/19/2, `sierra` 210/37/2, `wayve` 178/63/0, `elevenlabs`
+159/55/0, `figma` 138/18/1, `perplexity` 132/24/1, `cohere` 116/37/2.
+
+The two partial scans are the expected cold crawls (`wise` 428 roles capped at 400 detail fetches,
+`arm` 434 pages capped at 400). Both complete on their next pass by skipping unchanged pages, and a
+partial scan never alerts; `arm` still contributed one match on its partial pass.
+
 **What the batch proved, and what it did not.** It proved the candidate → validate → enable → baseline
 path works at scale for one adapter shape, and that `report` distinguishes stored roles from value
 delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible matches, because the
@@ -552,11 +583,11 @@ python -m jobscout bot --once --config config.toml --db data/service.db   # one 
 ```
 
 **The pilot deployment** (2026-10-25) uses `data/ops/service-config.toml` and
-`data/service/service.db`, and offers **12 employers**. The catalogue holds 17; five are disabled
-for hosting (D-098): `arm` cannot complete a cold scan under the 400-page cap, `barclays` is an
-undocumented Workday endpoint with documented rate-limit risk, and `contentful`, `tide` and
-`truelayer` produced no matching and no review roles in the personal beta. The catalogue files and
-the personal beta are untouched — this is a per-deployment list.
+`data/service/service.db`, and offers **59 employers** — the whole catalogue minus `barclays`
+(D-100). The catalogue files and the personal beta are untouched: this is a per-deployment list.
+`barclays` stays out because it is an undocumented Workday endpoint with documented rate-limit
+risk; `arm` and `wise` stay in, because their cold crawls exceed the page budget once and complete
+on the next pass, and a partial scan never alerts.
 
 `jobscout service status --config data/ops/service-config.toml` prints the subscriber count, alert
 totals, when the bot last handled an update, and any source whose last scan did not succeed. It is
@@ -681,7 +712,7 @@ Copy that file off the machine. Restore is: stop the service, delete the old `se
 | Backup taken while the bot was polling | `data/backups/service-20261025T000700Z.db`, 24.7 MB, `PRAGMA integrity_check` = ok |
 | Contents of the backup | 3 334 jobs, 11 scans, 12 sources, 11 baselines, 0 users, 0 notifications |
 | Bot stopped, live database moved aside, backup copied in, bot started | Task reached `Running`; log shows `Database:`, `Offered employers: 12`, `Polling Telegram…` |
-| After restore | `jobscout service status` reports 12 offered employers and 11 sources scanned successfully; baselines survived, so a restore cannot re-announce history |
+| After restore | `jobscout service status` reports the offered employers and every source scanned successfully; baselines survived, so a restore cannot re-announce history |
 | Personal beta | untouched — still 4 420 jobs / 328 scans in `data/jobscout.db`, separate file, separate task |
 
 A restored database keeps each source's `baseline_scan_id`, which is why restore does not produce an
@@ -719,16 +750,18 @@ because a public signup would turn the source-access question into a free-for-al
 
 ### 9.7 The invited pilot (2026-10-25)
 
-What is deployed: one bot process on the operator's machine, its own database, 12 offered
-employers, invitations sent by hand. Testers need nothing installed; they open
+What is deployed: one bot process on the operator's machine, its own database, 59 offered
+employers, invitations sent by hand. [deployment.md](./deployment.md) covers moving the same
+image to an always-on host. Testers need nothing installed; they open
 `@AwesomeJobScoutBot` and press Start. The tester-facing briefing is [pilot.md](./pilot.md).
 
 **Operator checklist before inviting**
 
 1. `Get-ScheduledTask -TaskName "Job-Scout bot"` reports `Running`, and the log's last lines are the
    startup banner.
-2. `jobscout service status --config data\ops\service-config.toml` shows 12 offered employers and
-   `Sources: 12 of 12 scanned successfully last time`. A source listed under `Sources:` is either
+2. `jobscout service status --config data\ops\service-config.toml` shows 59 offered employers and
+   every source healthy in `Sources:`. A source listed under `Sources:` is either genuinely
+   failing or has never been scanned; wait for its next due run before concluding. A source listed under `Sources:` is either
    genuinely failing or has never been scanned; wait for its next due run before concluding.
 3. Confirm the personal beta is unaffected: its own task is running, and
    `data\jobscout.db` still has its 4 420 jobs and 328 scans.
@@ -763,7 +796,7 @@ employers, invitations sent by hand. Testers need nothing installed; they open
 
 - The five-step wizard, `/status`, `/digest`, `/help`, `/pause`, `/resume` and `/delete` each ran and
   the saved scope was read back from the database (families, employment types, London plus UK
-  remote, 12 employers, fingerprint and watermark stored).
+  remote, all offered employers, fingerprint and watermark stored).
 - One newly appearing matching role was delivered **exactly once**: the notify pass queued 1, the
   transport recorded 1 `sent` with a message id, nothing was left pending, and an immediate second
   pass delivered 0. The synthetic source, roles, scans and subscriber were then deleted.

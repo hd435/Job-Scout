@@ -1,0 +1,38 @@
+Always-on hosting, an Ashby adapter and 43 more employers
+
+Two goals this iteration: stop depending on the operator's PC, and grow coverage
+on evidence instead of guesswork.
+
+Hosting (D-099, docs/deployment.md): the service is a background poller with one
+SQLite file, so what it needs is a small always-on machine with a disk, not an
+application platform. Options were priced and compared (Render's free tier spins
+down and has no disk; Koyeb scales to zero; Workers would need a rewrite; GitHub
+Actions cron is routinely late and stateless; Oracle's free ARM VM is free but
+you administer it). Chosen: one Fly.io Machine in London, 512 MB, 1 GB volume,
+no inbound port, about $4.40/month.
+
+- Dockerfile + .dockerignore: unbuffered logs, non-root, /data volume, health
+  check by `jobscout service check`; deploy/fly.toml with a script check.
+- JOBSCOUT_DATABASE and JOBSCOUT_CONFIG so the image needs no operator file.
+- SIGTERM becomes a clean stop, so a restart does not cut a scan mid-transaction.
+- `jobscout service check` exits non-zero when nothing has completed a scan
+  within a window (an idle bot is healthy; a stopped scanner is not).
+- `jobscout service backup` copies a live database with SQLite's backup API,
+  checkpoints the WAL and verifies the copy before claiming success.
+
+Coverage (D-100): 664 candidate boards probed, 61 had a UK role, 43 also had a
+UK role in a target family. Catalogue 17 -> 60 employers; hosted set 12 -> 59
+(`barclays` still excluded). Measurement pass over the expanded set: 59 sources,
+57 success, 2 partial (the expected wise/arm cold crawls), 0 failed; 10 276 roles
+stored, 1 773 in the UK, 62 matches, 401 review, 15 sources contributing.
+
+- New `ashby` adapter (one request per board, plain-text descriptions so
+  early-career signals survive) plus its validate profile and 11 tests.
+- tools/probe_boards.py: probes candidates and reports roles, UK roles, family
+  roles and early-career signals, so the next batch is judged the same way.
+- Wizard packs regrouped for the larger catalogue (quant/finance, AI/data,
+  consulting) with a test tying pack ids to the shipped catalogue.
+
+734 tests pass, ruff clean.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

@@ -1,0 +1,20 @@
+# Hosted deployment configuration (D-094, D-099).
+#
+# This file ships inside the image so the container needs no operator-written config; the
+# database lives on the mounted volume, named by JOBSCOUT_DATABASE. The employer list is the
+# shipped catalogue minus what this deployment must not poll, which is a much shorter list than
+# the personal beta's, because hosting is where a bad source becomes a shared problem.
+#
+# Preferences are deliberately absent: in service mode each user's own scope drives matching
+# (D-092), so nothing here decides who is told what.
+
+[jobscout]
+database = "/data/service.db"
+
+# barclays: undocumented Workday CXS endpoint with documented rate-limit risk, bounded only by an
+# arbitrary "graduate" search. Not polled on behalf of other people (see docs/sources.md).
+#
+# arm stays enabled: its 434-page cold crawl exceeds the 400-fetch budget, so its first pass is
+# partial (no alerts) and the next pass completes by skipping unchanged pages — the same
+# self-healing behaviour measured on wise. A partial scan never creates an alert.
+disable = ["barclays"]

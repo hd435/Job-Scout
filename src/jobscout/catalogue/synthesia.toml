@@ -1,0 +1,11 @@
+# Synthesia ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 34 roles, 19 in the UK,
+# 5 of those in a target role family.
+id = "synthesia"
+employer = "Synthesia"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/synthesia), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "synthesia"

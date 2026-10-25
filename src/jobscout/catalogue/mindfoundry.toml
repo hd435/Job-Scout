@@ -1,0 +1,12 @@
+# Mind Foundry ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 6 roles, 6 in the UK,
+# 5 of those in a target role family.
+id = "mindfoundry"
+employer = "Mind Foundry"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io/v1/boards/mindfoundry/jobs?content=true), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "mindfoundry"
+uk_employer = true

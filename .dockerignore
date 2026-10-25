@@ -1,0 +1,18 @@
+# Build inputs only. Everything a deployment owns at runtime (database, operator config, logs,
+# research output, credentials, virtualenvs) stays out of the image.
+.git
+.github
+.pytest_cache
+.ruff_cache
+data
+docs
+tests
+tools
+.env
+.env.*
+config.toml
+*.db
+*.db-wal
+*.db-shm
+**/__pycache__
+**/*.pyc

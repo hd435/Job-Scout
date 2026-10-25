@@ -1,0 +1,11 @@
+# Algolia ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 28 roles, 7 in the UK,
+# 1 of those in a target role family.
+id = "algolia"
+employer = "Algolia"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io/v1/boards/algolia/jobs?content=true), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "algolia"

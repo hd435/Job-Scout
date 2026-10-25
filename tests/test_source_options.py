@@ -23,7 +23,13 @@ def write_config(tmp_path: Path, body: str) -> Path:
 
 
 def test_every_registered_adapter_declares_its_options() -> None:
-    assert set(known_adapters()) == {"lever", "greenhouse", "workday", "sitemap_html"}
+    assert set(known_adapters()) == {
+        "ashby",
+        "greenhouse",
+        "lever",
+        "sitemap_html",
+        "workday",
+    }
     for adapter in known_adapters():
         assert describe(adapter)
 

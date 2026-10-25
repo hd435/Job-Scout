@@ -1,0 +1,11 @@
+# Gymshark ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 17 roles, 9 in the UK,
+# 2 of those in a target role family.
+id = "gymshark"
+employer = "Gymshark"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io/v1/boards/gymshark/jobs?content=true), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "gymshark"

@@ -17,6 +17,7 @@ from typing import Any
 REQUIRED_OPTIONS: dict[str, frozenset[str]] = {
     "lever": frozenset(),
     "greenhouse": frozenset(),
+    "ashby": frozenset(),
     "workday": frozenset({"host", "tenant", "site"}),
     "sitemap_html": frozenset({"job_url_pattern"}),
 }
@@ -26,6 +27,7 @@ OPTIONAL_OPTIONS: dict[str, frozenset[str]] = {
     # `site` falls back to the source id, so it is optional but still meaningful.
     "lever": frozenset({"site", "uk_employer"}),
     "greenhouse": frozenset({"board", "uk_employer"}),
+    "ashby": frozenset({"board", "uk_employer"}),
     "workday": frozenset({"locale", "page_size", "max_pages", "search_text", "uk_employer"}),
     "sitemap_html": frozenset(
         {

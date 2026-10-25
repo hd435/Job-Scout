@@ -2,7 +2,9 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered, and a limited personal-use beta is running on the maintainer's machine with 14 enabled employers. The **coverage target is not met** — roughly 17 catalogued employers against an intended ~100 — and the seven-day reliability measurement is still in progress, so the MVP is not complete.
+**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered. The hosted service is deployed and its employer coverage has been expanded from 12 to the mid-50s in one measured batch (see [docs/runbook.md](./docs/runbook.md) §7c). The **coverage target is still short** — the intended ~100 enabled employers has not been reached — and the seven-day reliability measurement (AC-20) is still open, so the MVP is not complete.
+
+Deployment: the hosted service is a single container. [docs/deployment.md](./docs/deployment.md) compares the hosting options, states the cost (≈ $4.40/month on Fly.io in London) and gives the exact commands; the Windows scheduled task remains the fallback.
 
 Two ways to use it:
 

@@ -1,0 +1,11 @@
+# Incident.io ? added in expansion batch 2 (2026-10-25).
+# Measured from the live board: 34 roles, 17 in the UK,
+# 1 of those in a target role family.
+id = "incident"
+employer = "Incident.io"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/incident), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "incident"

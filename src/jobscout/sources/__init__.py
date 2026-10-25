@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .ashby import AshbyAdapter
 from .base import AdapterError, SourceAdapter, build_job
 from .greenhouse import GreenhouseAdapter
 from .lever import LeverAdapter
@@ -13,6 +14,7 @@ _ADAPTERS: dict[str, SourceAdapter] = {
     for adapter in (
         LeverAdapter(),
         GreenhouseAdapter(),
+        AshbyAdapter(),
         WorkdayAdapter(),
         SitemapHtmlAdapter(),
     )

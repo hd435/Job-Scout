@@ -35,7 +35,7 @@ What to expect, so silence does not read as breakage:
 which employers you follow, and one row per alert sent to you — nothing else: no name, no email, no
 CV, no application tracking. `/delete` removes all of it and stops monitoring immediately.
 
-**Which employers you follow is yours.** The service offers 12 employers grouped into packs; picking
+**Which employers you follow is yours.** The service offers employers grouped into packs; picking
 a pack means the service reads those employers' public job boards on your behalf. If you would
 rather follow fewer, follow fewer. The operator chose that list (D-094), not you — if it matters to
 you which boards are read, ask before you accept the invitation.

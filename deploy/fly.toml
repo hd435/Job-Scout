@@ -1,0 +1,41 @@
+# Fly.io deployment for the hosted Job-Scout service (D-099).
+#
+# Deploy from the repository root:
+#   fly deploy --config deploy/fly.toml
+#
+# There is no [http_service]: the bot long-polls Telegram, so Fly only has to keep one Machine
+# running and keep its volume attached. That is also why there is no public URL to secure.
+
+app = "job-scout"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "../Dockerfile"
+
+[env]
+  JOBSCOUT_CONFIG = "/app/service-config.toml"
+  JOBSCOUT_DATABASE = "/data/service.db"
+
+# The only state. 1 GB holds years of this catalogue; backups are taken off the volume.
+[[mounts]]
+  source = "jobscout_data"
+  destination = "/data"
+
+[processes]
+  app = "python -m jobscout bot"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[deploy]
+  strategy = "immediate"
+
+# A process that has stopped scanning is the failure that matters; an idle bot is not. The check
+# reads the database, so it also fails when the volume is missing or read-only.
+[checks.healthcheck]
+  type = "script"
+  command = "python -m jobscout service check"
+  interval = "10m"
+  timeout = "2m"
+  grace_period = "15m"

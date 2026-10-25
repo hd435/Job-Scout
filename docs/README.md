@@ -9,6 +9,7 @@ change has an obvious home and reviewers know which file to trust.
 | [architecture.md](./architecture.md) | How it is built: components, contracts, schema, failure handling | With design changes |
 | [configuration.md](./configuration.md) | The operator's reference for every configuration key, including `[preferences]` | Whenever the schema changes |
 | [runbook.md](./runbook.md) | How to operate a running instance: start, stop, status, recovery, retention workflow | With operational changes |
+| [deployment.md](./deployment.md) | Where the service can run, what it costs, and how to deploy, verify, back up and move it | With any hosting change |
 | [pilot.md](./pilot.md) | The second-tester briefing: what is theirs, the journey to try, scheduling on any OS, what to report | With the pilot |
 | [decisions.md](./decisions.md) | Append-only log of product and technical decisions (D-nnn) | Append only |
 | [roadmap.md](./roadmap.md) | The release view: what shipped, what is next, in one screen | Per release |
