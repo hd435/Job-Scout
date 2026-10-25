@@ -41,6 +41,26 @@ fi
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 "$DATA_DIR" "$DATA_DIR/backups"
 install -d -o root -g "$SERVICE_USER" -m 0750 "$CONF_DIR"
 
+log "updating $REPO_DIR"
+if [ -d "$REPO_DIR/.git" ]; then
+    # An upgrade used to need a manual `git pull` first, and running install.sh without one
+    # silently reinstalled the old code. Fast-forward only: a dirty checkout is a deliberate
+    # edit, and overwriting it is not this script's business.
+    before=$(git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)
+    if git -c safe.directory="$REPO_DIR" -C "$REPO_DIR" pull --ff-only --quiet; then
+        after=$(git -C "$REPO_DIR" rev-parse --short HEAD)
+        if [ "$before" = "$after" ]; then
+            echo "already at $before"
+        else
+            echo "updated $before -> $after"
+        fi
+    else
+        echo "warning: could not fast-forward $REPO_DIR; installing the working tree as it is"
+    fi
+else
+    echo "not a git checkout; installing the files as they are"
+fi
+
 log "installing the package into $REPO_DIR/.venv"
 if [ ! -x "$REPO_DIR/.venv/bin/python" ]; then
     python3 -m venv "$REPO_DIR/.venv"

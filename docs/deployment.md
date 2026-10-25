@@ -120,6 +120,7 @@ sudo /opt/jobscout/deploy/oracle/install.sh
 | Step | Detail |
 |---|---|
 | Toolchain | `python3`, `python3-venv`, `pip`; refuses anything older than 3.12 and prints the arch |
+| Code | `git pull --ff-only` when `/opt/jobscout` is a checkout, and it says which commit it is on |
 | Service user | system account `jobscout`, no shell, no sudo except one narrow rule |
 | Layout | code `/opt/jobscout`, data `/srv/jobscout/{data,backups}`, config `/etc/jobscout` |
 | Package | `.venv` + `pip install /opt/jobscout`, then imports `jobscout` to prove it works |
@@ -136,17 +137,24 @@ sudo systemctl start jobscout
 sudo /opt/jobscout/deploy/oracle/verify.sh
 ```
 
-`verify.sh` prints unit state, the timer schedule, `service status` (subscribers, alerts, sources not
-scanning), `service check` and the last 15 journal lines.
+`verify.sh` loads `/etc/jobscout/jobscout.env` first and runs the CLI as the `jobscout` user, so it
+sees exactly what the unit sees and a plain `sudo verify.sh` is enough. It prints the enabled and
+active state, the deployed commit, the database path in use, the timer schedule, `service status`
+(subscribers, alerts, sources not scanning), `service check` and the last 15 journal lines. Without
+the env file the CLI would fall back to the shipped default database path and report a database that
+does not exist on this host.
 
 ### Upgrades
 
 ```bash
-sudo git -C /opt/jobscout pull
-sudo /opt/jobscout/deploy/oracle/install.sh      # re-installs the package and units, restarts
+sudo /opt/jobscout/deploy/oracle/install.sh      # pulls, re-installs the package and units, restarts
 ```
 
-The database, the config and the env file are never overwritten by an upgrade.
+`install.sh` fast-forwards the checkout itself and prints `updated <old> -> <new>` (or
+`already at <commit>`), so an upgrade cannot silently reinstall the previous code. A checkout with
+local edits is left alone with a warning instead of being overwritten. The database, the config and
+the env file are never touched by an upgrade. `verify.sh` prints the commit now running, which is
+the quickest way to confirm a deployment actually moved.
 
 ## 5. Operating it
 
