@@ -8,10 +8,18 @@ someone who did not build it can get to a useful result unaided, and what breaks
 
 ## If you were invited to the hosted bot
 
-You need nothing installed. Open the bot in Telegram and press **Start**.
+You need nothing installed — no Python, no configuration file, no scheduler. The service already
+runs; you are giving it your own job search.
 
-The five steps are: kinds of role → early-career types → location → employers → confirm. Each is a
-button press, and `/settings` lets you change any of it later.
+1. Open **`@AwesomeJobScoutBot`** in Telegram and press **Start** (or send `/start`).
+2. Answer five short screens, all buttons:
+   kinds of role → early-career types → location → employers → confirm.
+   About a minute, and `/settings` changes any of it later.
+3. Stop there. It now monitors in the background and messages you when a genuinely new matching
+   role appears.
+
+The commands you may want: `/status` (is monitoring working?), `/digest` (roles that already match
+now), `/settings`, `/pause`, `/resume`, `/delete` (erases your data and stops monitoring), `/help`.
 
 What to expect, so silence does not read as breakage:
 
@@ -23,13 +31,20 @@ What to expect, so silence does not read as breakage:
 - Alerts arrive as ordinary Telegram messages with the role, employer, location and a link to the
   employer's own page.
 
+**Your data, on a hosted bot.** The operator holds your Telegram user id, your chosen preferences,
+which employers you follow, and one row per alert sent to you — nothing else: no name, no email, no
+CV, no application tracking. `/delete` removes all of it and stops monitoring immediately.
+
+**Which employers you follow is yours.** The service offers 12 employers grouped into packs; picking
+a pack means the service reads those employers' public job boards on your behalf. If you would
+rather follow fewer, follow fewer. The operator chose that list (D-094), not you — if it matters to
+you which boards are read, ask before you accept the invitation.
+
 What to report: anything confusing, anything that arrived that should not have, anything that
 looked like it should have arrived and did not, and whether you would keep it switched on. If
-something looks wrong, `/status` output and roughly when it happened is enough.
+something looks wrong, the `/status` output and roughly when it happened is enough. Note that
+`/status` answering at all proves the bot is alive; it does not prove that alerts will arrive.
 
-**One thing that is yours, not the maintainer's:** which employers you follow. The bot offers
-groups of employers; enabling one means the *service* will read that employer's public job board on
-your behalf. If you would rather follow fewer, follow fewer.
 
 ## If you are self-hosting the CLI
 

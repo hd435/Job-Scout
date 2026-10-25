@@ -110,6 +110,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_sources(args)
         if args.command == "config":
             return _cmd_config(args)
+        if args.command == "service":
+            return _cmd_service(args)
         return _cmd_status(args)
     except (ConfigError, AdapterError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -378,6 +380,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "validate", help="load the configuration and report every problem found"
     )
     config_validate.add_argument("--config", type=Path, help="TOML configuration file")
+
+    service = subparsers.add_parser(
+        "service",
+        help="inspect the hosted service: subscribers, alerts and polling (read-only)",
+    )
+    service_commands = service.add_subparsers(dest="service_command", required=True)
+    service_status = service_commands.add_parser(
+        "status", help="who is subscribed, what was sent, and whether the bot is polling"
+    )
+    service_status.add_argument("--db", type=Path, help="SQLite database path")
+    service_status.add_argument("--config", type=Path, help="TOML configuration file")
 
     return parser
 
@@ -845,7 +858,7 @@ def _cmd_bot(args: argparse.Namespace) -> int:
 
     print(f"Database: {db_path}")
     print(f"Offered employers: {len(sources)} ({', '.join(s.id for s in sources)})")
-    print("Polling Telegram for updates. Ctrl+C to stop.")
+    print("Polling Telegram for updates. Ctrl+C to stop.", flush=True)
 
     storage = Storage.open(db_path)
     store = ServiceStore(storage)
@@ -912,6 +925,8 @@ def _read_bot_offset(storage: Storage) -> int | None:
 
 def _save_bot_offset(storage: Storage, offset: int) -> None:
     storage.write_meta("bot_offset", str(offset))
+    # Monitoring: `service status` can then say when the bot last heard from Telegram.
+    storage.write_meta("bot_last_update_at", datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
 def _check_outcome(result: DeliveryResult) -> str:
@@ -1283,6 +1298,62 @@ def _print_table(rows: Sequence[tuple[str, ...]]) -> None:
     for row in rows:
         cells = (cell.ljust(width) for cell, width in zip(row, widths, strict=True))
         print("  ".join(cells).rstrip())
+
+
+def _cmd_service(args: argparse.Namespace) -> int:
+    """The operator's view of the hosted service. Read-only; no dashboard."""
+    app = _load(args.config)
+    db_path = args.db or app.database_path
+    if not db_path.exists():
+        print(f"error: service database not found: {db_path}", file=sys.stderr)
+        return EXIT_FAILED
+
+    with ServiceStore.open(db_path) as store:
+        users = store.connection.execute(
+            """
+            SELECT u.id, u.chat_id, u.paused, u.watermark,
+                   (SELECT count(*) FROM service_subscriptions s WHERE s.user_id = u.id)
+                       AS employers,
+                   (SELECT count(*) FROM notifications n
+                    WHERE n.chat_id = u.chat_id AND n.status = 'sent') AS alerts
+            FROM service_users u ORDER BY u.id
+            """
+        ).fetchall()
+        offset = _read_bot_offset(store.storage)
+        last_update = store.storage.read_meta("bot_last_update_at")
+        sources = store.connection.execute(
+            "SELECT id, last_scan_status, last_error_summary FROM sources ORDER BY id"
+        ).fetchall()
+        totals = store.connection.execute(
+            "SELECT status, count(*) AS n FROM notifications GROUP BY status"
+        ).fetchall()
+
+    print(f"Database: {db_path}")
+    print(f"Offered employers: {len(app.enabled_sources())}")
+    print(f"Subscribers: {len(users)}")
+    for row in users:
+        state = "paused" if row["paused"] else "active"
+        print(
+            f"  #{row['id']} chat {row['chat_id']}  {state:<6} "
+            f"{row['employers']} employer(s)  {row['alerts']} alert(s) sent"
+        )
+    if not users:
+        print("  (nobody has pressed Start yet)")
+    alert_summary = ", ".join(f"{row['status']}={row['n']}" for row in totals) or "none"
+    print(f"Alerts: {alert_summary}")
+    if last_update:
+        print(f"Bot polling: last update handled at {last_update} (offset {offset})")
+    elif offset:
+        print(f"Bot polling: last acknowledged update id {offset}")
+    else:
+        print("Bot polling: no update handled yet")
+    healthy = [row["id"] for row in sources if row["last_scan_status"] == "success"]
+    print(f"Sources: {len(healthy)} of {len(sources)} scanned successfully last time")
+    for row in sources:
+        if row["last_scan_status"] != "success":
+            reason = row["last_error_summary"] or "not scanned yet"
+            print(f"  {row['id']}: {row['last_scan_status'] or 'never scanned'} ({reason[:90]})")
+    return EXIT_OK
 
 
 def _cmd_config(args: argparse.Namespace) -> int:

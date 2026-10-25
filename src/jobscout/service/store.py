@@ -79,6 +79,12 @@ class ServiceStore:
     def close(self) -> None:
         self._storage.close()
 
+    def __enter__(self) -> ServiceStore:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
     # users -----------------------------------------------------------------
 
     def ensure_user(

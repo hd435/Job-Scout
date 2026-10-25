@@ -19,6 +19,7 @@ from jobscout.models import DeliveryOutcome, DeliveryResult
 from jobscout.notifier import Notifier
 from jobscout.scanner import run_scan
 from jobscout.service.app import BotApp, parse_update
+from jobscout.service.bot import BotApi
 from jobscout.service.store import ServiceStore
 from jobscout.sources import get_adapter
 from jobscout.storage import Storage
@@ -267,3 +268,55 @@ def test_parse_update_ignores_what_it_cannot_serve() -> None:
     assert parse_update({"callback_query": {"id": "x"}}) is None
     parsed = parse_update(message_update(111, "/start"))
     assert parsed is not None and parsed.is_private
+
+
+class RecordingPoster:
+    """Stands in for the HTTP client so the real `BotApi` serialises the real payload."""
+
+    def __init__(self) -> None:
+        self.payloads: list[tuple[str, dict]] = []
+
+    def post_json(self, url: str, payload: dict) -> dict:
+        self.payloads.append((url, payload))
+        return {"ok": True, "result": {"message_id": len(self.payloads)}}
+
+    def messages(self) -> list[dict]:
+        return [payload for url, payload in self.payloads if url.endswith("/sendMessage")]
+
+
+def test_buttons_reach_the_bot_api_as_a_valid_inline_keyboard(tmp_path: Path) -> None:
+    """A fake API accepts anything; only the real serialiser proves Telegram would accept it."""
+    storage = Storage.open(tmp_path / "service.db")
+    poster = RecordingPoster()
+    bot = BotApp(
+        BotApi("123:test-token", poster=poster),
+        storage,
+        ServiceStore(storage),
+        sources=(SOURCE,),
+    )
+
+    bot.handle_update(message_update(111, "/start"))
+
+    keyboard = poster.messages()[0]["reply_markup"]["inline_keyboard"]
+    assert any(button["callback_data"] == "f:next" for row in keyboard for button in row)
+    assert all(
+        set(button) == {"text", "callback_data"} and button["text"]
+        for row in keyboard
+        for button in row
+    )
+
+
+def test_the_delete_prompt_also_sends_working_buttons(tmp_path: Path) -> None:
+    storage = Storage.open(tmp_path / "service.db")
+    poster = RecordingPoster()
+    bot = BotApp(
+        BotApi("123:test-token", poster=poster),
+        storage,
+        ServiceStore(storage),
+        sources=(SOURCE,),
+    )
+
+    bot.handle_update(message_update(111, "/delete"))
+
+    keyboard = poster.messages()[-1]["reply_markup"]["inline_keyboard"]
+    assert keyboard[0][0]["callback_data"] == "delete:confirm"

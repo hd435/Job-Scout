@@ -551,6 +551,17 @@ operator's choice** (D-094): narrow it with `[jobscout] disable` before inviting
 python -m jobscout bot --once --config config.toml --db data/service.db   # one poll, then exit
 ```
 
+**The pilot deployment** (2026-10-25) uses `data/ops/service-config.toml` and
+`data/service/service.db`, and offers **12 employers**. The catalogue holds 17; five are disabled
+for hosting (D-098): `arm` cannot complete a cold scan under the 400-page cap, `barclays` is an
+undocumented Workday endpoint with documented rate-limit risk, and `contentful`, `tide` and
+`truelayer` produced no matching and no review roles in the personal beta. The catalogue files and
+the personal beta are untouched — this is a per-deployment list.
+
+`jobscout service status --config data/ops/service-config.toml` prints the subscriber count, alert
+totals, when the bot last handled an update, and any source whose last scan did not succeed. It is
+read-only and is the first thing to run when a tester reports silence.
+
 ### 9.2 As a long-running process
 
 Linux, `/etc/systemd/system/jobscout-bot.service`:
@@ -582,8 +593,37 @@ journalctl -u jobscout-bot -f          # the bot logs one line per notable event
 Windows: the same idea as section 3 — a `run-bot.cmd` wrapper running `jobscout bot`, registered
 with `New-ScheduledTaskAction` and restarted by the task's restart-on-failure setting.
 
+**What the pilot deployment actually uses** (2026-10-25, Windows):
+
+| Piece | Value |
+|---|---|
+| Task | `Job-Scout bot`, trigger **At log on for one user**, `MultipleInstances=IgnoreNew`, restart every 1 minute up to 999 times, no execution time limit |
+| Action | `data\ops\run-bot.cmd` → `python.exe -u -m jobscout bot --config data\ops\service-config.toml` |
+| Log | `data\ops\logs\service.log` (the wrapper redirects both streams) |
+
+`-u` is not optional in the wrapper: without it Python buffers stdout when it is not a console, and
+a crash leaves an empty log — which is exactly the state a restart needs to explain.
+
+```powershell
+Get-ScheduledTask -TaskName "Job-Scout bot"                      # State: Running / Ready
+Stop-ScheduledTask  -TaskName "Job-Scout bot"                    # stops the wrapper only
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+  Where-Object { $_.CommandLine -like '*-m jobscout bot*' } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }        # stops the bot itself
+Start-ScheduledTask -TaskName "Job-Scout bot"
+```
+
+A `Register-ScheduledTask` trigger that is not scoped to a user needs elevation ("Access is
+denied"), so the task is registered `-AtLogOn -User <name>` and therefore starts when that user
+signs in. **This deployment is on the operator's own machine, not a cloud host** (D-097): it proves
+the Telegram journey and the operating procedure, not uptime. If the machine is off or signed out,
+nothing is scanned and no one is messaged.
+
 One process is enough at pilot scale: polling is long-poll based (no inbound port, no certificate),
-and a scan happens only when a source is due.
+and a scan happens only when a source is due. A source whose crawl is slow (Wise, which walks a
+sitemap) holds the loop while it runs; a first complete pass of the 12 offered employers took about
+25 seconds excluding Wise.
+
 
 ### 9.3 Backups and restore
 
@@ -593,16 +633,42 @@ Nightly, from cron or Task Scheduler:
 sqlite3 /srv/jobscout/data/service.db ".backup '/srv/jobscout/backup/service-$(date +%F).db'"
 ```
 
-Copy that file off the machine. Restore is: stop the service, put the file back as
-`data/service.db`, start the service. **Do the restore once** before inviting anyone — an untested
-backup is a hope, not a backup.
+Windows, where `sqlite3.exe` is often absent, uses the same SQLite backup API from Python:
+
+```powershell
+python -c "import sqlite3,datetime,pathlib; s=sqlite3.connect(r'data\service\service.db'); s.execute('PRAGMA wal_checkpoint(TRUNCATE)'); t=pathlib.Path('data/backups')/('service-'+datetime.datetime.now(datetime.UTC).strftime('%Y%m%dT%H%M%SZ')+'.db'); t.parent.mkdir(parents=True, exist_ok=True); d=sqlite3.connect(t); s.backup(d); d.close(); s.close(); print(t)"
+```
+
+Copy that file off the machine. Restore is: stop the service, delete the old `service.db` **and its
+`-wal`/`-shm` siblings**, put the backup in place as `service.db`, start the service.
+
+**Drill completed 2026-10-25**, on the pilot database:
+
+| Step | Result |
+|---|---|
+| Backup taken while the bot was polling | `data/backups/service-20261025T000700Z.db`, 24.7 MB, `PRAGMA integrity_check` = ok |
+| Contents of the backup | 3 334 jobs, 11 scans, 12 sources, 11 baselines, 0 users, 0 notifications |
+| Bot stopped, live database moved aside, backup copied in, bot started | Task reached `Running`; log shows `Database:`, `Offered employers: 12`, `Polling Telegram…` |
+| After restore | `jobscout service status` reports 12 offered employers and 11 sources scanned successfully; baselines survived, so a restore cannot re-announce history |
+| Personal beta | untouched — still 4 420 jobs / 328 scans in `data/jobscout.db`, separate file, separate task |
+
+A restored database keeps each source's `baseline_scan_id`, which is why restore does not produce an
+alert storm. Deleting the `-wal`/`-shm` siblings matters: a stale WAL next to a replaced main file is
+not a database you want to trust.
+
 
 ### 9.4 Monitoring
 
 - One external heartbeat (a free service pinging a URL, or a "did the bot log today" check).
 - `jobscout report --days 7 --db data/service.db` for scans and delivery outcomes.
+- `jobscout service status --config …` for subscribers, alert totals, the time of the last update
+  handled, and every source whose last scan did not succeed. "No update handled yet" is normal
+  before the first tester presses Start; it is not evidence of a fault.
+- `Get-Content data\ops\logs\service.log -Tail 40` — one line per notable event, plus the startup
+  banner. A crash is visible here because the wrapper runs Python unbuffered.
 - A source that fails three times still sends the operator a failure notice, and a shared
   connectivity outage still produces one aggregated notice (D-086).
+
 
 ### 9.5 User operations
 
@@ -618,3 +684,70 @@ backup is a hope, not a backup.
 No web UI, no Mini App, no password reset (there is no password), no per-user custom employers, no
 digest of new alerts, no quiet hours. Users are invited by the operator; there is no public signup,
 because a public signup would turn the source-access question into a free-for-all (D-094).
+
+### 9.7 The invited pilot (2026-10-25)
+
+What is deployed: one bot process on the operator's machine, its own database, 12 offered
+employers, invitations sent by hand. Testers need nothing installed; they open
+`@AwesomeJobScoutBot` and press Start. The tester-facing briefing is [pilot.md](./pilot.md).
+
+**Operator checklist before inviting**
+
+1. `Get-ScheduledTask -TaskName "Job-Scout bot"` reports `Running`, and the log's last lines are the
+   startup banner.
+2. `jobscout service status --config data\ops\service-config.toml` shows 12 offered employers and
+   `Sources: 12 of 12 scanned successfully last time`. A source listed under `Sources:` is either
+   genuinely failing or has never been scanned; wait for its next due run before concluding.
+3. Confirm the personal beta is unaffected: its own task is running, and
+   `data\jobscout.db` still has its 4 420 jobs and 328 scans.
+4. Take a fresh backup (9.3) and note where it is.
+5. Send the invitation text below, one or two testers at a time, so a breakage is attributable.
+
+**Invitation text**
+
+> I have a UK early-career job bot in Telegram that watches employers' own job boards and messages
+> you when a matching role appears. It is a pilot, not a product — I want to know whether it is
+> understandable and useful, and what breaks.
+>
+> You need nothing installed:
+> 1. Open `@AwesomeJobScoutBot` and press **Start** (`/start`).
+> 2. Answer five short screens with buttons: kinds of role, early-career types, location, employers,
+>    confirm. About a minute; `/settings` changes any of it later.
+> 3. That is it. It runs in the background and messages you when a genuinely new matching role
+>    appears.
+>
+> Please expect quiet at first: you are only told about roles posted *after* you set up — `/digest`
+> lists roles that already match. `/status` tells you whether monitoring is working, `/pause` stops
+> alerts, and `/delete` erases your data and stops everything.
+>
+> What I would like back, in any form: where you hesitated or guessed, anything that arrived and
+> looked wrong or irrelevant, anything you expected and did not get, and whether you would keep it
+> on. If something looks broken, sending me the `/status` output and roughly when it happened is
+> plenty.
+>
+> Which employers to follow is your choice — the bot only watches the ones you pick.
+
+**What was verified before inviting** (2026-10-25, against this database and the real Bot API)
+
+- The five-step wizard, `/status`, `/digest`, `/help`, `/pause`, `/resume` and `/delete` each ran and
+  the saved scope was read back from the database (families, employment types, London plus UK
+  remote, 12 employers, fingerprint and watermark stored).
+- One newly appearing matching role was delivered **exactly once**: the notify pass queued 1, the
+  transport recorded 1 `sent` with a message id, nothing was left pending, and an immediate second
+  pass delivered 0. The synthetic source, roles, scans and subscriber were then deleted.
+- `/digest` listed real early-career London roles already open on the offered boards, so scanning
+  and matching work on live data.
+
+**What is still unproven, and must be said plainly**
+
+- **A human pressing a button.** The wizard was driven by synthetic updates, so the inbound
+  poll-and-acknowledge round trip has not been exercised by a real finger. It is the first thing a
+  tester does, and the log will show it (`/status` will then report a last-update time).
+- **A genuine newly discovered role reaching a person.** The delivery path is proven with a
+  synthetic role; only a real new posting proves the whole chain.
+- **Uptime.** This is one machine, not a cloud host (D-097). Machine off or user signed out means no
+  scanning and no messages.
+- **Relevance.** Nothing has been judged by a second human yet.
+- **AC-20**, the seven-day reliability target, remains outstanding and is measured separately on the
+  personal beta.
+

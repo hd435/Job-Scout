@@ -290,8 +290,11 @@ class BotApp:
             self._log(f"reply to {chat_id} failed: {exc}")
 
     @staticmethod
-    def _buttons(rows: Rows) -> Rows | None:
-        return rows or None
+    def _buttons(rows: Sequence[Sequence[tuple[str, str]]]) -> Rows | None:
+        """The wizard speaks (label, data) pairs; the Bot API wants `Button` objects."""
+        if not rows:
+            return None
+        return tuple(tuple(Button(label, data) for label, data in row) for row in rows)
 
     # background work -------------------------------------------------------
 
