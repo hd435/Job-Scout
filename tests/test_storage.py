@@ -31,7 +31,7 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             )
         }
-        assert version == 7
+        assert version == 8
         assert {
             "sources",
             "scans",
@@ -47,7 +47,7 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
         } <= tables
 
     with Storage.open(path) as storage:
-        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 7
+        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 8
 
 
 def test_open_creates_missing_parent_directory(tmp_path: Path) -> None:
@@ -196,3 +196,79 @@ def test_closed_job_row_keeps_identity(store: Storage, scan, record) -> None:
     assert closed.status is JobStatus.CLOSED
     assert closed.closed_at is not None
     assert closed.job.title == "Graduate Data Engineer"
+
+
+# ---------------------------------------------------------------------------
+# The digest cache key: a counter that moves only when a result could differ
+# ---------------------------------------------------------------------------
+
+
+def test_the_jobs_change_counter_moves_for_a_new_role(store: Storage, scan, record) -> None:
+    before = store.jobs_change_seq()
+
+    scan([record("a", "Graduate Software Engineer")])
+
+    assert store.jobs_change_seq() > before
+
+
+def test_scan_bookkeeping_alone_does_not_move_the_counter(store: Storage, scan, record) -> None:
+    """Re-seeing the same board is not a change: a cached digest must survive it."""
+    payload = [record("a", "Graduate Software Engineer")]
+    scan(payload)
+    before = store.jobs_change_seq()
+
+    scan(payload)
+    scan(payload)
+
+    assert store.jobs_change_seq() == before
+
+
+def test_a_closed_role_moves_the_counter(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer"), record("b", "Graduate Data Engineer")])
+    scan([record("a", "Graduate Software Engineer")])
+    before = store.jobs_change_seq()
+
+    scan([record("a", "Graduate Software Engineer")])  # 'b' is now closed
+
+    assert store.get_job("palantir", "b").status is JobStatus.CLOSED
+    assert store.jobs_change_seq() > before, "a role that closed must not stay in a cached digest"
+
+
+def test_a_retitled_role_moves_the_counter(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer")])
+    before = store.jobs_change_seq()
+
+    scan([record("a", "Graduate Data Engineer")])
+
+    assert store.jobs_change_seq() > before
+
+
+def test_a_changed_application_link_moves_the_counter(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer")])
+    before = store.jobs_change_seq()
+
+    scan([record("a", "Graduate Software Engineer", url="https://example.test/moved")])
+
+    assert store.jobs_change_seq() > before
+
+
+def test_becoming_eligible_for_a_digest_moves_the_counter(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer")])
+    store.connection.execute("UPDATE jobs SET first_complete_scan_id = NULL")
+    before = store.jobs_change_seq()
+
+    store.connection.execute("UPDATE jobs SET first_complete_scan_id = 1 WHERE source_job_id = 'a'")
+
+    assert store.jobs_change_seq() > before
+
+
+def test_stored_match_decisions_do_not_move_the_counter(store: Storage, scan, record) -> None:
+    """The digest re-decides with the user's own rules, so the operator's view is not a change."""
+    scan([record("a", "Graduate Software Engineer")])
+    before = store.jobs_change_seq()
+
+    store.connection.execute(
+        "UPDATE jobs SET match_reason = '[\"different\"]' WHERE source_job_id = 'a'"
+    )
+
+    assert store.jobs_change_seq() == before

@@ -203,6 +203,36 @@ ALTER TABLE notifications ADD COLUMN reason TEXT NULL;
 ALTER TABLE notifications ADD COLUMN user_id INTEGER NULL;
 """
 
+_MIGRATION_8 = """
+INSERT OR IGNORE INTO service_meta (key, value) VALUES ('jobs_change_seq', '0');
+
+CREATE TRIGGER jobs_change_insert AFTER INSERT ON jobs BEGIN
+    UPDATE service_meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)
+     WHERE key = 'jobs_change_seq';
+END;
+
+CREATE TRIGGER jobs_change_delete AFTER DELETE ON jobs BEGIN
+    UPDATE service_meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)
+     WHERE key = 'jobs_change_seq';
+END;
+
+CREATE TRIGGER jobs_change_update AFTER UPDATE ON jobs
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.employer IS NOT NEW.employer
+  OR OLD.location_raw IS NOT NEW.location_raw
+  OR OLD.location_normalized_json IS NOT NEW.location_normalized_json
+  OR OLD.description IS NOT NEW.description
+  OR OLD.url IS NOT NEW.url
+  OR OLD.posted_at IS NOT NEW.posted_at
+  OR OLD.closing_at IS NOT NEW.closing_at
+  OR OLD.status IS NOT NEW.status
+  OR OLD.first_complete_scan_id IS NOT NEW.first_complete_scan_id
+BEGIN
+    UPDATE service_meta SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)
+     WHERE key = 'jobs_change_seq';
+END;
+"""
+
 _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_1,
     _MIGRATION_2,
@@ -211,6 +241,7 @@ _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_5,
     _MIGRATION_6,
     _MIGRATION_7,
+    _MIGRATION_8,
 )
 
 
@@ -565,6 +596,17 @@ class Storage:
             """,
             (key, value),
         )
+
+    def jobs_change_seq(self) -> int:
+        """A counter that moves whenever anything a digest could show has changed.
+
+        Triggers on `jobs` maintain it (migration 8), so a closed role, a retitled role, a new
+        direct link, a new description or a role that has just earned complete-scan eligibility
+        all bump it — while scan bookkeeping (`last_seen_scan_id`, `consecutive_misses`, stored
+        match decisions) deliberately does not. Caches keyed on this move only when a result
+        could actually differ.
+        """
+        return self.read_meta("jobs_change_seq") or 0
 
     def last_outage_notice_at(self, *, chat_id: str) -> str | None:
         """When an aggregated connectivity notice last reached this chat.

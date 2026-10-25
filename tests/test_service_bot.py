@@ -653,3 +653,94 @@ def test_the_digest_reaches_the_bot_api_as_a_valid_keyboard(tmp_path: Path) -> N
             for button in row:
                 assert set(button) == {"text", "callback_data"}, button
                 assert len(button["callback_data"].encode()) <= 64
+
+
+def test_a_closed_role_disappears_from_a_cached_digest(tmp_path: Path) -> None:
+    """The cache used to be keyed on the highest job id, so closing a role changed nothing."""
+    bot = _digest_app(tmp_path, 12)
+    store = bot.service  # type: ignore[attr-defined]
+    storage = store.storage
+
+    bot.handle_update(message_update(111, "/digest"))
+    assert "12 matching open roles" in bot.api.last  # type: ignore[attr-defined]
+    highest = storage.highest_job_id()
+
+    storage.connection.execute(
+        "UPDATE jobs SET status = 'closed' WHERE id = (SELECT min(id) FROM jobs)"
+    )
+
+    assert storage.highest_job_id() == highest, "the row was closed, not added"
+    bot.handle_update(message_update(111, "/digest"))
+    assert "11 matching open roles" in bot.api.last  # type: ignore[attr-defined]
+
+
+def test_an_edited_role_is_shown_as_edited_rather_than_cached(tmp_path: Path) -> None:
+    bot = _digest_app(tmp_path, 3)
+    store = bot.service  # type: ignore[attr-defined]
+    storage = store.storage
+
+    bot.handle_update(message_update(111, "/digest"))
+    assert "Graduate Software Engineer 0" in bot.api.last  # type: ignore[attr-defined]
+    highest = storage.highest_job_id()
+
+    storage.connection.execute(
+        """
+        UPDATE jobs SET title = 'Marketing Executive', url = 'https://example.test/moved'
+        WHERE id = (SELECT min(id) FROM jobs)
+        """
+    )
+
+    assert storage.highest_job_id() == highest, "the row was edited, not added"
+    bot.handle_update(message_update(111, "/digest"))
+    text = bot.api.last  # type: ignore[attr-defined]
+    assert "Marketing Executive" not in text, "a role that stopped matching must leave the digest"
+    assert "2 matching open roles" in text
+
+    storage.connection.execute(
+        "UPDATE jobs SET title = 'Graduate Software Developer 0'"
+        " WHERE id = (SELECT min(id) FROM jobs)"
+    )
+    bot.handle_update(message_update(111, "/digest"))
+    assert "3 matching open roles" in bot.api.last  # type: ignore[attr-defined]
+    bot.handle_update(callback_update(111, "d:2"))  # the edited row is the oldest, so page 2
+    text = bot.api.last_edit  # type: ignore[attr-defined]
+    assert "Graduate Software Developer 0" in text, "an edited title must be the one displayed"
+    assert "Graduate Software Engineer 0" not in text
+    assert "https://example.test/moved" in text, "the stored direct link is what users click"
+
+
+def test_a_role_that_becomes_digest_eligible_appears_without_a_new_row(tmp_path: Path) -> None:
+    bot = _digest_app(tmp_path, 3)
+    store = bot.service  # type: ignore[attr-defined]
+    storage = store.storage
+    storage.connection.execute("UPDATE jobs SET first_complete_scan_id = NULL")
+
+    bot.handle_update(message_update(111, "/digest"))
+    assert "Nothing matches your current filters" in bot.api.last  # type: ignore[attr-defined]
+
+    storage.connection.execute(
+        "UPDATE jobs SET first_complete_scan_id = 1 WHERE id = (SELECT max(id) FROM jobs)"
+    )
+    bot.handle_update(message_update(111, "/digest"))
+
+    assert "1 matching open role" in bot.api.last  # type: ignore[attr-defined]
+
+
+def test_page_navigation_after_a_change_reuses_the_new_result(tmp_path: Path, monkeypatch) -> None:
+    calls: list[int] = []
+    real = app_module.digest_entries
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(app_module, "digest_entries", counting)
+    bot = _digest_app(tmp_path, 12)
+    storage = bot.service.storage  # type: ignore[attr-defined]
+
+    bot.handle_update(message_update(111, "/digest"))
+    storage.connection.execute("UPDATE jobs SET title = 'Graduate Data Engineer' WHERE id = 1")
+    for page in (2, 3, 1):
+        bot.handle_update(callback_update(111, f"d:{page}"))
+
+    assert len(calls) == 2, "one recompute for the change, then the cache serves every page"

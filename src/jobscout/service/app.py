@@ -353,15 +353,21 @@ class BotApp:
         return DigestPage.paginate(entries, page=page, page_size=DIGEST_PAGE_SIZE)
 
     def _digest_cache_entries(self, user: Any) -> tuple[DigestEntry, ...]:
-        """The user's whole match set, recomputed only when the scope or the jobs have moved."""
+        """The user's whole match set, recomputed only when the answer could have changed.
+
+        The scope (fingerprint + subscriptions) covers their choices; `jobs_change_seq` covers the
+        jobs, and it moves on any insert, deletion or digest-relevant edit — a closed role, a
+        retitled role or a new direct link included. Keying on the highest job id alone missed
+        every change that reused an existing row.
+        """
         fingerprint = self._store.get_fingerprint(user.id)
         subscriptions = tuple(sorted(self._store.list_subscriptions(user.id)))
-        newest = self._storage.highest_job_id()
+        jobs_seq = self._storage.jobs_change_seq()
         cached = self._digest_cache.get(user.id)
-        if cached is not None and cached[:3] == (fingerprint, subscriptions, newest):
+        if cached is not None and cached[:3] == (fingerprint, subscriptions, jobs_seq):
             return cached[3]
         entries = digest_entries(self._storage, self._store, user)
-        self._digest_cache[user.id] = (fingerprint, subscriptions, newest, entries)
+        self._digest_cache[user.id] = (fingerprint, subscriptions, jobs_seq, entries)
         return entries
 
     def _digest_buttons(self, page: DigestPage) -> Rows | None:
