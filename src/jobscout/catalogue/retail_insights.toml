@@ -1,0 +1,13 @@
+# Greenhouse board `retailinsights` behind Retail Insights.
+# Discovery 2026-10-25: 250 roles, 236 UK,
+# 6 in a target family, 59 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: Business Analyst Internship at Retail Insights
+id = "retail_insights"
+employer = "Retail Insights"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "retailinsights"

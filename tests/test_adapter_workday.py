@@ -350,6 +350,33 @@ def test_detail_lookups_are_capped(barclays, fake_workday_http) -> None:
     assert result.records_parsed == 2
 
 
+def test_a_multi_site_board_can_complete_beyond_ten_detail_lookups(
+    barclays, fake_workday_http
+) -> None:
+    """MBDA's 73 graduate postings are mostly multi-site placeholders.
+
+    A cap of 10 made that board `partial` on every scan, and a partial scan never baselines,
+    alerts or becomes digest-eligible. The default budget now covers a whole board of them.
+    """
+    adapter = WorkdayAdapter(page_size=100)
+    records = [
+        posting(f"JR{index}", "Graduate Software Engineer", locationsText="2 Locations")
+        for index in range(1, 13)
+    ]
+    details = {
+        f"/job/London/JR{index}": {"jobPostingInfo": {"location": "Stevenage"}}
+        for index in range(1, 13)
+    }
+    client = fake_workday_http(pages=[page(records, total=12)], details=details)
+
+    result = adapter.fetch_scan(barclays, client)
+
+    assert result.status is ScanStatus.SUCCESS
+    assert len(client.gets) == 12
+    assert result.records_parsed == 12
+    assert all(job.location_normalized.qualifies for job in result.jobs)
+
+
 # pagination edge cases ----------------------------------------------------
 
 

@@ -1,0 +1,13 @@
+# Greenhouse board `symphony` behind Symphony Communication Services.
+# Discovery 2026-10-25: 18 roles, 10 UK,
+# 3 in a target family, 6 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: Placement, Business Intelligence and Solutions
+id = "symphony_comms"
+employer = "Symphony Communication Services"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "symphony"

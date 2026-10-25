@@ -143,3 +143,36 @@ def test_halifax_is_recognised_as_a_uk_town_name():
     result = normalize_location("Halifax")
 
     assert "halifax" in result.reason
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"),
+    [
+        ("Stevenage", "uk_city:stevenage"),
+        ("Bolton", "uk_city:bolton"),
+        ("Solihull", "uk_city:solihull"),
+        ("Rotherham", "uk_city:rotherham"),
+        ("Stevenage; Bolton", "uk_city:stevenage"),
+        ("Derby; Rotherham; Washington; Solihull", "uk_city:derby"),
+        ("Barrow-in-Furness", "uk_city:barrow-in-furness"),
+        ("Stoke-on-Trent", "uk_city:stoke-on-trent"),
+    ],
+)
+def test_graduate_employer_towns_are_recognised(raw, reason):
+    """Multi-site schemes name towns like Stevenage and Solihull.
+
+    They were unresolved, so MBDA's Stevenage graduate software roles were dropped as
+    "location_ambiguous" and only the Bristol ones could ever match.
+    """
+    result = normalize_location(raw)
+
+    assert result.qualifies is True
+    assert result.reason == reason
+
+
+def test_a_town_that_exists_abroad_stays_ambiguous():
+    """`Washington` must not become UK just because a UK employer names it."""
+    result = normalize_location("Washington")
+
+    assert result.qualifies is False
+    assert result.reason == "non_uk_city:washington"

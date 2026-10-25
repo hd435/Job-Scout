@@ -1,0 +1,13 @@
+# Greenhouse board `aquaticcapitalmanagement` behind Aquatic Capital Management.
+# Discovery 2026-10-25: 11 roles, 2 UK,
+# 2 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Quantitative Researcher, Intern (Summer 2027)
+id = "aquatic_capital"
+employer = "Aquatic Capital Management"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "aquaticcapitalmanagement"

@@ -1,0 +1,13 @@
+# Workable board `winthrop-technologies` behind Winthrop Technologies.
+# Discovery 2026-10-25: 239 roles, 33 UK,
+# 3 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Graduate Quantity Surveyor
+id = "winthrop"
+employer = "Winthrop Technologies"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "winthrop-technologies"

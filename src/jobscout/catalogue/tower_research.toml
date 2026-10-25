@@ -1,0 +1,13 @@
+# Greenhouse board `towerresearchcapital` behind Tower Research Capital.
+# Discovery 2026-10-25: 100 roles, 7 UK,
+# 5 in a target family, 3 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: Quantitative Research Internship - 6 Months, Central Execution Research
+id = "tower_research"
+employer = "Tower Research Capital"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "towerresearchcapital"

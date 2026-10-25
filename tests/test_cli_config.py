@@ -74,16 +74,16 @@ def test_show_marks_a_pinned_city_the_list_does_not_know(tmp_path: Path, capsys)
         """
 [preferences.locations]
 mode = "pinned"
-cities = ["London", "Bournemouth"]
+cities = ["London", "Uttoxeter"]
 """,
     )
 
     run_cli("config", "show", "--config", str(config))
     out = capsys.readouterr().out
 
-    assert "cities: London, Bournemouth" in out
+    assert "cities: London, Uttoxeter" in out
     assert "resolved through the city list: London" in out
-    assert "text match only" in out and "bournemouth" in out
+    assert "text match only" in out and "uttoxeter" in out
     assert "UK remote included: yes" in out
 
 

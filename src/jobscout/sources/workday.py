@@ -23,6 +23,12 @@ exercised only against synthetic fixtures; no live request has been made.
    "30+ Days Ago" stay `None`.
 7. The sitemap fallback described in the architecture is not implemented in M3;
    completeness comes from the reported `total`.
+
+**Detail lookup budget.** Placeholder locations ("2 Locations") need one detail GET each. The cap
+was 10, which made any board with more than ten multi-site postings `partial` on every scan — and a
+partial scan never baselines, alerts or becomes digest-eligible. Observed on `mbda`, whose 73
+graduate postings are mostly multi-site (2026-10-25). It is now 200, which is the same one-request-
+per-role cost the listing already pays and still bounded by the board size.
 """
 
 from __future__ import annotations
@@ -40,7 +46,7 @@ from .base import build_job, uk_employer
 
 WORKDAY_PAGE_SIZE = 20
 WORKDAY_MAX_PAGES = 200
-WORKDAY_MAX_DETAIL_LOOKUPS = 10
+WORKDAY_MAX_DETAIL_LOOKUPS = 200
 
 _PLACEHOLDER_LOCATION = re.compile(
     r"^\s*(?:\d+\s+locations?|multiple locations|various locations)\s*$", re.IGNORECASE

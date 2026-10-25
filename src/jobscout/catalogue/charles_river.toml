@@ -1,0 +1,13 @@
+# Greenhouse board `charlesriverassociates` behind Charles River Associates.
+# Discovery 2026-10-25: 91 roles, 11 UK,
+# 3 in a target family, 6 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: [2027 Master's graduates] Consulting Associate (European Competition practice)
+id = "charles_river"
+employer = "Charles River Associates"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "charlesriverassociates"

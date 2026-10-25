@@ -1,0 +1,13 @@
+# Workable board `focusrite` behind Focusrite Group.
+# Discovery 2026-10-25: 20 roles, 16 UK,
+# 4 in a target family, 12 with an early-career signal,
+# 4 both, 4 matching under the default rules.
+# Example: Hardware (Electronics and Firmware) Placement
+id = "focusrite"
+employer = "Focusrite Group"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "focusrite"

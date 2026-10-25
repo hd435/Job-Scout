@@ -1,0 +1,13 @@
+# Greenhouse board `fiveringsllc` behind Five Rings.
+# Discovery 2026-10-25: 17 roles, 3 UK,
+# 2 in a target family, 2 with an early-career signal,
+# 2 both, 2 matching under the default rules.
+# Example: Campus Full Time 2027 - Quantitative Trader - London
+id = "five_rings"
+employer = "Five Rings"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "fiveringsllc"

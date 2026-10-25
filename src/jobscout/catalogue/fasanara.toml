@@ -1,0 +1,14 @@
+# Workable board `fasanara` behind Fasanara Capital.
+# Discovery 2026-10-25: 14 roles, 14 UK,
+# 5 in a target family, 3 with an early-career signal,
+# 2 both, 2 matching under the default rules.
+# Example: Junior Java Software Developer
+id = "fasanara"
+employer = "Fasanara Capital"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "fasanara"
+uk_employer = true

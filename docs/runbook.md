@@ -368,14 +368,20 @@ Barclays, Wise and Arm on 2026-10-24, which is how the two wrong URL patterns an
 Workday search were found — expect the same.
 
 1. **Find the feed.** Decide which shape it is: Lever (`site`), Greenhouse (`board`), Ashby
-   (`board`), Workday (`host`/`tenant`/`site`), or a sitemap of job URLs whose pages carry
-   schema.org `JobPosting` JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
+   (`board`), Workable (`account`), Workday (`host`/`tenant`/`site`), or a sitemap of job URLs whose
+   pages carry schema.org `JobPosting` JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
    A site needing another shape needs an adapter, and that is development, not configuration.
-   For the one-request shapes (Greenhouse, Ashby, Lever) you do not have to guess: put the
+   For the one-request shapes (Greenhouse, Ashby, Lever, Workable) you do not have to guess: put the
    candidate on a line of `adapter,slug,Employer` and run
    `python tools/probe_boards.py --input candidates.txt`. It reports roles, UK roles, roles in a
    target family and early-career signals for every candidate, in one request each — that is how
    expansion batch 2 chose its 43 employers (D-100).
+   **Better: start from an employer, not a slug.** Guessing board tokens had fallen to a 4.5 % hit
+   rate by batch 3. Batch 4-6 instead started from a public weekly list of UK graduate, internship,
+   placement and apprenticeship roles whose rows name the employer, then fetched one published job
+   page per employer to read the board URL it actually uses (the page carries it). That found 158
+   boards across 214 employers in about four minutes and turned the guess into a measured
+   inventory. Any similar list that links to employers' own postings works the same way.
 2. **Write one catalogue file** in your catalogue directory. It must carry an `access_note`
    naming the public endpoint it reads and the hygiene applied (D-087) — that is the record AC-19
    asks for, and the loader rejects a file without one. For a sitemap site, open its sitemap
@@ -544,6 +550,71 @@ which is where banks, insurers and consultancies publish graduate programmes —
 Teamtailor and SmartRecruiters for UK mid-market employers. Each needs per-employer discovery
 (host, tenant and site for Workday) rather than a one-request probe, which is why it is a separate
 batch rather than more of the same.
+
+**Batch 4-6 — 2026-10-25 — 34 employers found from the platform behind known UK early-career
+employers, plus two adapter defects and a location-coverage gap fixed on the way.**
+
+Batch 3's conclusion was that probing guessed board tokens had run out of supply (4.5 % hit rate).
+This batch changed the direction of the search: instead of guessing a slug and asking whether it
+happens to have UK early-career roles, it started from employers that demonstrably do publish them.
+A public, weekly-rebuilt list of UK graduate, internship, placement and apprenticeship roles — 617
+roles across 214 employers, every row linked to the employer's own posting — was reduced to one
+published job page per employer. That page carries the board URL the employer uses, so one request
+per employer identified the platform: **78 Workday, 42 Workable, 31 Greenhouse, 6 Recruitee, 1
+Rippling, 56 unidentifiable**. The probeable boards then went through the usual
+`tools/probe_boards.py` gate, and the Workday graduate sites through `validate --live-only`.
+
+| Measure | Value |
+|---|---|
+| Catalogue | 77 → **111 employers** |
+| Enabled on the hosted deployment | 76 → **110** (`barclays` the only exclusion) |
+| Added | **34**: 10 Workable, 18 Greenhouse, 3 Lever, 3 Workday |
+| Roles on the new boards | **2 174** (937 in the UK) |
+| Matches / review under the default rules | **≈68 / ≈73** |
+| First scan complete | 34 of 34, after the two fixes below |
+
+Largest contributors (roles / UK / matches): `cfo_insights` 363/250/3, `affirm` 225/17/1,
+`retail_insights` 250/236/3, `winthrop` 239/33/1, `scale_ai` 171/26/2, `drw` 164/44/3,
+`tower_research` 100/7/3, `charles_river` 91/11/3, `mbda` 73/73/13, `focusrite` 20/16/4,
+`grayce` 13/13/6.
+
+**Three defects the batch surfaced, all fixed and tested:**
+
+1. **Workable publishes a multi-location post once per location under one `shortcode`.** The adapter
+   reported those rows as duplicates, which made the scan `partial` — and a partial scan never
+   baselines, never alerts and never becomes digest-eligible. `grayce`, `winthrop` and `moneyfarm`
+   would have been silently dead sources. Rows are now merged into one job with the locations
+   joined; `grayce` scans 33 records as 13 roles, complete.
+2. **The Workday detail-lookup cap was 10.** Placeholder locations ("2 Locations") need one detail
+   GET each, so `mbda` — 73 multi-site graduate postings — was permanently partial. The cap is now
+   200, the same one-request-per-role cost the listing already pays. `mbda` scans complete and
+   contributes 13 matching UK graduate software and cyber roles in Bristol and Stevenage.
+3. **The UK town list was too short.** `Stevenage`, `Bolton`, `Solihull`, `Rotherham` and 61 other
+   towns with large graduate employers were "location_unresolved", so MBDA's Stevenage roles were
+   excluded while its Bristol ones matched. 65 towns were added; names that exist abroad
+   (`Washington`, `Perth`, and the usual Cambridge/Oxford/Manchester collisions) stay ambiguous and
+   still need a country token or a `uk_employer` board.
+
+**Considered and rejected, with the reason recorded so it is not re-researched:**
+
+- `rolls_royce` — the `intern_graduate` site is global (Singapore, Oberursel, Dahlewitz): 94
+  postings, 7 in the UK, 0 matches, and 94 detail requests per scan mostly for non-UK roles. Revisit
+  if a UK-only site appears.
+- `andurilindustries` — 2 511 postings for one UK early-career match; disproportionate scan cost.
+- `canonical`, `hr_wallingford` — 314 and 4 postings, 2 and 1 in a target family, none with an
+  early-career signal. Coverage without value today.
+- `thirdbridge` — 35 UK early-career roles, but only 1 in a target family; its titles are research
+  "Associate" roles.
+- `ctccampusboard`, `mwinternshipprogram` — campus/aggregator boards, not employers.
+- **Recruitee (6 employers)** — no adapter; the largest identified platform we cannot read yet.
+- **Workday backlog: 75 of the 78 identified tenants are not enabled.** The CXS endpoint is
+  undocumented and per-tenant, and D-094's hosted posture is what got `barclays` excluded. The
+  tenant/site inventory is the input to a separate decision, not a batch to force through.
+
+**Deploying this batch.** The hosted deployment picks the new employers up on the next
+`install.sh`, because the catalogue ships with the package. Existing subscribers keep the employer
+set they chose until they open `/settings` — a wider catalogue never widens somebody's subscription
+silently.
 
 **What the batch proved, and what it did not.** It proved the candidate → validate → enable → baseline
 path works at scale for one adapter shape, and that `report` distinguishes stored roles from value

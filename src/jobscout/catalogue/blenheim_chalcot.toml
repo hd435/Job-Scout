@@ -1,0 +1,13 @@
+# Greenhouse board `blenheimchalcot` behind Blenheim Chalcot.
+# Discovery 2026-10-25: 13 roles, 10 UK,
+# 3 in a target family, 6 with an early-career signal,
+# 2 both, 2 matching under the default rules.
+# Example: Graduate Data Engineer
+id = "blenheim_chalcot"
+employer = "Blenheim Chalcot"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "blenheimchalcot"

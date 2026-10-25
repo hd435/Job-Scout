@@ -1,0 +1,13 @@
+# Greenhouse board `catapultsports` behind Catapult Sports.
+# Discovery 2026-10-25: 23 roles, 7 UK,
+# 6 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Graduate Software Engineer
+id = "catapult_sports"
+employer = "Catapult Sports"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "catapultsports"

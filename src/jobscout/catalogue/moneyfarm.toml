@@ -1,0 +1,13 @@
+# Workable board `moneyfarm` behind Moneyfarm.
+# Discovery 2026-10-25: 19 roles, 9 UK,
+# 3 in a target family, 2 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Junior FP&A Analyst
+id = "moneyfarm"
+employer = "Moneyfarm"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "moneyfarm"

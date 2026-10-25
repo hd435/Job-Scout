@@ -1,0 +1,14 @@
+# Workable board `nu-quantum` behind Nu Quantum.
+# Discovery 2026-10-25: 8 roles, 8 UK,
+# 2 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: FPGA Engineer - Quantum Networking (Early Career)
+id = "nu_quantum"
+employer = "Nu Quantum"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "nu-quantum"
+uk_employer = true

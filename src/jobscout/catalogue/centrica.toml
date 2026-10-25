@@ -1,0 +1,13 @@
+﻿# Centrica runs Workday; the group board is large, so the site's own `graduate` search bounds a scan.
+id = "centrica"
+employer = "Centrica"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at centrica.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, narrowed by the site's own `graduate` search"
+cadence_minutes = 30
+
+[options]
+host = "centrica.wd3.myworkdayjobs.com"
+tenant = "centrica"
+site = "centrica"
+locale = "en-US"
+search_text = "graduate"

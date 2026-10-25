@@ -1,0 +1,13 @@
+# Lever board `ekimetrics` behind Ekimetrics.
+# Discovery 2026-10-25: 33 roles, 6 UK,
+# 6 in a target family, 2 with an early-career signal,
+# 2 both, 0 matching under the default rules.
+# Example: no matching title today
+id = "ekimetrics"
+employer = "Ekimetrics"
+adapter = "lever"
+access_note = "public Lever postings API (api.lever.co/v0/postings), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+site = "ekimetrics"

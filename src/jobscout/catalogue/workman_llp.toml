@@ -1,0 +1,14 @@
+# Workable board `workman-llp` behind Workman LLP.
+# Discovery 2026-10-25: 27 roles, 27 UK,
+# 2 in a target family, 3 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: 2027 Early Careers Programme - Building Consultancy
+id = "workman_llp"
+employer = "Workman LLP"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "workman-llp"
+uk_employer = true

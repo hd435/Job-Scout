@@ -1,0 +1,13 @@
+# Greenhouse board `drweng` behind DRW.
+# Discovery 2026-10-25: 164 roles, 44 UK,
+# 26 in a target family, 5 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: Quantitative Research Intern
+id = "drw"
+employer = "DRW"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "drweng"

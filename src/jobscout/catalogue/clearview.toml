@@ -1,0 +1,13 @@
+# Greenhouse board `clearviewhealthcarepartners` behind ClearView Healthcare Partners.
+# Discovery 2026-10-25: 31 roles, 9 UK,
+# 7 in a target family, 1 with an early-career signal,
+# 0 both, 0 matching under the default rules.
+# Example: no matching title today
+id = "clearview"
+employer = "ClearView Healthcare Partners"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "clearviewhealthcarepartners"

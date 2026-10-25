@@ -1,0 +1,14 @@
+# Workable board `longshot-systems-ltd` behind Longshot Systems.
+# Discovery 2026-10-25: 6 roles, 6 UK,
+# 5 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Graduate Machine Learning Researcher
+id = "longshot_systems"
+employer = "Longshot Systems"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "longshot-systems-ltd"
+uk_employer = true

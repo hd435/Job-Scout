@@ -229,6 +229,60 @@ It is a source-selection document, not a promise of coverage. Job counts and rol
 - Neither has been checked for UK/London coverage, early-career supply, or field completeness yet.
 - They are candidates to replace low-yield AI sources later, not part of the locked MVP set.
 
+## Batch 4-6 findings (2026-10-25)
+
+The catalogue went from 77 to 111 employers. The interesting result is not the count but where the
+employers came from, and the three platform behaviours that had to be fixed before their boards
+could be trusted.
+
+### Discovery: read the platform off the employer, not the slug
+
+Guessing board tokens had fallen to a 4.5 % hit rate. Instead, a public weekly list of UK graduate,
+internship, placement and apprenticeship roles (617 roles, 214 employers, each row linked to the
+employer's own posting) was reduced to one published job page per employer. Each such page carries
+the board URL the employer publishes on, so one request per employer produced an inventory:
+
+| Platform | Employers | Supported | Notes |
+|---|---|---|---|
+| Workday | 78 | yes, per tenant | banks, insurers, engineering, law, pharma |
+| Workable | 42 | yes | UK mid-market: consultancies, property, manufacturing |
+| Greenhouse | 31 | yes | mostly London offices of international firms |
+| Recruitee | 6 | **no adapter** | small UK employers; the largest gap left |
+| Rippling | 1 | no adapter | one employer only |
+| Unknown | 56 | — | in-house careers sites |
+
+That ratio is the finding: the UK graduate market publishes overwhelmingly on Workday, not on the
+startup platforms the catalogue had been built from. Workday is deliberately under-used (below).
+
+### Workable publishes one row per location, not one row per role
+
+A multi-location post repeats the same `shortcode` once per city. The adapter counted those as
+duplicate records, which set the scan to `partial` — and a partial scan never baselines, never
+alerts and never becomes digest-eligible. Any Workable board with a multi-site role was therefore a
+silently dead source. Rows are now merged into one job with the locations joined
+(`grayce`: 33 records → 13 roles, complete).
+
+### Workday's placeholder locations need a delivery budget, not a token one
+
+Postings whose location is "2 Locations" need one detail GET to resolve. That budget was 10, so
+`mbda` (73 multi-site graduate postings) was permanently partial. It is now 200, bounded by board
+size. `mbda` completes and contributes 13 matching UK graduate software, systems and cyber roles.
+
+### The UK town list was the real location bottleneck
+
+`Stevenage`, `Bolton`, `Solihull`, `Rotherham` and 61 other towns with large graduate employers were
+absent from the UK city list, so those roles were "location_unresolved" whatever the rules said. 65
+towns were added. Names that exist abroad (`Washington`, `Perth`, plus the Cambridge/Oxford/
+Manchester collisions) stay ambiguous and still need a country token or a `uk_employer` board.
+
+### Workday remains the deliberate backlog
+
+75 of the 78 identified Workday tenants, and their site names, are known but not enabled. The CXS
+endpoint is undocumented, per-tenant, and the same reasoning that excluded `barclays` from the
+hosted set applies. A future batch should take a few purpose-built campus sites (`intern_graduate`,
+`*_campus_careers`) one at a time, with the bounded `search_text` and the detail budget now fixed,
+rather than mass-enabling group boards.
+
 ## Cross-cutting findings
 
 ### Access patterns

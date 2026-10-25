@@ -123,3 +123,50 @@ def test_a_payload_without_a_jobs_array_is_a_failure(fake_http) -> None:
 
     assert result.status is ScanStatus.FAILED
     assert "jobs array" in (result.error_summary or "")
+
+
+def test_a_multi_location_post_is_one_job_not_a_duplicate(fake_http) -> None:
+    """Workable publishes one row per location under the same shortcode.
+
+    Treating those rows as duplicates made every such board permanently `partial`, and a partial
+    scan never baselines, alerts or becomes digest-eligible.
+    """
+    london = _record()
+    manchester = _record(
+        city="Manchester",
+        state="England",
+        country="United Kingdom",
+        locations=[],
+    )
+    birmingham = _record(
+        city="Birmingham",
+        state="England",
+        country="United Kingdom",
+        locations=None,
+        url="https://apply.workable.com/acme/j/8E20F2A1BD",
+    )
+
+    result = WorkableAdapter().fetch_scan(
+        _source(), fake_http({"jobs": [london, manchester, birmingham]})
+    )
+
+    assert result.status is ScanStatus.SUCCESS, "a multi-location board is still complete"
+    assert result.records_seen == 3
+    assert result.records_parsed == 1
+    assert result.skipped == ()
+    job = result.jobs[0]
+    assert job.source_job_id == "8E20F2A1BD"
+    assert "Manchester, England, United Kingdom" in job.location_raw
+    assert "Birmingham, England, United Kingdom" in job.location_raw
+    assert job.location_normalized.qualifies is True
+
+
+def test_two_different_posts_with_the_same_city_stay_two_jobs(fake_http) -> None:
+    first = _record()
+    second = _record(shortcode="AAAAAAAAAA", url="https://apply.workable.com/acme/j/AAAAAAAAAA")
+
+    result = WorkableAdapter().fetch_scan(_source(), fake_http({"jobs": [first, second]}))
+
+    assert result.status is ScanStatus.SUCCESS
+    assert result.records_parsed == 2
+    assert {job.source_job_id for job in result.jobs} == {"8E20F2A1BD", "AAAAAAAAAA"}

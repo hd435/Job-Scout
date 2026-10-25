@@ -9,6 +9,12 @@ description, so there is no pagination and no detail refresh. Observed 2026-10-2
 Workable has no numeric job id in this payload; `shortcode` is the identifier that appears in the
 public URL (`https://apply.workable.com/j/8E20F2A1BD`), so it is the source job id and it is stable
 across scans.
+
+A multi-location post is published **once per location under the same shortcode**. Those rows are
+one role, so they are merged into one job with the locations joined rather than reported as
+duplicate records — a board with any multi-location post would otherwise be `partial` forever, and
+a partial scan never baselines, never alerts and never becomes digest-eligible (observed on
+`grayce`, `winthrop-technologies` and `moneyfarm`, 2026-10-25).
 """
 
 from __future__ import annotations
@@ -54,19 +60,30 @@ class WorkableAdapter:
 
         jobs: list[Job] = []
         skipped: list[SkipReason] = []
-        seen_ids: set[str] = set()
+        grouped: dict[str, dict[str, Any]] = {}
+        order: list[str] = []
 
         for index, record in enumerate(records):
-            mapped = _map_record(record, index, config)
+            if not isinstance(record, dict):
+                skipped.append(SkipReason(None, "record_not_object", f"index={index}"))
+                continue
+            job_id = _record_id(record)
+            if not job_id:
+                skipped.append(SkipReason(None, "missing_source_job_id", f"index={index}"))
+                continue
+            if job_id in grouped:
+                _add_location_variant(grouped[job_id], record)
+                continue
+            base = dict(record)
+            base["locations"] = list(record.get("locations") or ())
+            grouped[job_id] = base
+            order.append(job_id)
+
+        for index, job_id in enumerate(order):
+            mapped = _map_record(grouped[job_id], index, config)
             if isinstance(mapped, SkipReason):
                 skipped.append(mapped)
                 continue
-            if mapped.source_job_id in seen_ids:
-                skipped.append(
-                    SkipReason(mapped.source_job_id, "duplicate_source_job_id", f"index={index}")
-                )
-                continue
-            seen_ids.add(mapped.source_job_id)
             jobs.append(mapped)
 
         if skipped:
@@ -90,11 +107,39 @@ class WorkableAdapter:
         )
 
 
+def _record_id(record: dict[str, Any]) -> str | None:
+    return _as_text(record.get("shortcode")) or _as_text(record.get("code"))
+
+
+def _add_location_variant(base: dict[str, Any], record: dict[str, Any]) -> None:
+    """Fold another row of the same post into the base record's `locations` list."""
+    entry = {
+        "city": _as_text(record.get("city")),
+        "region": _as_text(record.get("state")),
+        "country": _as_text(record.get("country")),
+    }
+    candidate = {key: value for key, value in entry.items() if value}
+    if not candidate:
+        return
+    existing = base.get("locations")
+    if not isinstance(existing, list):
+        existing = []
+        base["locations"] = existing
+    keys = {
+        (item.get("city"), item.get("region"), item.get("country"))
+        for item in existing
+        if isinstance(item, dict)
+    }
+    if (candidate.get("city"), candidate.get("region"), candidate.get("country")) in keys:
+        return
+    existing.append(candidate)
+
+
 def _map_record(record: Any, index: int, config: SourceConfig) -> Job | SkipReason:
     if not isinstance(record, dict):
         return SkipReason(None, "record_not_object", f"index={index}")
 
-    source_job_id = _as_text(record.get("shortcode")) or _as_text(record.get("code"))
+    source_job_id = _record_id(record)
     if not source_job_id:
         return SkipReason(None, "missing_source_job_id", f"index={index}")
 

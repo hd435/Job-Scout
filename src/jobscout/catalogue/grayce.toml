@@ -1,0 +1,14 @@
+# Workable board `grayce` behind Grayce.
+# Discovery 2026-10-25: 13 roles, 13 UK,
+# 9 in a target family, 9 with an early-career signal,
+# 6 both, 6 matching under the default rules.
+# Example: Graduate Business Consultant
+id = "grayce"
+employer = "Grayce"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "grayce"
+uk_employer = true

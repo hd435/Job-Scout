@@ -1,0 +1,13 @@
+# Workable board `arondite` behind Arondite.
+# Discovery 2026-10-25: 18 roles, 14 UK,
+# 8 in a target family, 2 with an early-career signal,
+# 2 both, 2 matching under the default rules.
+# Example: Deployed Software Engineer (New Grad)
+id = "arondite"
+employer = "Arondite"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "arondite"

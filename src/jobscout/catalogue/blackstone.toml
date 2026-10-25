@@ -1,0 +1,12 @@
+﻿# Blackstone runs Workday; this is the campus/graduate site rather than the whole group board.
+id = "blackstone"
+employer = "Blackstone"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at blackstone.wd1.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, campus site only"
+cadence_minutes = 30
+
+[options]
+host = "blackstone.wd1.myworkdayjobs.com"
+tenant = "blackstone"
+site = "blackstone_campus_careers"
+locale = "en-US"

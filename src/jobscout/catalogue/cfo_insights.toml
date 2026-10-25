@@ -1,0 +1,13 @@
+# Greenhouse board `cfoinsights` behind CFO Insights.
+# Discovery 2026-10-25: 363 roles, 250 UK,
+# 7 in a target family, 58 with an early-career signal,
+# 3 both, 3 matching under the default rules.
+# Example: Business Analyst Internship at CFO Insights
+id = "cfo_insights"
+employer = "CFO Insights"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "cfoinsights"

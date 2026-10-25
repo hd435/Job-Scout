@@ -1,0 +1,13 @@
+# Greenhouse board `neptunenorth` behind Neptune North.
+# Discovery 2026-10-25: 25 roles, 20 UK,
+# 14 in a target family, 4 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Graduate Software Developer (2027) (Newcastle)
+id = "neptune_north"
+employer = "Neptune North"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "neptunenorth"

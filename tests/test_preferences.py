@@ -295,9 +295,9 @@ def test_uk_plus_pinned_admits_a_pinned_city_outside_the_uk() -> None:
 
 
 def test_an_unknown_pinned_city_matches_on_the_raw_location() -> None:
-    rules = build_rules(locations=LocationPreferences(mode="pinned", cities=["Bournemouth"]))
+    rules = build_rules(locations=LocationPreferences(mode="pinned", cities=["Uttoxeter"]))
 
-    decision = match_job(make_job("Graduate Data Analyst", location="Bournemouth"), rules)
+    decision = match_job(make_job("Graduate Data Analyst", location="Uttoxeter"), rules)
 
     assert decision.decision is MatchOutcome.MATCH
     assert "location:pinned_city" in decision.reasons
@@ -322,10 +322,10 @@ def test_the_default_location_preferences_are_the_shipped_uk_scope() -> None:
 
 
 def test_split_pinned_cities_separates_resolved_names_from_text() -> None:
-    known, patterns = split_pinned_cities(["london", "LONDON", "Bournemouth", ""])
+    known, patterns = split_pinned_cities(["london", "LONDON", "Uttoxeter", ""])
 
     assert known == ("London",)
-    assert patterns == ("bournemouth",)
+    assert patterns == ("uttoxeter",)
 
 
 def test_an_unknown_location_mode_is_rejected() -> None:

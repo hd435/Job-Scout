@@ -1,0 +1,13 @@
+# Workable board `javelin-global-commodities` behind Javelin Global Commodities.
+# Discovery 2026-10-25: 5 roles, 3 UK,
+# 1 in a target family, 3 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Summer Intern: Software Engineering
+id = "javelin_commodities"
+employer = "Javelin Global Commodities"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "javelin-global-commodities"

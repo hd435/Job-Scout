@@ -1,0 +1,13 @@
+# Lever board `bloomon` behind bloomon.
+# Discovery 2026-10-25: 12 roles, 7 UK,
+# 1 in a target family, 1 with an early-career signal,
+# 1 both, 1 matching under the default rules.
+# Example: Junior Full Stack Engineer
+id = "bloomon"
+employer = "bloomon"
+adapter = "lever"
+access_note = "public Lever postings API (api.lever.co/v0/postings), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+site = "bloomon"
