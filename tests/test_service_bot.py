@@ -303,6 +303,9 @@ class RecordingPoster:
     def messages(self) -> list[dict]:
         return [payload for url, payload in self.payloads if url.endswith("/sendMessage")]
 
+    def edits(self) -> list[dict]:
+        return [payload for url, payload in self.payloads if url.endswith("/editMessageText")]
+
 
 def test_buttons_reach_the_bot_api_as_a_valid_inline_keyboard(tmp_path: Path) -> None:
     """A fake API accepts anything; only the real serialiser proves Telegram would accept it."""
@@ -451,7 +454,7 @@ def test_settings_keeps_an_employer_set_that_matches_no_pack(app: BotApp) -> Non
 # ---------------------------------------------------------------------------
 
 
-def _digest_app(tmp_path: Path, roles: int) -> BotApp:
+def _digest_app(tmp_path: Path, roles: int, *, api=None) -> BotApp:
     storage = Storage.open(tmp_path / "digest.db")
     payload = tmp_path / "digest.json"
     payload.write_text(
@@ -487,7 +490,7 @@ def _digest_app(tmp_path: Path, roles: int) -> BotApp:
     store.save_preferences(user.id, SAVED_SCOPE, fingerprint="fp")
     store.set_subscriptions(user.id, (SOURCE.id,))
     store.set_watermark(user.id, storage.highest_job_id())
-    api = FakeApi()
+    api = api or FakeApi()
     bot = BotApp(api, storage, store, sources=(SOURCE,))  # type: ignore[arg-type]
     bot.api = api  # type: ignore[attr-defined]
     bot.service = store  # type: ignore[attr-defined]
@@ -631,3 +634,22 @@ def test_a_changed_scope_recomputes_the_digest(tmp_path: Path, monkeypatch) -> N
     bot.handle_update(message_update(111, "/digest"))
 
     assert len(calls) == 2, "a new scope must not be served from the old answer"
+
+
+def test_the_digest_reaches_the_bot_api_as_a_valid_keyboard(tmp_path: Path) -> None:
+    """A fake API accepts anything; only the real serialiser proves Telegram would accept it."""
+    poster = RecordingPoster()
+    bot = _digest_app(tmp_path, 12, api=BotApi("123:test-token", poster=poster))
+
+    bot.handle_update(message_update(111, "/digest"))
+    bot.handle_update(callback_update(111, "d:2"))
+
+    sent = poster.messages()[-1]["reply_markup"]["inline_keyboard"]
+    edited = poster.edits()[-1]["reply_markup"]["inline_keyboard"]
+    assert [button["callback_data"] for row in sent for button in row] == ["d:2"]
+    assert [button["callback_data"] for row in edited for button in row] == ["d:1", "d:3"]
+    for keyboard in (sent, edited):
+        for row in keyboard:
+            for button in row:
+                assert set(button) == {"text", "callback_data"}, button
+                assert len(button["callback_data"].encode()) <= 64
