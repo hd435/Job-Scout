@@ -10,10 +10,10 @@ Five steps: role families → employment types → location → employers → re
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 
-from .packs import EMPLOYMENT, FAMILIES, LOCATION_BY_KEY, LOCATIONS, Pack
+from .packs import EMPLOYMENT, FAMILIES, LOCATION_BY_KEY, LOCATIONS, Pack, matching_pack
 
 STEP_FAMILIES = "families"
 STEP_EMPLOYMENT = "employment"
@@ -22,6 +22,13 @@ STEP_EMPLOYERS = "employers"
 STEP_REVIEW = "review"
 
 STEPS = (STEP_FAMILIES, STEP_EMPLOYMENT, STEP_LOCATION, STEP_EMPLOYERS, STEP_REVIEW)
+
+#: Draft markers for "the saved value cannot be expressed as a preset, so keep it as it is".
+#: They exist so reopening /settings can never quietly narrow a scope it cannot display.
+KEEP_PACK = "__keep__"
+KEEP_LOCATION = "__keep__"
+KEEP_PACK_ROW = f"p:{KEEP_PACK}"
+KEEP_LOCATION_ROW = f"l:{KEEP_LOCATION}"
 
 Rows = tuple[tuple[tuple[str, str], ...], ...]
 
@@ -39,6 +46,10 @@ class Draft:
     employment: tuple[str, ...] = ()
     location: str = "london_remote"
     pack: str = "all"
+    #: Employer scope to keep verbatim. Only used when `pack` is KEEP_PACK.
+    sources: tuple[str, ...] = ()
+    #: Location settings to keep verbatim. Only used when `location` is KEEP_LOCATION.
+    location_custom: dict = field(default_factory=dict)
 
     def as_json(self) -> dict:
         return {
@@ -46,16 +57,77 @@ class Draft:
             "employment": list(self.employment),
             "location": self.location,
             "pack": self.pack,
+            "sources": list(self.sources),
+            "location_custom": self.location_custom,
         }
 
     @classmethod
     def from_json(cls, data: dict) -> Draft:
+        custom = data.get("location_custom")
         return cls(
             families=tuple(str(item) for item in data.get("families", ())),
             employment=tuple(str(item) for item in data.get("employment", ())),
             location=str(data.get("location", "london_remote")),
             pack=str(data.get("pack", "all")),
+            sources=tuple(str(item) for item in data.get("sources", ())),
+            location_custom=dict(custom) if isinstance(custom, dict) else {},
         )
+
+
+def draft_from_state(
+    settings: Mapping[str, object] | None,
+    subscriptions: Sequence[str],
+    packs: Sequence[Pack],
+) -> Draft:
+    """Rebuild the wizard's draft from what was actually saved, without guessing.
+
+    The saved preference schema (`role_families`, `employment_types`, `locations`) is the CLI's
+    configuration schema, not the draft's shape — mapping it here is what makes /settings show
+    the user's real answers instead of defaults. A saved employer set that matches no current
+    pack, or a saved location that matches no preset, is carried through verbatim.
+    """
+    saved = settings or {}
+    families = tuple(str(item) for item in saved.get("role_families", ()) or ())
+    employment = tuple(str(item) for item in saved.get("employment_types", ()) or ())
+
+    stored_location = saved.get("locations")
+    location_key = KEEP_LOCATION
+    location_custom: dict = {}
+    if isinstance(stored_location, Mapping):
+        candidate = dict(stored_location)
+        for preset in LOCATIONS:
+            if preset.settings() == candidate:
+                location_key = preset.key
+                break
+        else:
+            location_custom = candidate
+
+    chosen = tuple(str(item) for item in subscriptions)
+    pack = matching_pack(packs, chosen)
+    if pack is not None:
+        return Draft(
+            families=families,
+            employment=employment,
+            location=location_key,
+            pack=pack.key,
+            location_custom=location_custom,
+        )
+    if chosen:
+        return Draft(
+            families=families,
+            employment=employment,
+            location=location_key,
+            pack=KEEP_PACK,
+            sources=chosen,
+            location_custom=location_custom,
+        )
+    return Draft(
+        families=families,
+        employment=employment,
+        location=location_key,
+        pack="all",
+        location_custom=location_custom,
+    )
 
 
 @dataclass(frozen=True)
@@ -80,51 +152,56 @@ def default_draft() -> Draft:
 
 
 def _families_reply(draft: Draft) -> Reply:
-    rows: list[tuple[tuple[str, str], ...]] = []
-    for index in range(0, len(FAMILIES), 2):
-        rows.append(
-            tuple(
-                (f"{'✅' if key in draft.families else '▫️'} {label}", f"f:{key}")
-                for key, label in FAMILIES[index : index + 2]
-            )
-        )
-    rows.append((("Done →", "f:next"),))
+    # One button per row: "✅ Business analysis" plus a second long label does not fit a phone
+    # keyboard, and Telegram truncates rather than wrapping.
+    rows = tuple(
+        ((f"{'✅' if key in draft.families else '▫️'} {label}", f"f:{key}"),)
+        for key, label in FAMILIES
+    )
     return Reply(
         "1/5 · Which kinds of role should we tell you about?\n"
         "Tap to switch each one on or off, then Done.",
-        tuple(rows),
+        (*rows, (("Done →", "f:next"),)),
     )
 
 
 def _employment_reply(draft: Draft) -> Reply:
     rows = tuple(
-        (("✅ " if key in draft.employment else "▫️ ") + label, f"e:{key}")
+        ((("✅ " if key in draft.employment else "▫️ ") + label, f"e:{key}"),)
         for key, label in EMPLOYMENT
     )
     return Reply(
         "2/5 · Which of these count as early-career for you?",
-        (rows, (("Done →", "e:next"),)),
+        (*rows, (("Done →", "e:next"),)),
     )
 
 
 def _location_reply(draft: Draft) -> Reply:
-    rows = tuple(
-        (("✅ " if draft.location == preset.key else "") + preset.label, f"l:{preset.key}")
+    rows: list[tuple[tuple[str, str], ...]] = []
+    if draft.location == KEEP_LOCATION and draft.location_custom:
+        # The saved scope matches no preset (hand-edited or older data). Offer to keep it rather
+        # than silently replacing it with the nearest preset.
+        rows.append((("✅ Keep my current location settings", KEEP_LOCATION_ROW),))
+    rows.extend(
+        ((("✅ " if draft.location == preset.key else "") + preset.label, f"l:{preset.key}"),)
         for preset in LOCATIONS
     )
-    return Reply(
-        "3/5 · Where would you work?",
-        (rows,),
-    )
+    return Reply("3/5 · Where would you work?", tuple(rows))
 
 
 def _employers_reply(draft: Draft, packs: Sequence[Pack]) -> Reply:
-    rows = tuple(
-        (("✅ " if draft.pack == pack.key else "") + pack.label, f"p:{pack.key}") for pack in packs
+    rows: list[tuple[tuple[str, str], ...]] = []
+    if draft.pack == KEEP_PACK:
+        count = len(draft.sources)
+        noun = "employer" if count == 1 else "employers"
+        rows.append(((f"✅ Keep the {count} {noun} I chose", KEEP_PACK_ROW),))
+    rows.extend(
+        ((("✅ " if draft.pack == pack.key else "") + pack.label, f"p:{pack.key}"),)
+        for pack in packs
     )
     return Reply(
         "4/5 · Which employers should we watch?\nYou can change this later with /settings.",
-        (rows,),
+        tuple(rows),
     )
 
 
@@ -134,9 +211,18 @@ def _summary(draft: Draft, packs: Sequence[Pack]) -> str:
     families = ", ".join(family_labels.get(key, key) for key in draft.families) or "none"
     employment = ", ".join(employment_labels.get(key, key) for key in draft.employment) or "none"
     location = LOCATION_BY_KEY.get(draft.location)
-    location_text = location.label if location else draft.location
-    pack = next((item for item in packs if item.key == draft.pack), None)
-    employers = f"{pack.label} ({len(pack.source_ids)})" if pack else "none"
+    if location is not None:
+        location_text = location.label
+    elif draft.location_custom:
+        location_text = "your current location settings (unchanged)"
+    else:
+        location_text = draft.location
+    if draft.pack == KEEP_PACK:
+        count = len(draft.sources)
+        employers = f"the {count} employer{'' if count == 1 else 's'} you chose (unchanged)"
+    else:
+        pack = next((item for item in packs if item.key == draft.pack), None)
+        employers = f"{pack.label} ({len(pack.source_ids)})" if pack else "none"
     return (
         f"Roles: {families}\n"
         f"Early career: {employment}\n"
@@ -231,11 +317,17 @@ def handle(step: str, draft: Draft, data: str, packs: Sequence[Pack]) -> Step:
         return Step(STEP_EMPLOYMENT, updated, _employment_reply(updated))
 
     if data.startswith("l:"):
-        updated = replace(draft, location=data.split(":", 1)[1])
+        key = data.split(":", 1)[1]
+        # Tapping a preset replaces a kept custom location; leaving both set would make the
+        # review screen describe the wrong one. The keep row leaves the draft alone.
+        updated = (
+            draft if data == KEEP_LOCATION_ROW else replace(draft, location=key, location_custom={})
+        )
         return Step(STEP_EMPLOYERS, updated, _employers_reply(updated, packs))
 
     if data.startswith("p:"):
-        updated = replace(draft, pack=data.split(":", 1)[1])
+        key = data.split(":", 1)[1]
+        updated = draft if data == KEEP_PACK_ROW else replace(draft, pack=key, sources=())
         return Step(STEP_REVIEW, updated, _review_reply(updated, packs))
 
     if data == "save":
@@ -246,13 +338,20 @@ def handle(step: str, draft: Draft, data: str, packs: Sequence[Pack]) -> Step:
 
 
 def _finish(draft: Draft, packs: Sequence[Pack]) -> Step:
-    pack = next((item for item in packs if item.key == draft.pack), None)
-    source_ids = pack.source_ids if pack else ()
-    location = LOCATION_BY_KEY.get(draft.location) or LOCATION_BY_KEY["uk"]
+    if draft.pack == KEEP_PACK:
+        source_ids = draft.sources
+    else:
+        pack = next((item for item in packs if item.key == draft.pack), None)
+        source_ids = pack.source_ids if pack else ()
+    if draft.location == KEEP_LOCATION and draft.location_custom:
+        location_settings = dict(draft.location_custom)
+    else:
+        preset = LOCATION_BY_KEY.get(draft.location) or LOCATION_BY_KEY["uk"]
+        location_settings = preset.settings()
     settings = {
         "role_families": list(draft.families),
         "employment_types": list(draft.employment),
-        "locations": location.settings(),
+        "locations": location_settings,
     }
     return Step(
         STEP_REVIEW,

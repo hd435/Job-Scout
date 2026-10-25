@@ -773,11 +773,34 @@ not a database you want to trust.
 | See what a user was told | `store.list_alerts(user_id)` in Python, or query `notifications` by `chat_id` |
 | Remove a user on request | Ask them to send `/delete`; if they cannot, delete the row and their rows in `service_preferences`, `service_subscriptions`, `service_sessions` and `notifications` |
 | Change offered employers | edit `[jobscout] disable` in the service config and restart |
+| Check what a user's `/digest` would show | `digest_entries(storage, store, user)` — read-only, and the same function the bot calls |
+
+**`/digest` is a browser, not an alert.** It pages through the roles that are already open and
+match the user's own saved employers and preferences, five per page, editing one message as they
+navigate. It never queues a notification, moves a watermark or touches alerting state (D-095), and
+it only counts roles a complete scan has confirmed (`first_complete_scan_id`), so a role seen by a
+partial scan cannot appear. The stated total is the real total: every eligible role in the user's
+scope is evaluated, with no candidate cap.
+
+Cost, measured on the 2026-10-25 pilot database: 3 363 open roles across one user's 12 employers
+take about 12 seconds to evaluate the first time (≈3.7 ms per role, the same deterministic matcher
+the alert path uses). The result is cached per user until their scope or the newest job id changes,
+so page flips are instant. A user who selects all 76 employers would see roughly 40 seconds on the
+first `/digest` of each scan cycle. If the pilot grows past a handful of testers, the fix is a
+persisted per-job decision cache keyed by the rules fingerprint, not a cap.
+
+**`/settings` restores what was saved.** Reopening it rebuilds the wizard from the stored
+preferences and the stored subscription set, so the buttons show the user's real answers. A saved
+employer set that matches no current pack, or a saved location that matches no preset, is offered
+as "keep what I chose" rather than being replaced by the nearest default. Saving without changing
+anything keeps the exact employer set, keeps the watermark, and keeps preference keys the wizard
+does not show.
 
 ### 9.6 What the service does not do
 
 No web UI, no Mini App, no password reset (there is no password), no per-user custom employers, no
-digest of new alerts, no quiet hours. Users are invited by the operator; there is no public signup,
+quiet hours, no saved jobs or application tracking. `/digest` browses existing matches; it is not a
+scheduled summary of new alerts. Users are invited by the operator; there is no public signup,
 because a public signup would turn the source-access question into a free-for-all (D-094).
 
 ### 9.7 The invited pilot (2026-10-25)
@@ -793,8 +816,7 @@ image to an always-on host. Testers need nothing installed; they open
    startup banner.
 2. `jobscout service status --config data\ops\service-config.toml` shows 76 offered employers and
    every source healthy in `Sources:`. A source listed under `Sources:` is either genuinely
-   failing or has never been scanned; wait for its next due run before concluding. A source listed under `Sources:` is either
-   genuinely failing or has never been scanned; wait for its next due run before concluding.
+   failing or has never been scanned; wait for its next due run before concluding.
 3. Confirm the personal beta is unaffected: its own task is running, and
    `data\jobscout.db` still has its 4 420 jobs and 328 scans.
 4. Take a fresh backup (9.3) and note where it is.

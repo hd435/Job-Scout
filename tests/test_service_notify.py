@@ -15,7 +15,13 @@ from jobscout.config import SourceConfig
 from jobscout.http import FixtureHttpClient
 from jobscout.matching import DEFAULT_RULES
 from jobscout.scanner import run_scan
-from jobscout.service.notify import digest_matches, notify_pass, user_rules
+from jobscout.service.notify import (
+    DIGEST_PAGE_SIZE,
+    digest_page,
+    format_digest_page,
+    notify_pass,
+    user_rules,
+)
 from jobscout.service.store import ServiceStore
 from jobscout.sources import get_adapter
 from jobscout.storage import Storage
@@ -229,7 +235,7 @@ def test_deleting_a_user_removes_only_their_data(tmp_path: Path, store: ServiceS
     assert store.list_subscriptions(bob_id)
 
 
-def test_the_digest_lists_current_matches_without_queueing_alerts(
+def test_the_digest_pages_current_matches_without_queueing_alerts(
     tmp_path: Path, store: ServiceStore
 ) -> None:
     alice_id, _bob_id = two_users(store)
@@ -246,11 +252,195 @@ def test_the_digest_lists_current_matches_without_queueing_alerts(
     user = store.get_user_by_id(alice_id)
     assert user is not None
 
-    entries = digest_matches(storage, store, user)
+    page = digest_page(storage, store, user)
 
-    assert len(entries) == 1
-    assert "Graduate Software Engineer" in entries[0]
+    assert page.total == 1
+    assert [entry.title for entry in page.entries] == ["Graduate Software Engineer"]
     assert store.list_alerts(alice_id) == (), "a digest is read-only"
+
+
+def _many(tmp_path: Path, storage: Storage, count: int, *, source: SourceConfig = SOFTWARE) -> None:
+    scan(
+        tmp_path,
+        storage,
+        source,
+        [
+            record(f"r{index:04d}", f"Graduate Software Engineer {index}", "London, UK")
+            for index in range(count)
+        ],
+    )
+
+
+def test_the_digest_counts_every_match_and_pages_through_them(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 12)
+
+    first = digest_page(store.storage, store, user, page=1)
+    last = digest_page(store.storage, store, user, page=3)
+
+    assert DIGEST_PAGE_SIZE == 5
+    assert first.total == 12
+    assert first.pages == 3
+    assert (first.first_index, first.last_index) == (1, 5)
+    assert (last.first_index, last.last_index) == (11, 12)
+    assert len(last.entries) == 2
+    assert first.has_previous is False and first.has_next is True
+    assert last.has_next is False and last.has_previous is True
+
+
+def test_pages_never_repeat_a_role(tmp_path: Path, store: ServiceStore) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 12)
+
+    seen = [
+        entry.job_id
+        for page in (1, 2, 3)
+        for entry in digest_page(store.storage, store, user, page=page).entries
+    ]
+
+    assert len(seen) == 12
+    assert len(set(seen)) == 12
+
+
+def test_an_out_of_range_page_is_clamped(tmp_path: Path, store: ServiceStore) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 7)
+
+    too_far = digest_page(store.storage, store, user, page=99)
+    negative = digest_page(store.storage, store, user, page=-3)
+
+    assert too_far.page == 2 and len(too_far.entries) == 2
+    assert negative.page == 1
+
+
+def test_the_digest_uses_only_the_users_own_subscriptions(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    storage = store.storage
+    # A role Alice's rules would match, but on an employer she does not follow.
+    scan(tmp_path, storage, FINANCE, [record("f9", "Graduate Software Engineer", "London, UK")])
+
+    page = digest_page(storage, store, user)
+
+    assert page.total == 0
+    assert store.list_subscriptions(alice_id) == (SOFTWARE.id,)
+
+
+def test_a_role_seen_only_by_a_partial_scan_is_never_shown(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    storage = store.storage
+    payload = tmp_path / "partial.json"
+    payload.write_text(
+        json.dumps(
+            [
+                record("good", "Graduate Software Engineer", "London, UK"),
+                {"id": "bad", "categories": {"location": "London, UK"}},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    outcome = run_scan(
+        storage,
+        get_adapter("lever"),
+        SOFTWARE,
+        FixtureHttpClient(payload),
+        rules=DEFAULT_RULES,
+        clock=lambda: "2026-10-25T08:00:00Z",
+    )
+
+    assert outcome.complete is False, "the fixture must produce a partial scan"
+    assert digest_page(storage, store, user).total == 0
+
+
+def test_review_roles_are_not_counted_as_digest_matches(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    # "Engineer" has no seniority marker and no employment marker: needs review, not a match.
+    scan(tmp_path, store.storage, SOFTWARE, [record("s9", "Engineer", "London, UK")])
+
+    assert digest_page(store.storage, store, user).total == 0
+
+
+def test_the_digest_is_ordered_by_posting_date_then_first_seen(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    newer = record("newer", "Graduate Software Engineer", "London, UK")
+    older = record("older", "Graduate Software Engineer", "London, UK")
+    older["createdAt"] = 1756684800000  # a month earlier
+    scan(tmp_path, store.storage, SOFTWARE, [older, newer])
+
+    page = digest_page(store.storage, store, user)
+
+    assert [entry.title for entry in page.entries] == ["Graduate Software Engineer"] * 2
+    assert page.entries[0].posted_at > page.entries[1].posted_at
+
+
+def test_more_than_two_thousand_candidates_do_not_truncate_the_digest(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 2_100)
+
+    page = digest_page(store.storage, store, user)
+
+    assert page.total == 2_100, "an old 2 000-row candidate cap must not survive"
+    assert page.pages == 420
+
+
+def test_the_digest_leaves_alerting_state_alone(tmp_path: Path, store: ServiceStore) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 6)
+    before_user = store.get_user_by_id(alice_id)
+
+    digest_page(store.storage, store, user, page=2)
+
+    after_user = store.get_user_by_id(alice_id)
+    assert after_user is not None and before_user is not None
+    assert after_user.watermark == before_user.watermark
+    assert store.list_alerts(alice_id) == ()
+    counts = store.storage.notification_counts(str(user.chat_id))
+    assert counts.get("pending", 0) == 0 and counts.get("sent", 0) == 0
+
+
+def test_the_digest_message_states_the_real_total_and_range(
+    tmp_path: Path, store: ServiceStore
+) -> None:
+    alice_id, _bob_id = two_users(store)
+    user = store.get_user_by_id(alice_id)
+    assert user is not None
+    _many(tmp_path, store.storage, 12)
+
+    text = format_digest_page(digest_page(store.storage, store, user, page=2))
+
+    assert "12 matching open roles" in text
+    assert "Showing 6\u201310 of 12" in text
+    assert "Already-open roles, not new alerts" in text
+    assert "Page 2 of 3" in text
 
 
 def test_an_invalid_stored_scope_skips_only_that_user(store: ServiceStore) -> None:

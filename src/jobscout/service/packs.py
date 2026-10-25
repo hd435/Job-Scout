@@ -159,6 +159,19 @@ def pack_sources(packs: Sequence[Pack], key: str) -> tuple[str, ...]:
     return ()
 
 
+def matching_pack(packs: Sequence[Pack], source_ids: Sequence[str]) -> Pack | None:
+    """The pack whose employer set is exactly `source_ids`, if one exists.
+
+    Used when reopening /settings so a user who chose a pack sees it selected, and a user whose
+    saved set matches no current pack is offered "keep what I chose" instead of a silent change.
+    """
+    wanted = set(source_ids)
+    for pack in packs:
+        if set(pack.source_ids) == wanted:
+            return pack
+    return None
+
+
 __all__ = [
     "EMPLOYMENT",
     "FAMILIES",
@@ -167,5 +180,6 @@ __all__ = [
     "LocationPreset",
     "Pack",
     "available_packs",
+    "matching_pack",
     "pack_sources",
 ]

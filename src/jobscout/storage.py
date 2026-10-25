@@ -1086,19 +1086,35 @@ class Storage:
         ).fetchall()
         return [_row_to_stored_job(row) for row in rows]
 
-    def open_jobs_for(self, source_ids: Sequence[str], *, limit: int = 2000) -> list[StoredJob]:
-        """Every open role for some sources, for an on-demand digest."""
+    def iter_open_jobs_for(
+        self, source_ids: Sequence[str], *, batch_size: int = 500
+    ) -> Iterator[StoredJob]:
+        """Stream every eligible open role for some sources, oldest row first.
+
+        Batched by row id so a digest over a large catalogue never loads the whole table and,
+        more importantly, never invents a hidden cap: the caller decides when it has seen
+        enough. Eligibility matches the alert path (`first_complete_scan_id`).
+        """
         if not source_ids:
-            return []
+            return
         placeholders = ",".join("?" * len(source_ids))
-        rows = self._conn.execute(
-            f"""
-            SELECT * FROM jobs WHERE status = 'open' AND source_id IN ({placeholders})
-            ORDER BY id DESC LIMIT ?
-            """,
-            (*source_ids, limit),
-        ).fetchall()
-        return [_row_to_stored_job(row) for row in rows]
+        last_id = 0
+        while True:
+            rows = self._conn.execute(
+                f"""
+                SELECT * FROM jobs
+                WHERE id > ? AND status = 'open' AND first_complete_scan_id IS NOT NULL
+                  AND source_id IN ({placeholders})
+                ORDER BY id
+                LIMIT ?
+                """,
+                (last_id, *source_ids, batch_size),
+            ).fetchall()
+            if not rows:
+                return
+            for row in rows:
+                yield _row_to_stored_job(row)
+            last_id = int(rows[-1]["id"])
 
     def highest_job_id(self) -> int:
         row = self._conn.execute("SELECT coalesce(max(id), 0) FROM jobs").fetchone()

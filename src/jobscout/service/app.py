@@ -22,8 +22,16 @@ from ..notifier import Notifier, format_message, redact
 from ..storage import Storage
 from . import conversation
 from .bot import BotApi, BotApiError, Button, Rows
-from .notify import digest_matches, notify_pass, user_rules
-from .packs import available_packs
+from .notify import (
+    DIGEST_PAGE_SIZE,
+    DigestEntry,
+    DigestPage,
+    digest_entries,
+    format_digest_page,
+    notify_pass,
+    user_rules,
+)
+from .packs import Pack, available_packs
 from .store import ServiceStore
 
 HELP = (
@@ -31,15 +39,13 @@ HELP = (
     "when one matches.\n\n"
     "/start — set up or restart your search\n"
     "/settings — change roles, location or employers\n"
-    "/digest — roles that already match right now\n"
+    "/digest — browse roles that already match, 5 at a time\n"
     "/status — is monitoring working?\n"
     "/pause — stop alerts\n"
     "/resume — start alerts again\n"
     "/delete — remove my data\n"
     "/help — this message"
 )
-
-DIGEST_LIMIT = 10
 
 
 @dataclass(frozen=True)
@@ -52,6 +58,7 @@ class Incoming:
     text: str | None
     callback_id: str | None
     callback_data: str | None
+    message_id: int | None = None
 
     @property
     def is_private(self) -> bool:
@@ -69,6 +76,7 @@ def parse_update(update: dict[str, Any]) -> Incoming | None:
         chat_id = chat.get("id")
         if not isinstance(user_id, int) or not isinstance(chat_id, int):
             return None
+        message_id = message.get("message_id")
         return Incoming(
             telegram_user_id=user_id,
             chat_id=chat_id,
@@ -76,6 +84,7 @@ def parse_update(update: dict[str, Any]) -> Incoming | None:
             text=None,
             callback_id=str(query.get("id", "")),
             callback_data=str(query.get("data", "")),
+            message_id=message_id if isinstance(message_id, int) else None,
         )
     message = update.get("message")
     if not isinstance(message, dict):
@@ -93,6 +102,9 @@ def parse_update(update: dict[str, Any]) -> Incoming | None:
         text=str(message.get("text", "")).strip(),
         callback_id=None,
         callback_data=None,
+        message_id=message.get("message_id")
+        if isinstance(message.get("message_id"), int)
+        else None,
     )
 
 
@@ -115,6 +127,11 @@ class BotApp:
         self._sources = tuple(sources)
         self._notifier = notifier
         self._log = log or (lambda _message: None)
+        # Evaluating a user's whole scope takes seconds, so keep the last digest per user and
+        # only recompute when something that could change the answer has moved.
+        self._digest_cache: dict[
+            int, tuple[Any, tuple[str, ...], int, tuple[DigestEntry, ...]]
+        ] = {}
 
     # entry point -----------------------------------------------------------
 
@@ -134,7 +151,12 @@ class BotApp:
 
         user = self._store.ensure_user(incoming.telegram_user_id, str(incoming.chat_id))
         if incoming.callback_data is not None:
-            self._handle_callback(user.id, incoming.chat_id, incoming.callback_data)
+            self._handle_callback(
+                user.id,
+                incoming.chat_id,
+                incoming.callback_data,
+                message_id=incoming.message_id,
+            )
             return
         self._handle_text(user.id, incoming.chat_id, incoming.text or "")
 
@@ -188,13 +210,27 @@ class BotApp:
         if not packs:
             self._reply(chat_id, "The service has no employers configured yet. Please try later.")
             return
-        stored = self._store.get_preferences(user_id)
-        draft = conversation.Draft.from_json(stored) if stored else None
-        step = conversation.begin(packs, draft)
+        step = conversation.begin(packs, self._restored_draft(user_id, packs))
         self._store.save_session(user_id, step.step, step.draft.as_json())
         self._reply(chat_id, step.reply.text, self._buttons(step.reply.buttons))
 
-    def _handle_callback(self, user_id: int, chat_id: int, data: str) -> None:
+    def _restored_draft(self, user_id: int, packs: Sequence[Pack]) -> conversation.Draft | None:
+        """The draft to reopen with: the saved answers, or None for a first run.
+
+        Rebuilding from the stored preferences *and* the stored subscriptions is what makes
+        /settings show the user's real scope; a first-time user gets the wizard's own defaults.
+        """
+        saved = self._store.get_preferences(user_id)
+        if not saved or not saved.get("role_families"):
+            return None
+        return conversation.draft_from_state(saved, self._store.list_subscriptions(user_id), packs)
+
+    def _handle_callback(
+        self, user_id: int, chat_id: int, data: str, *, message_id: int | None = None
+    ) -> None:
+        if data.startswith("d:"):
+            self._open_digest_page(user_id, chat_id, data, message_id=message_id)
+            return
         if data.startswith("delete:"):
             if data == "delete:confirm":
                 self._store.delete_user(user_id)
@@ -227,7 +263,20 @@ class BotApp:
         self, user_id: int, chat_id: int, settings: dict, source_ids: tuple[str, ...]
     ) -> None:
         rules = user_rules(settings)
-        self._store.save_preferences(user_id, settings, fingerprint=preferences_fingerprint(rules))
+        fingerprint = preferences_fingerprint(rules)
+        # Merge over what was saved so keys the wizard does not show (title and seniority
+        # exclusions) survive a re-save instead of being silently deleted.
+        previous = self._store.get_preferences(user_id) or {}
+        merged = {**previous, **settings}
+        unchanged = self._store.get_fingerprint(user_id) == fingerprint and tuple(
+            sorted(self._store.list_subscriptions(user_id))
+        ) == tuple(sorted(source_ids))
+        self._store.save_preferences(user_id, merged, fingerprint=fingerprint)
+        if unchanged:
+            # Re-saving identical settings must not narrow the subscription set or jump the
+            # watermark past roles that arrived since the last save (D-095).
+            self._log(f"user {user_id} re-saved an unchanged scope")
+            return
         self._store.set_subscriptions(user_id, source_ids)
         # Never announce history: the watermark is the newest stored role (D-095).
         self._store.set_watermark(user_id, self._storage.highest_job_id())
@@ -269,19 +318,59 @@ class BotApp:
         if not self._store.list_subscriptions(user_id):
             self._reply(chat_id, "No employers chosen yet — send /start to set up your search.")
             return
-        matches = digest_matches(self._storage, self._store, user)
-        if not matches:
-            self._reply(
-                chat_id,
-                "Nothing matches your current filters right now. You can widen them with "
-                "/settings, and I will message you when something new matches.",
-            )
+        page = self._digest(user, page=1)
+        self._reply(chat_id, format_digest_page(page), self._digest_buttons(page))
+
+    def _open_digest_page(
+        self, user_id: int, chat_id: int, data: str, *, message_id: int | None
+    ) -> None:
+        """Show one digest page, editing the message the button came from when possible."""
+        user = self._store.get_user_by_id(user_id)
+        if user is None or not self._store.list_subscriptions(user_id):
+            self._reply(chat_id, "Send /start to set up your search first.")
             return
-        shown = matches[:DIGEST_LIMIT]
-        text = "Roles that already match, newest first:\n\n" + "\n".join(shown)
-        if len(matches) > len(shown):
-            text += f"\n\n…and {len(matches) - len(shown)} more."
-        self._reply(chat_id, text)
+        try:
+            requested = int(data.split(":", 1)[1])
+        except (IndexError, ValueError):
+            requested = 1
+        # A stale button can ask for a page that no longer exists: clamp rather than fail.
+        page = self._digest(user, page=requested)
+        text = format_digest_page(page)
+        buttons = self._digest_buttons(page)
+        if message_id is not None:
+            try:
+                self._api.edit_message_text(chat_id, message_id, text, buttons=buttons)
+            except BotApiError as exc:
+                # The message may have been deleted or be too old to edit; a fresh page is
+                # better than silence. "message is not modified" is handled inside BotApi.
+                self._log(f"digest edit failed, sending a new message: {exc}")
+                self._reply(chat_id, text, buttons)
+        else:
+            self._reply(chat_id, text, buttons)
+
+    def _digest(self, user: Any, *, page: int) -> DigestPage:
+        entries = self._digest_cache_entries(user)
+        return DigestPage.paginate(entries, page=page, page_size=DIGEST_PAGE_SIZE)
+
+    def _digest_cache_entries(self, user: Any) -> tuple[DigestEntry, ...]:
+        """The user's whole match set, recomputed only when the scope or the jobs have moved."""
+        fingerprint = self._store.get_fingerprint(user.id)
+        subscriptions = tuple(sorted(self._store.list_subscriptions(user.id)))
+        newest = self._storage.highest_job_id()
+        cached = self._digest_cache.get(user.id)
+        if cached is not None and cached[:3] == (fingerprint, subscriptions, newest):
+            return cached[3]
+        entries = digest_entries(self._storage, self._store, user)
+        self._digest_cache[user.id] = (fingerprint, subscriptions, newest, entries)
+        return entries
+
+    def _digest_buttons(self, page: DigestPage) -> Rows | None:
+        row: list[Button] = []
+        if page.has_previous:
+            row.append(Button("◀ Previous", f"d:{page.page - 1}"))
+        if page.has_next:
+            row.append(Button("Next ▶", f"d:{page.page + 1}"))
+        return (tuple(row),) if row else None
 
     def _reply(self, chat_id: int, text: str, buttons: Rows | None = None) -> None:
         try:

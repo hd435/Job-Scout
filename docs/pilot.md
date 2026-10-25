@@ -18,13 +18,15 @@ runs; you are giving it your own job search.
 3. Stop there. It now monitors in the background and messages you when a genuinely new matching
    role appears.
 
-The commands you may want: `/status` (is monitoring working?), `/digest` (roles that already match
-now), `/settings`, `/pause`, `/resume`, `/delete` (erases your data and stops monitoring), `/help`.
+The commands you may want: `/status` (is monitoring working?), `/digest` (browse the roles that
+already match, five at a time, with Previous/Next), `/settings` (shows what you chose and changes
+any of it), `/pause`, `/resume`, `/delete` (erases your data and stops monitoring), `/help`.
 
 What to expect, so silence does not read as breakage:
 
 - **You are told about roles that appear after you set up.** Roles that were already open do not
-  produce an alert — ask for those with `/digest` at any time.
+  produce an alert — `/digest` lists those, in date order, with links to the employer's own page.
+  `/digest` is a viewer: nothing you do in it changes what you are alerted about.
 - **Nothing for a few days is normal.** These employers post a handful of early-career roles a
   month between them.
 - `/status` tells you whether monitoring is running and how many employers are being scanned.

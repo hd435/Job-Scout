@@ -103,6 +103,43 @@ class BotApi:
         result = response.get("result")
         return result if isinstance(result, dict) else {}
 
+    def edit_message_text(
+        self,
+        chat_id: str | int,
+        message_id: int,
+        text: str,
+        *,
+        buttons: Rows | None = None,
+    ) -> dict[str, Any]:
+        """Replace the text of a message the bot sent, keeping one message per browsing session.
+
+        Telegram answers `400 Bad Request: message is not modified` when the content is identical,
+        which is a no-op rather than a failure: a double-tapped button must not produce an error
+        the caller then turns into a duplicate message.
+        """
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text[:4096],
+        }
+        if buttons:
+            payload["reply_markup"] = {
+                "inline_keyboard": [
+                    [{"text": button.label, "callback_data": button.data} for button in row]
+                    for row in buttons
+                ]
+            }
+        try:
+            response = self._poster.post_json(self._url("editMessageText"), payload)
+        except HttpError as exc:
+            if "message is not modified" in str(exc).lower():
+                return {}
+            raise BotApiError(self._scrub(f"editMessageText failed: {exc}")) from exc
+        if not isinstance(response, dict) or not response.get("ok"):
+            raise BotApiError(self._scrub("editMessageText was rejected"))
+        result = response.get("result")
+        return result if isinstance(result, dict) else {}
+
     def send_text(self, chat_id: str | int, text: str) -> dict[str, Any]:
         """Send a plain message, splitting on Telegram's 4096-character limit."""
         result: dict[str, Any] = {}
