@@ -1,0 +1,11 @@
+# Neo4j ? added in expansion batch 3 (2026-10-25).
+# Measured from the live board: 60 roles, 21 in the UK,
+# 17 of those in a target role family.
+id = "neo4j"
+employer = "Neo4j"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io/v1/boards/neo4j/jobs?content=true), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "neo4j"

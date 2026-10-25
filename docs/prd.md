@@ -149,7 +149,7 @@ Verified as of 2026-10-22; detailed evidence is in [docs/sources.md](./sources.m
 | Immediate alert per new matching role; no batched digest of new alerts (an on-demand digest of current matches is allowed) | Approved |
 | Alert fields: title, employer, location, salary if available, closing date if available, link | Approved |
 | Target seniority: graduate, entry-level, early-career; approved seniority and unrelated-family exclusions | Approved |
-| Location rule: London roles, UK-wide remote roles, and UK hybrid roles anywhere in the UK qualify; non-UK remote roles are excluded. The *scope* a user monitors is a preference ? pinned cities, the whole UK, or UK plus pinned cities abroad (D-069) ? while the shipped default stays the whole UK | Approved |
+| Location rule: London roles, UK-wide remote roles, and UK hybrid roles anywhere in the UK qualify; non-UK remote roles are excluded. The *scope* a user monitors is a preference — pinned cities, the whole UK, or UK plus pinned cities abroad (D-069) — while the shipped default stays the whole UK | Approved |
 | Internships and industrial placements included only when explicitly labelled and within a target role family | Approved |
 | Matching is deterministic and explainable; ambiguous cases are flagged for review rather than silently broadened | Approved |
 | Target role families: data/AI/software, quantitative/risk, general finance, consulting, business analysis | Approved |
@@ -272,7 +272,7 @@ The exact keyword and synonym list is an implementation default, reviewed agains
 - Do not guess ambiguous locations. Record the reason the role could not be matched; it is not alert-eligible until the location can be resolved.
 
 **Scope on top of those rules:** a user narrows the rules above with
-`[preferences.locations]` ? `uk` (the default, which is exactly the rules above), `pinned` (only
+`[preferences.locations]` — `uk` (the default, which is exactly the rules above), `pinned` (only
 the listed cities, plus UK remote/hybrid when enabled), or `uk_plus_pinned` (the rules above plus
 pinned cities abroad). A narrowed scope produces explicit exclusions, never silence, and pinning
 does not override the ambiguity rule. See [configuration.md](./configuration.md).

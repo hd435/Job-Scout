@@ -89,7 +89,7 @@ Rules, so the list stays predictable at a hundred entries:
 - Two files claiming the same `id` are an error naming both files.
 
 **Which list applies.** The bundled catalogue is the default. `[jobscout] catalogue = "sources"`
-uses your own directory *instead* ? it is your list, not an addition to the shipped one. A
+uses your own directory *instead* — it is your list, not an addition to the shipped one. A
 `[[sources]]` block in the config file still replaces whatever list applies, which is what a config
 written before v0.6 means and keeps meaning. `disable = ["wise", "arm"]` narrows any of those lists
 without touching the files. `config.example.toml` in the repository root is a commented, working
@@ -102,8 +102,8 @@ catalogue = "sources"
 disable = ["wise"]
 ```
 
-`jobscout sources list` prints every source that results, with its adapter, state and ? from
-`validate` ? whether it has ever been checked.
+`jobscout sources list` prints every source that results, with its adapter, state and — from
+`validate` — whether it has ever been checked.
 
 ## 3a. `[[sources]]` in the config file
 
@@ -161,7 +161,7 @@ schema.org `JobPosting` JSON-LD block. A new employer of that shape needs no Pyt
 ### 3.3 Workday search (`search_text`)
 
 `search_text` is passed to the site's own search, exactly as the search box would, and the
-listing's reported total reflects it ? so "complete" means complete for that search. Use it when a
+listing's reported total reflects it — so "complete" means complete for that search. Use it when a
 board is much larger than the early-career subset you want: Barclays' external site holds thousands
 of postings, and `search_text = "graduate"` brings a scan down to about 90. The trade is recall: a
 role whose title never contains the search term is never seen.

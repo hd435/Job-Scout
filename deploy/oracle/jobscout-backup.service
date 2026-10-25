@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly verified backup of the Job-Scout database
+
+[Service]
+Type=oneshot
+User=jobscout
+Group=jobscout
+WorkingDirectory=/opt/jobscout
+EnvironmentFile=/etc/jobscout/jobscout.env
+ExecStart=/opt/jobscout/deploy/oracle/backup.sh

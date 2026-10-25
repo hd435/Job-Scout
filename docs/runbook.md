@@ -520,6 +520,31 @@ The two partial scans are the expected cold crawls (`wise` 428 roles capped at 4
 `arm` 434 pages capped at 400). Both complete on their next pass by skipping unchanged pages, and a
 partial scan never alerts; `arm` still contributed one match on its partial pass.
 
+**Batch 3 — 2026-10-25 — 17 employers, and a measured decline in the easy supply (D-100).**
+
+Two further probe rounds (381 candidates across Greenhouse, Ashby, Lever and the new Workable
+adapter) added 17 employers that met the same bar: a complete board, at least one UK role, and at
+least one UK role in a target family. Added: `abnormalsecurity, braze, circleci, cognism, griffin,
+jfrog, klaviyo, neo4j, onetrust, pagerduty, sardine, smartsheet, socure, vanta, verkada, wordsmith,
+zoopla` (the last one via Workable). All 17 were validated live before being enabled.
+
+| Measure | Value |
+|---|---|
+| Catalogue | 60 → **77 employers** |
+| Enabled on the hosted deployment | 59 → **76** (`barclays` the only exclusion) |
+| Deployment baseline after the batch | **76 of 76 sources scanned successfully** |
+| Roles stored in the hosted database | **11 885** (1 958 in the UK) |
+| Matches / review under the default rules | **62 / 451** |
+| Probe hit rate | **4.5 %** of candidates (17 of 381), against 6.5 % in batch 2 |
+
+The falling hit rate is the finding: the UK employers that publish on Greenhouse, Ashby, Lever or
+Workable and hire in our families have largely been found. Batch 4 should stop sweeping the same
+adapter surface and go after the platform we can already read but have barely used — **Workday**,
+which is where banks, insurers and consultancies publish graduate programmes — plus Recruitee,
+Teamtailor and SmartRecruiters for UK mid-market employers. Each needs per-employer discovery
+(host, tenant and site for Workday) rather than a one-request probe, which is why it is a separate
+batch rather than more of the same.
+
 **What the batch proved, and what it did not.** It proved the candidate → validate → enable → baseline
 path works at scale for one adapter shape, and that `report` distinguishes stored roles from value
 delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible matches, because the
@@ -757,7 +782,7 @@ because a public signup would turn the source-access question into a free-for-al
 
 ### 9.7 The invited pilot (2026-10-25)
 
-What is deployed: one bot process on the operator's machine, its own database, 59 offered
+What is deployed: one bot process on the operator's machine, its own database, 76 offered
 employers, invitations sent by hand. [deployment.md](./deployment.md) covers moving the same
 image to an always-on host. Testers need nothing installed; they open
 `@AwesomeJobScoutBot` and press Start. The tester-facing briefing is [pilot.md](./pilot.md).
@@ -766,7 +791,7 @@ image to an always-on host. Testers need nothing installed; they open
 
 1. `Get-ScheduledTask -TaskName "Job-Scout bot"` reports `Running`, and the log's last lines are the
    startup banner.
-2. `jobscout service status --config data\ops\service-config.toml` shows 59 offered employers and
+2. `jobscout service status --config data\ops\service-config.toml` shows 76 offered employers and
    every source healthy in `Sources:`. A source listed under `Sources:` is either genuinely
    failing or has never been scanned; wait for its next due run before concluding. A source listed under `Sources:` is either
    genuinely failing or has never been scanned; wait for its next due run before concluding.

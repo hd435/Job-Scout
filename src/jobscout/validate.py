@@ -177,10 +177,27 @@ SITEMAP_PROFILE = ValidationProfile(
 
 # Budgets inferred from the adapter when a source has no named profile, so any configured
 # source can be checked before it is enabled.
+WORKABLE_WATCHED_FIELDS: dict[str, type] = {
+    "title": str,
+    "shortcode": str,
+    "url": str,
+    "city": str,
+    "description": str,
+    "published_on": str,
+    "employment_type": str,
+    "telecommuting": bool,
+}
+WORKABLE_PROFILE = ValidationProfile(
+    watched_fields=WORKABLE_WATCHED_FIELDS,
+    required_fields=("title", "shortcode", "url"),
+    records_key="jobs",
+)
+
 ADAPTER_PROFILES: dict[str, ValidationProfile] = {
     "lever": PALANTIR_PROFILE,
     "greenhouse": MONZO_PROFILE,
     "ashby": ASHBY_PROFILE,
+    "workable": WORKABLE_PROFILE,
     "workday": LLOYDS_PROFILE,
     "sitemap_html": SITEMAP_PROFILE,
 }

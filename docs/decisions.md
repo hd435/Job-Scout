@@ -133,6 +133,8 @@ This is a concise decision log, not a duplicate of the PRD. Status values:
 
 
 
+| D-101 | The hosted service's production target is **Oracle Cloud Always Free**: one `VM.Standard.A1.Flex` instance (Arm, 1 OCPU / 6 GB) with a 47 GB boot volume on Ubuntu 24.04, systemd supervision, a health timer, a nightly verified backup with optional Object Storage upload, and **no inbound ports**. Supersedes D-099 (Fly.io, ≈ $4.40/month) as the deployment target; the container artefacts stay in the repository as an unused fallback | Approved (2026-10-25, product decision: zero ongoing hosting cost) | Zero recurring cost is a product requirement, not an optimisation, so a $4.40/month managed host is out of scope even though it is less work. Always Free fits this workload closely: 1 OCPU / 6 GB is far more than a long-polling bot with one SQLite file needs, Ubuntu 24.04 ships the Python 3.12 we require, and the application has no runtime dependencies, so Arm costs nothing in portability — there are no wheels to match and nothing to compile (verified by installing from `pyproject.toml` into a clean venv). Two risks are accepted openly rather than engineered away: Always Free capacity is often unavailable at creation time (fallbacks: another availability domain, then the AMD `E2.1.Micro` shape, which the same installer supports), and Oracle may reclaim instances that look idle for seven days — a bot is idle by their definition, and we will not fake load to dodge it. Mitigations are scripted re-provisioning, off-VM backups and a health timer, all in [deployment.md](./deployment.md). |
+
 ## Change rule
 
 - Product changes require a PRD update and Product Owner approval.

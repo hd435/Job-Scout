@@ -1,0 +1,12 @@
+# Zoopla ? added in expansion batch 3 (2026-10-25).
+# Measured from the live board: 7 roles, 7 in the UK,
+# 2 of those in a target role family.
+id = "zoopla"
+employer = "Zoopla"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts/zoopla?details=true), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+account = "zoopla"
+uk_employer = true

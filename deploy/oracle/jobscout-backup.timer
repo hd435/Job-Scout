@@ -1,0 +1,11 @@
+[Unit]
+Description=Take a Job-Scout backup every night just after midnight UTC
+
+[Timer]
+OnCalendar=*-*-* 00:15:00
+Persistent=true
+RandomizedDelaySec=10min
+Unit=jobscout-backup.service
+
+[Install]
+WantedBy=timers.target

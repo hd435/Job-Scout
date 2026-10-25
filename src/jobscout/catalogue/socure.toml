@@ -1,0 +1,11 @@
+# Socure ? added in expansion batch 3 (2026-10-25).
+# Measured from the live board: 83 roles, 4 in the UK,
+# 3 of those in a target role family.
+id = "socure"
+employer = "Socure"
+adapter = "ashby"
+access_note = "public Ashby posting API (api.ashbyhq.com/posting-api/job-board/socure), one GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+board = "socure"

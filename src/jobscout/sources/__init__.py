@@ -7,6 +7,7 @@ from .base import AdapterError, SourceAdapter, build_job
 from .greenhouse import GreenhouseAdapter
 from .lever import LeverAdapter
 from .sitemap_html import SitemapHtmlAdapter
+from .workable import WorkableAdapter
 from .workday import WorkdayAdapter
 
 _ADAPTERS: dict[str, SourceAdapter] = {
@@ -17,6 +18,7 @@ _ADAPTERS: dict[str, SourceAdapter] = {
         AshbyAdapter(),
         WorkdayAdapter(),
         SitemapHtmlAdapter(),
+        WorkableAdapter(),
     )
 }
 

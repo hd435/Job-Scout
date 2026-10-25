@@ -1,159 +1,238 @@
-# Running Job-Scout somewhere other than your desk (D-099)
+# Running Job-Scout off your own machine (D-101)
 
 The hosted service is one long-running Python process: it long-polls Telegram, scans employers when
 they are due, and writes everything to one SQLite file. There is **no inbound port, no web server,
-no TLS certificate and no domain** — Telegram calls are outbound, so nothing has to be exposed. That
-shapes every hosting decision below: what we need is *a small always-on machine with a disk*, not an
-application platform.
+no TLS certificate and no domain** — every Telegram call is outbound. What it needs is *a small
+always-on machine with a disk*, not an application platform.
 
-Everything here is delivered as code: [`Dockerfile`](../Dockerfile),
-[`.dockerignore`](../.dockerignore), [`deploy/fly.toml`](../deploy/fly.toml) and
-[`deploy/service-config.toml`](../deploy/service-config.toml). The image runs the same
-`python -m jobscout bot` that the Windows deployment runs.
+**This deployment targets Oracle Cloud "Always Free"**, because the product decision is zero ongoing
+hosting cost (D-101). Everything needed is in [`deploy/oracle/`](../deploy/oracle): an idempotent
+installer, hardened systemd units, a health timer, a backup timer and an env template. The Dockerfile
+and Fly configuration are still in the repository for other hosts, but they are an appendix now, not
+the deployment path.
 
 ## 1. What the workload actually needs
 
-| Need | Value, measured on the pilot deployment |
+| Need | Value, measured on the running deployments |
 |---|---|
-| CPU | One shared core is idle almost all the time; a full 12-employer pass took 23 s |
-| Memory | Well under 256 MB for a 3 700-role database; 512 MB leaves room for a wide crawl |
-| Disk | 27 MB for 3 762 roles and a month of scans; 1 GB is years of history |
-| Network | ~100 outbound HTTPS requests per 30-minute cycle at 60 employers, no inbound |
-| State | One SQLite file (`/data/service.db`) — the only thing that must survive |
-| Uptime | Always-on; a missed cycle is tolerable, a missed *day* is not |
+| CPU | One shared core, idle almost all the time; a 59-employer warm pass is seconds, a cold pass ~10 min |
+| Memory | ~100–250 MB for a 10 000-role database; a cold crawl is the peak |
+| Disk | 27 MB for 3 762 roles, ~60 MB for 10 000; 1 GB is years of history |
+| Network | ~60–120 outbound HTTPS requests per 30-minute cycle, no inbound |
+| State | One SQLite file — the only thing that must survive |
+| Uptime | Always-on; a missed cycle is tolerable, a missed day is not |
 
-## 2. The options, with real prices (2026-10-25)
+## 2. What "Always Free" actually gives (checked 2026-10-25)
 
-| Option | Cost | Always-on? | Persistent disk | Verdict |
-|---|---|---|---|---|
-| **Fly.io** (chosen) | $2.19/mo for `shared-cpu-1x`/256 MB, $3.69 for 512 MB, `lhr` ≈ 1.15× → **≈ $4.25**; 1 GB volume $0.15 → **≈ $4.40/month (≈ £3.40)** | Yes — a Machine runs until you stop it; no spin-down | Yes, volumes | Right shape: no OS to patch, restarts by itself, secrets and logs built in |
-| Hetzner / DigitalOcean VPS | €3.79–$6/mo | Yes | Yes (local disk) | Cheapest per GB and fully ours, but we own OS patching, systemd units and monitoring |
-| Render (free web service) | $0 | **No** — spins down after 15 min idle, no disk on free | No | Disqualified: a spun-down bot receives nothing and loses its database |
-| Render background worker | $7/mo | Yes | Disk extra | Works, costs more than Fly for the same shape |
-| Railway | Hobby $5/mo (usage-based, $5 credit) | Yes if the service keeps running | Volume billed separately | Fine, but a container platform with more moving parts than we use |
-| Koyeb / Northflank free tiers | $0 → scales to zero | **No** for a long-polling worker | Limited | Scaling to zero is exactly wrong here |
-| Oracle Cloud "Always Free" ARM VM | $0 | Yes | Yes | Genuinely free and capable, but signup is fiddly (card + phone), capacity is region-dependent and you still administer the OS |
-| Cloudflare Workers + cron | ~$5/mo | Cron only, no long polling | Durable Objects, not SQLite | Would need the service rewritten; rejected |
-| GitHub Actions cron | free minutes | **No** — scheduled runs are routinely 5–30 min late, no durable state between runs | Artifacts only | Not dependable enough for "you were told within the hour" |
+From Oracle's [Always Free resources documentation](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm):
 
-**Decision: Fly.io, London (`lhr`), one 512 MB Machine and a 1 GB volume.** It is the smallest
-always-on deployment with a real disk, it survives restarts without us writing supervisors, and the
-Dockerfile keeps the VPS path open if the price or the platform ever stops suiting us. Section 4
-explains how to run the same image on a VPS instead.
+| Resource | Always Free allowance | What we use |
+|---|---|---|
+| `VM.Standard.A1.Flex` (Arm) | 1 500 OCPU-hours + 9 000 GB-hours per month = **2 OCPU / 12 GB total** | **1 OCPU / 6 GB** |
+| `VM.Standard.E2.1.Micro` (AMD x86) | Up to **2 instances**, 1/8 OCPU / 1 GB each | fallback only |
+| Block volume | **200 GB total**, minimum 47 GB boot volume per instance | **47 GB** boot volume |
+| Object Storage | ~20 GB (10 GB Standard + 10 GB Archive) with a monthly request allowance | nightly backups |
+| Outbound data | 10 TB/month | a few hundred MB |
 
-## 3. Deploying to Fly
+Constraints that matter:
 
-Prerequisites: a Fly account with a payment method, and `flyctl` (`iwr https://fly.io/install.ps1
--UseBasicParsing | iex` on Windows, `curl -L https://fly.io/install.sh | sh` elsewhere).
+- Always Free compute must be in the **home region** chosen at sign-up. Pick one in the UK/EU
+  (London, Manchester, Frankfurt, Amsterdam) — it cannot be changed later without a new tenancy.
+- Instances beyond the A1 limits are **disabled and then deleted after 30 days**, so total A1 usage
+  must stay within 2 OCPU / 12 GB.
+- "Out of host capacity" is common for Always Free shapes. If it happens, try another availability
+  domain, try the `E2.1.Micro` shape instead, or retry later — **do not upgrade the account** (D-101).
+- Sign-up needs a phone number and a card for identity verification; the card is not charged unless
+  the account is upgraded, and we do not upgrade.
 
-```bash
-# 1. One-time: create the app and the disk that holds the database
-fly apps create job-scout
-fly volumes create jobscout_data --region lhr --size 1
+### The shape we chose, and why
 
-# 2. Secrets: the Telegram token is the only credential. In service mode each user has their own
-#    chat, so no chat id is needed.
-fly secrets set JOBSCOUT_TELEGRAM_TOKEN=123456789:AA...
+**`VM.Standard.A1.Flex`, 1 OCPU / 6 GB, Ubuntu 24.04 (aarch64), 47 GB boot volume.**
 
-# 3. Deploy from the repository root
-fly deploy --config deploy/fly.toml
+- Ubuntu 24.04 ships **Python 3.12**, exactly our floor, so no PPA or source build is needed.
+- 6 GB leaves room for a cold crawl over 59 employers plus SQLite's page cache; the 1 GB micro shape
+  would work but leaves less headroom, and its 1/8 OCPU makes crawls noticeably slower.
+- The application has **no runtime dependencies** — `dependencies = []` in `pyproject.toml` — so the
+  Arm architecture only has to run CPython with the standard library's `sqlite3`, `ssl` and `json`.
+  There are no wheels to match and nothing to compile. Verified by installing from `pyproject.toml`
+  into a clean virtual environment and running the CLI from it.
+- If A1 capacity is unavailable, **the same installer works on `E2.1.Micro`/x86_64**: nothing in
+  `deploy/oracle/` is architecture-specific.
 
-# 4. Watch the first pass baseline every employer
-fly logs
+### Idle-instance reclamation — the honest position
+
+Oracle may reclaim Always Free instances that look idle over a seven-day window: **CPU 95th
+percentile below 20 %, network below 20 %, and (A1 only) memory below 20 %**. A long-polling bot is
+idle by that definition — it uses a fraction of a core and a trickle of bandwidth. **We will not
+generate artificial load to dodge the policy.**
+
+So this is a real, residual availability risk, mitigated rather than denied:
+
+1. **Re-provisioning is scripted.** `install.sh` plus a restore is ~10 minutes on a fresh instance.
+2. **Backups leave the VM.** The nightly timer writes a verified copy locally and, if the OCI CLI is
+   configured, uploads it to Object Storage. A reclaimed VM therefore costs data since the last
+   upload, not the deployment.
+3. **Failure is visible.** The health timer restarts a stale bot every 15 minutes, and
+   `verify.sh`/`service status` show what is happening. Oracle emails the account before reclaiming.
+4. **Shape choice does not remove the risk.** The micro shape drops the memory criterion but keeps
+   the CPU and network ones, so it is a capacity fallback, not a loophole.
+
+If reclamation becomes a practical problem, the options are a paid OCI upgrade (excluded by D-101) or
+a free tier elsewhere — see §7, which does not switch silently.
+
+## 3. Provisioning the VM (operator, once)
+
+These steps need the account owner; nothing below them does.
+
+1. Sign up at <https://signup.cloud.oracle.com> with a **home region in the UK/EU** (e.g. London).
+   Use a real phone number and card — verification only, no charge unless the account is upgraded.
+2. In the console: **Compute → Instances → Create instance**.
+   - Image: **Canonical Ubuntu 24.04** (the aarch64 build is chosen automatically for A1).
+   - Shape: **Ampere → VM.Standard.A1.Flex**, **1 OCPU, 6 GB** (stay at or below 2 OCPU / 12 GB in
+     total across all A1 instances).
+   - Boot volume: **47 GB** (the free minimum).
+   - Networking: accept the default VCN/public subnet, **assign a public IPv4 address**.
+   - SSH keys: upload your public key, or let the console generate a pair and download the private
+     key — it cannot be downloaded twice.
+3. Note the public IP and connect: `ssh ubuntu@<public-ip>`.
+
+**Firewall:** the service opens **no inbound ports**. Narrow the security list to SSH from your own
+IP:
+
+```text
+VCN → Security Lists → Default Security List → Edit ingress rules
+  Source 203.0.113.7/32   IP Protocol TCP   Destination Port 22
+  (delete the 0.0.0.0/0 SSH rule)
 ```
 
-`deploy/fly.toml` contains no `[http_service]`, `[services]` or port, deliberately: there is nothing
-to route to. It declares one process (`python -m jobscout bot`), a 512 MB `shared-cpu-1x` Machine, the
-volume mounted at `/data`, and a script health check (`jobscout service check`) every ten minutes.
+`ufw` on the Ubuntu image already allows SSH only. The bot needs nothing else.
 
-Image details that matter:
-
-- **`JOBSCOUT_DATABASE=/data/service.db`** — the database lives on the volume, never in the image.
-- **`JOBSCOUT_CONFIG=/app/service-config.toml`** — the employer selection ships with the deployment,
-  so no file has to be written on the host. Explicit `--config`/`--db` arguments still win.
-- **Unbuffered stdout** (`PYTHONUNBUFFERED=1`) so `fly logs` is useful during a crash.
-- **SIGTERM stops the bot cleanly**, so a restart does not interrupt a scan mid-transaction.
-
-## 4. Running the same image on a VPS instead
+## 4. Installing Job-Scout on the VM (one command)
 
 ```bash
-docker build -t jobscout .
-docker run -d --name jobscout --restart unless-stopped \
-  -v /srv/jobscout/data:/data \
-  -e JOBSCOUT_TELEGRAM_TOKEN=123456789:AA... \
-  --memory 512m \
-  jobscout
+sudo apt-get install -y git
+sudo git clone https://github.com/hd435/Job-Scout.git /opt/jobscout
+sudo /opt/jobscout/deploy/oracle/install.sh
 ```
 
-Or without Docker: a systemd unit exactly like [runbook §9.2](./runbook.md) with
-`Environment=JOBSCOUT_DATABASE=/srv/jobscout/data/service.db`.
+`install.sh` is idempotent and does the whole bootstrap:
 
-## 5. Verifying a deployment
+| Step | Detail |
+|---|---|
+| Toolchain | `python3`, `python3-venv`, `pip`; refuses anything older than 3.12 and prints the arch |
+| Service user | system account `jobscout`, no shell, no sudo except one narrow rule |
+| Layout | code `/opt/jobscout`, data `/srv/jobscout/{data,backups}`, config `/etc/jobscout` |
+| Package | `.venv` + `pip install /opt/jobscout`, then imports `jobscout` to prove it works |
+| Config | copies `deploy/service-config.toml` to `/etc/jobscout/` **only if absent** |
+| Secrets | creates `/etc/jobscout/jobscout.env` (root, mode 600) from the template |
+| Units | `jobscout.service`, `jobscout-health.{service,timer}`, `jobscout-backup.{service,timer}` |
+| Safety | a `sudoers` entry letting the health script restart *only* `jobscout.service` |
 
-Run these in order; each answers a different question.
+The first run stops short of starting the bot, because the env file still holds a placeholder token:
+
+```bash
+sudoedit /etc/jobscout/jobscout.env      # set JOBSCOUT_TELEGRAM_TOKEN (never in chat, never in git)
+sudo systemctl start jobscout
+sudo /opt/jobscout/deploy/oracle/verify.sh
+```
+
+`verify.sh` prints unit state, the timer schedule, `service status` (subscribers, alerts, sources not
+scanning), `service check` and the last 15 journal lines.
+
+### Upgrades
+
+```bash
+sudo git -C /opt/jobscout pull
+sudo /opt/jobscout/deploy/oracle/install.sh      # re-installs the package and units, restarts
+```
+
+The database, the config and the env file are never overwritten by an upgrade.
+
+## 5. Operating it
 
 | Question | Command |
 |---|---|
-| Is the process alive? | `fly status` — one Machine, state `started` |
-| Is it scanning? | `fly logs` — startup banner, then one line per scan when a source is due |
-| Has it stored anything? | `fly ssh console -C "python -m jobscout service status"` |
-| Is monitoring healthy? | `fly ssh console -C "python -m jobscout service check"` (exit 0 = ok) |
-| Do the checks agree? | `fly checks list` |
-| Is Telegram reachable from there? | `fly ssh console -C "python -m jobscout notify-test"` |
+| Is the process alive? | `systemctl status jobscout` |
+| Is it scanning? | `journalctl -u jobscout -f` — startup banner, then a line per scan |
+| Who is subscribed, what was sent? | `sudo -u jobscout /opt/jobscout/.venv/bin/python -m jobscout service status` |
+| Is monitoring healthy? | `… -m jobscout service check` (exit 0 = ok) |
+| Did the timers run? | `systemctl list-timers 'jobscout-*'` |
+| Everything at once | `sudo /opt/jobscout/deploy/oracle/verify.sh` |
 
-`service check` is the one to automate: it returns non-zero when nothing has completed a scan
-within 90 minutes (configurable), which is the failure that actually matters — an idle bot with no
-messages from anyone is healthy, and a bot that stopped scanning is not.
+`service check` is the one that matters: it returns non-zero when nothing has completed a scan for 90
+minutes. The health timer runs it every 15 minutes and restarts the unit when it fails, which covers
+what the unit state cannot see — a live process that has stopped scanning. The unit itself is
+`Restart=always`, so a crash comes back within 10 seconds.
 
-## 6. Backups
+## 6. Backups and restore
 
 ```bash
-# Take and verify a backup inside the volume (safe while the bot is running)
-fly ssh console -C "python -m jobscout service backup --to /data/backups/service.db"
-
-# Copy it off the platform — a backup on the same disk is not a backup
-fly sftp get /data/backups/service.db ./service-backup.db
+# Nightly at 00:15 UTC via jobscout-backup.timer, running as the jobscout user:
+/opt/jobscout/deploy/oracle/backup.sh
+#   -> jobscout service backup --to /srv/jobscout/backups/service-<stamp>.db   (verified copy)
+#   -> keeps the newest 7, prunes the rest
+#   -> uploads to Object Storage when JOBSCOUT_BACKUP_BUCKET is set and the oci CLI is configured
 ```
 
-`jobscout service backup` uses SQLite's online backup API, checkpoints the write-ahead log first, and
-verifies the copy with `PRAGMA integrity_check` and row counts before reporting success.
+`jobscout service backup` uses SQLite's online backup API, checkpoints the write-ahead log first and
+verifies the copy with `PRAGMA integrity_check` plus row counts before reporting success, so it is
+safe while the bot is polling.
 
-Keep a copy off Fly at least weekly (and one before any risky change). Restoring is in
-[runbook §9.3](./runbook.md): stop the Machine, replace `/data/service.db`, delete `-wal`/`-shm`,
-start again. A restored database keeps every source's baseline, so a restore cannot re-announce
-history.
+**Off-VM copy (recommended, still free).** Create a bucket in Object Storage (Always Free allowance
+~20 GB), then give the `jobscout` user a working OCI CLI:
 
-## 7. Restarts, recovery and what is *not* covered
+```bash
+sudo apt-get install -y python3-pip
+sudo pip3 install --break-system-packages oci-cli
+sudo -u jobscout -H oci setup config          # API key for your own user, stored in jobscout's home
+sudo -u jobscout -H oci os bucket list        # prove it works as the service user
+echo 'JOBSCOUT_BACKUP_BUCKET=jobscout-backups' | sudo tee -a /etc/jobscout/jobscout.env
+```
 
-| Situation | What happens |
-|---|---|
-| The process crashes | Fly restarts the Machine (restart policy `always`) |
-| The health check fails 3× | Fly replaces the Machine |
-| You deploy a new image | One Machine rolls to the new release; the volume stays |
-| The volume is lost | Restore the last off-platform backup; the database is the only state |
-| The account is unpaid / suspended | Nothing runs. This is a hosted dependency we now accept |
-| Telegram is unreachable | The bot retries with a growing back-off; scans continue; alerts queue |
+If the CLI is not configured, the script still keeps seven local copies and says so in the journal —
+a backup on the same disk protects against a mistake, not against losing the VM.
 
-Not covered by design: horizontal scaling (one process is the design — two would double-poll the
-same token and fight over the database), and multi-region failover (the pilot has one region).
+**Restore drill** (do it once, before inviting anyone):
+
+```bash
+sudo systemctl stop jobscout
+sudo -u jobscout cp /srv/jobscout/backups/service-<stamp>.db /srv/jobscout/data/service.db
+sudo rm -f /srv/jobscout/data/service.db-wal /srv/jobscout/data/service.db-shm
+sudo -u jobscout /opt/jobscout/.venv/bin/python -m jobscout service check
+sudo systemctl start jobscout && sudo /opt/jobscout/deploy/oracle/verify.sh
+```
+
+A restored database keeps every source's `baseline_scan_id`, so a restore cannot re-announce history.
+
+## 7. If Always Free is not workable
+
+The engineering is not Oracle-specific: `deploy/oracle/install.sh` is plain Ubuntu + systemd and runs
+on any VM. If A1 capacity never becomes available, the order of preference is: try another
+availability domain → try `E2.1.Micro` (also free) → keep the Windows task → only then discuss a paid
+option with the Product Owner. The Dockerfile and `deploy/fly.toml` stay in the repository for that
+last case; they are not the plan.
 
 ## 8. Moving off the Windows deployment
 
-Telegram allows **one** `getUpdates` consumer per bot, so two live deployments would fight (HTTP 409)
-and both would scan the same employers. Order matters:
+Telegram allows **one** `getUpdates` consumer per bot token: two live deployments would fight (HTTP
+409) and both would scan. The order is fixed:
 
-1. Deploy to Fly and let it baseline (`fly logs` shows the pass finishing).
-2. Verify: `service status` on Fly shows the same offered employers and a subscriber count of zero.
-3. Stop the Windows task: `Stop-ScheduledTask -TaskName "Job-Scout bot"`.
-4. Tell testers nothing yet — the bot identity does not change.
-5. Keep `data/service/service.db` and its backups for a fortnight as a fallback, then retire them.
+1. Provision the VM and run `install.sh`; fill the token; **do not start** the service yet.
+2. `sudo systemctl stop jobscout` on the VM if the installer already started it.
+3. Stop the Windows task: `Stop-ScheduledTask -TaskName "Job-Scout bot"` (and kill the wrapper's
+   `python.exe` child if it survives).
+4. `sudo systemctl start jobscout` on the VM, then `sudo /opt/jobscout/deploy/oracle/verify.sh`.
+5. Confirm in the journal that the first pass baselines the offered employers, and send one Telegram
+   message to the bot to prove the inbound path from the new host.
+6. Keep `data/service/service.db` and `data/ops/logs` on the Windows machine for a fortnight.
 
-There is no need to copy the Windows database: a fresh baseline is clean, costs one extra pass, and
-avoids carrying 27 MB of history into a deployment that has no users yet.
+There is no need to copy the Windows database: a fresh baseline is clean, costs one pass, and avoids
+carrying history into a deployment that has no users yet. The one thing that carries over is your own
+scope — send `/settings` and choose employers again if you want the expanded set.
 
-## 9. Cost control
+## Appendix — a managed host (not used)
 
-At pilot scale the bill is one Machine plus one volume: **≈ $4.40 per month**. Things that would
-raise it, and why we are not doing them: `performance-*` Machines (not needed — CPU is idle),
-dedicated IPv4 (no inbound traffic), a second Machine (one process is the design), Managed Postgres
-($38/month for something SQLite does for free at this size).
+`Dockerfile`, `.dockerignore` and `deploy/fly.toml` build and run the same service as a single managed
+container (≈ $4.40/month in London). They are kept because they cost nothing to keep and make the
+last-resort option a one-command deployment, but **the approved target is Oracle Always Free**
+(D-101), and nothing in this repository deploys there automatically.

@@ -2,9 +2,9 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered. The hosted service is deployed and its employer coverage has been expanded from 12 to the mid-50s in one measured batch (see [docs/runbook.md](./docs/runbook.md) §7c). The **coverage target is still short** — the intended ~100 enabled employers has not been reached — and the seven-day reliability measurement (AC-20) is still open, so the MVP is not complete.
+**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered. The hosted service is deployed and its employer coverage has grown from 12 to 76 enabled in three measured batches (see [docs/runbook.md](./docs/runbook.md) §7c). The **coverage target is still short** — the intended ~100 enabled employers has not been reached — and the seven-day reliability measurement (AC-20) is still open, so the MVP is not complete.
 
-Deployment: the hosted service is a single container. [docs/deployment.md](./docs/deployment.md) compares the hosting options, states the cost (≈ $4.40/month on Fly.io in London) and gives the exact commands; the Windows scheduled task remains the fallback.
+Deployment: the approved target is **Oracle Cloud Always Free**, which costs nothing to keep running (D-101). [docs/deployment.md](./docs/deployment.md) covers provisioning, the one-command installer in `deploy/oracle/`, health checks, backups and the restore drill; the Windows scheduled task remains the fallback until the VM is running.
 
 Two ways to use it:
 
@@ -267,7 +267,7 @@ sitemap supplies every role URL and its `lastmod`; a page is fetched only when a
 one. Pages are parsed from schema.org `JobPosting` JSON-LD; a page without it contributes only a
 title, which leaves the location unknown and the role in `needs_review` rather than guessing.
 Requests are spaced by `request_delay_seconds` and capped per scan. Any careers site of that shape
-can be added in configuration alone ? see [docs/configuration.md](./docs/configuration.md).
+can be added in configuration alone — see [docs/configuration.md](./docs/configuration.md).
 
 Employers are **catalogue files**, one per employer, shipped in `src/jobscout/catalogue/`. Adding
 one is a new TOML file, not a Python change: `[jobscout] catalogue = "sources"` points at your
@@ -285,7 +285,7 @@ somewhere else (D-087); `config validate` names the sources in a `[[sources]]` b
 
 `jobscout sources list` prints every source with its adapter, state, match counts and whether
 it has been validated (and when); `jobscout status --brief` gives one line per source and shows
-an error only while it is failing. Requests are paced per host across sources ? see `[pacing]`
+an error only while it is failing. Requests are paced per host across sources — see `[pacing]`
 in [docs/configuration.md](./docs/configuration.md).
 
 A `--fixture` file feeds list-shaped sources only (Palantir JSON, Workday listing, Monzo board),
@@ -294,8 +294,8 @@ Sitemap-driven sources need several documents, so their offline coverage lives i
 `tests/test_adapter_sitemap_html.py`.
 
 All six researched employers were validated live on 2026-10-24 and each has completed a scan on the
-operator's machine. Two researched URL shapes turned out to be wrong ? Wise serves
-`/job/<slug>-jid-<id>` and Arm's paths carry two trailing numbers ? which is exactly what the
+operator's machine. Two researched URL shapes turned out to be wrong — Wise serves
+`/job/<slug>-jid-<id>` and Arm's paths carry two trailing numbers — which is exactly what the
 bounded check exists to catch. Barclays' external board is far larger than its early-career subset,
 so that source sets `search_text = "graduate"` and its completeness is measured against the search's
 own total. Fixtures stay synthetic: they prove parsing, pagination, discovery, failure handling and
@@ -384,7 +384,7 @@ Known limitation, accepted for the MVP (D-042): if the process dies between Tele
 ## Measuring coverage
 
 `jobscout report --days 7` is a read-only scorecard over what is stored: scans per expected cycle
-per source, gaps, delivery outcomes, and now what each source contributes ? roles stored,
+per source, gaps, delivery outcomes, and now what each source contributes — roles stored,
 current matches, roles in review, and matches first seen in the window. It names the enabled
 sources that contribute nothing, which is the signal to narrow the scope or drop an employer
 before the next batch.

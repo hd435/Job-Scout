@@ -1,0 +1,43 @@
+[Unit]
+Description=Job-Scout Telegram service (hosted deployment)
+Documentation=file:///opt/jobscout/docs/deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jobscout
+Group=jobscout
+WorkingDirectory=/opt/jobscout
+EnvironmentFile=/etc/jobscout/jobscout.env
+ExecStart=/opt/jobscout/.venv/bin/python -m jobscout bot
+# The bot turns SIGTERM into a clean stop (cli._install_stop_handler), so a restart does not
+# cut a scan mid-transaction.
+KillSignal=SIGTERM
+TimeoutStopSec=90
+Restart=always
+RestartSec=10
+# A crash loop stops after this many attempts in the window; the health timer then decides.
+StartLimitIntervalSec=600
+StartLimitBurst=10
+
+# The service needs nothing from the system: no inbound ports, no shell, no new privileges.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+# Only the data directory is writable; the checkout and the venv stay read-only.
+ReadWritePaths=/srv/jobscout
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jobscout
+
+[Install]
+WantedBy=multi-user.target

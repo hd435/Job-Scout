@@ -45,7 +45,7 @@ from jobscout.models import MatchOutcome, ScanStatus  # noqa: E402
 from jobscout.sources import get_adapter  # noqa: E402
 
 #: Adapters whose whole board arrives in one response, so one probe request is honest.
-PROBEABLE = ("greenhouse", "ashby", "lever")
+PROBEABLE = ("greenhouse", "ashby", "lever", "workable")
 
 
 def parse_candidates(path: Path) -> list[tuple[str, str, str]]:
@@ -65,7 +65,12 @@ def parse_candidates(path: Path) -> list[tuple[str, str, str]]:
 
 
 def source_for(adapter: str, slug: str, employer: str) -> SourceConfig:
-    options = {"board": slug} if adapter in ("greenhouse", "ashby") else {"site": slug}
+    if adapter in ("greenhouse", "ashby"):
+        options = {"board": slug}
+    elif adapter == "workable":
+        options = {"account": slug}
+    else:
+        options = {"site": slug}
     return SourceConfig(
         id=slug,
         employer=employer,

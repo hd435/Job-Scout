@@ -86,7 +86,14 @@ def test_catalogue_expansion_stays_on_supported_adapters() -> None:
 
     assert extra, "the catalogue is expected to grow beyond the researched six"
     for source in extra:
-        assert source.adapter in {"greenhouse", "lever", "ashby", "workday", "sitemap_html"}
+        assert source.adapter in {
+            "greenhouse",
+            "lever",
+            "ashby",
+            "workable",
+            "workday",
+            "sitemap_html",
+        }
         assert source.cadence_minutes > 0
         assert source.employer.strip()
 

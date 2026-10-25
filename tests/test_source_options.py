@@ -28,6 +28,7 @@ def test_every_registered_adapter_declares_its_options() -> None:
         "greenhouse",
         "lever",
         "sitemap_html",
+        "workable",
         "workday",
     }
     for adapter in known_adapters():
