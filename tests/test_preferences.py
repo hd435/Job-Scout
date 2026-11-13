@@ -31,7 +31,17 @@ from jobscout.matching import (
 from jobscout.models import Job, MatchOutcome
 from jobscout.sources.base import build_job
 
-ALL_FAMILIES = ["data", "software", "quant", "finance", "consulting", "business_analysis"]
+ALL_FAMILIES = [
+    "data",
+    "software",
+    "quant",
+    "finance",
+    "consulting",
+    "business_analysis",
+    "engineering",
+    "science",
+    "supply_chain",
+]
 
 
 def make_job(

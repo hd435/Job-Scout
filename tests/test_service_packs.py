@@ -49,5 +49,8 @@ def test_the_wizard_offers_every_role_family_and_location_preset() -> None:
         "finance",
         "business_analysis",
         "consulting",
+        "engineering",
+        "science",
+        "supply_chain",
     ]
     assert [preset.key for preset in LOCATIONS] == ["uk", "london_remote", "london_only"]

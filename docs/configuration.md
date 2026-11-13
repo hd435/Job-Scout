@@ -191,19 +191,30 @@ A source whose *kind* of access is none of those four shapes still needs an adap
 
 The user's job-search scope. Omitting the whole table gives the shipped defaults, which are the
 pre-0.5 behaviour exactly; naming the defaults explicitly is detected and the rules identifier
-stays `m1.1`.
+stays the built-in one. Shipping a new family changes that identifier (`m1.2` since D-108), which
+is recorded on every stored decision so a decision made under older families is identifiable.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `role_families` | array of strings | all six approved families | Families that may alert. Unknown or empty is rejected |
+| `role_families` | array of strings | all nine approved families | Families that may alert. Unknown or empty is rejected |
 | `employment_types` | array of strings | the five early-career classes | Classes that may alert. `unknown` cannot be chosen; empty is rejected |
 | `seniority_exclusions` | array of strings | the approved list | Replaces the approved list. `[]` means "allow senior titles" |
 | `title_exclusions` | array of strings | `[]` | Title phrases that exclude a role outright |
 | `[preferences.locations]` | table | `mode = "uk"` | Location scope, section 4.2 |
 
 Approved role families: `data`, `software`, `quant`, `finance`, `consulting`,
-`business_analysis`. Unrelated families (sales, marketing, HR, legal, accounting, design) are
-excluded by code and cannot be enabled by configuration.
+`business_analysis`, and — since D-108 — `engineering`, `science`, `supply_chain`. Unrelated
+families (sales, marketing, HR, legal, accounting, design) are excluded by code and cannot be
+enabled by configuration; a title that matches both an approved family and an excluded one is held
+for review rather than alerted.
+
+The three newer families exist so employers outside technology and finance contribute
+opportunities, not just catalogue entries. Their stems name the disciplines (`mechanical engineer`,
+`analytical chemist`, `supply chain`) rather than the bare words: an earlier draft used a bare
+`science` stem and matched HR "People Science" schemes, which is why the list is specific. Overlap
+between families is deliberate — "Software Engineering" belongs to both `software` and
+`engineering`, and a role never alerts twice. A scope saved before D-108 keeps its own family list,
+so nothing widens without the user choosing it.
 
 ### 4.1 Employment-type classes (D-068)
 

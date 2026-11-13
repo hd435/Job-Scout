@@ -20,6 +20,9 @@ FAMILIES: tuple[tuple[str, str], ...] = (
     ("finance", "Finance"),
     ("business_analysis", "Business analysis"),
     ("consulting", "Consulting"),
+    ("engineering", "Engineering"),
+    ("science", "Science / R&D"),
+    ("supply_chain", "Supply chain"),
 )
 
 #: Employment classes a user may pick.

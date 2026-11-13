@@ -40,10 +40,10 @@ def test_no_overrides_returns_the_built_in_rules() -> None:
 
 def test_overrides_are_normalised_and_deduplicated() -> None:
     rules = build_rules(
-        extra_family_terms={"data": ["  Bioinformatics   Analyst ", "bioinformatics analyst"]}
+        extra_family_terms={"data": ["  Events   Coordinator ", "events coordinator"]}
     )
 
-    assert rules.extra_family_terms["data"] == ("bioinformatics analyst",)
+    assert rules.extra_family_terms["data"] == ("events coordinator",)
     assert rules.has_overrides is True
 
 
@@ -56,7 +56,7 @@ def test_unknown_family_is_rejected() -> None:
     assert "data" in message and "consulting" in message
 
 
-@pytest.mark.parametrize("bad_terms", ["bioinformatics analyst", 5, {"a": "b"}])
+@pytest.mark.parametrize("bad_terms", ["events coordinator", 5, {"a": "b"}])
 def test_family_terms_must_be_an_array(bad_terms) -> None:
     with pytest.raises(ValueError, match="must be an array"):
         build_rules(extra_family_terms={"data": bad_terms})
@@ -76,20 +76,20 @@ def test_unusable_terms_are_rejected(term) -> None:
 
 
 def test_version_tracks_the_override_content() -> None:
-    a = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
-    b = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    a = build_rules(extra_family_terms={"data": ["events coordinator"]})
+    b = build_rules(extra_family_terms={"data": ["events coordinator"]})
     c = build_rules(extra_family_terms={"data": ["clinical analyst"]})
 
     assert a.version.startswith(f"{RULES_VERSION}+")
     assert a.version == b.version
     assert a.version != c.version
-    assert match_job(make_job("Graduate Bioinformatics Analyst"), a).rules_version == a.version
+    assert match_job(make_job("Graduate Events Coordinator"), a).rules_version == a.version
 
 
 def test_version_is_independent_of_input_order() -> None:
     a = build_rules(
         extra_family_terms={
-            "data": ["clinical data scientist", "bioinformatics analyst"],
+            "data": ["clinical data scientist", "events coordinator"],
             "software": ["developer experience engineer"],
         },
         extra_exclude_terms=["unpaid", "commission only"],
@@ -97,7 +97,7 @@ def test_version_is_independent_of_input_order() -> None:
     b = build_rules(
         extra_family_terms={
             "software": ["developer experience engineer"],
-            "data": ["bioinformatics analyst", "clinical data scientist"],
+            "data": ["events coordinator", "clinical data scientist"],
         },
         extra_exclude_terms=["commission only", "unpaid"],
     )
@@ -110,11 +110,11 @@ def test_version_is_stable_across_processes() -> None:
     code = (
         "from jobscout.matching import build_rules;"
         "print(build_rules("
-        "extra_family_terms={'data': ['clinical data scientist', 'bioinformatics analyst']},"
+        "extra_family_terms={'data': ['clinical data scientist', 'events coordinator']},"
         " extra_exclude_terms=['unpaid']).version)"
     )
     expected = build_rules(
-        extra_family_terms={"data": ["clinical data scientist", "bioinformatics analyst"]},
+        extra_family_terms={"data": ["clinical data scientist", "events coordinator"]},
         extra_exclude_terms=["unpaid"],
     ).version
 
@@ -142,7 +142,7 @@ def test_neutral_override_keeps_default_decisions() -> None:
         "Software Engineer",
         "Account Executive",
         "Marketing Data Analyst",
-        "Graduate Bioinformatics Analyst",
+        "Graduate Events Coordinator",
     ]
 
     for title in titles:
@@ -155,11 +155,11 @@ def test_neutral_override_keeps_default_decisions() -> None:
 
 
 def test_extra_family_term_adds_a_match_inside_an_approved_family() -> None:
-    job = make_job("Graduate Bioinformatics Analyst")
+    job = make_job("Graduate Events Coordinator")
 
     assert match_job(job).decision is MatchOutcome.NO_MATCH
 
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
     decision = match_job(job, rules)
 
     assert decision.decision is MatchOutcome.MATCH
@@ -168,7 +168,7 @@ def test_extra_family_term_adds_a_match_inside_an_approved_family() -> None:
 
 
 def test_extra_family_term_does_not_bypass_the_early_career_requirement() -> None:
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
 
     decision = match_job(make_job("Bioinformatics Analyst"), rules)
 
@@ -215,7 +215,7 @@ def test_added_terms_cannot_neutralise_an_approved_family_exclusion() -> None:
 
 
 def test_added_terms_cannot_neutralise_a_seniority_exclusion() -> None:
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
 
     decision = match_job(make_job("Senior Bioinformatics Analyst"), rules)
 
@@ -224,10 +224,10 @@ def test_added_terms_cannot_neutralise_a_seniority_exclusion() -> None:
 
 
 def test_added_terms_cannot_neutralise_a_location_exclusion() -> None:
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
 
     decision = match_job(
-        make_job("Graduate Bioinformatics Analyst", location="Bengaluru, India"), rules
+        make_job("Graduate Events Coordinator", location="Bengaluru, India"), rules
     )
 
     assert decision.decision is MatchOutcome.NO_MATCH
@@ -235,7 +235,7 @@ def test_added_terms_cannot_neutralise_a_location_exclusion() -> None:
 
 
 def test_added_terms_respect_the_phd_exclusion() -> None:
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
 
     assert (
         match_job(make_job("Bioinformatics Analyst (PhD)"), rules).decision is MatchOutcome.NO_MATCH
@@ -251,8 +251,8 @@ def test_added_terms_respect_the_phd_exclusion() -> None:
 
 def test_scan_uses_the_configured_rules(tmp_path, scan, record):
     payload_baseline = [record("a", "Graduate Data Engineer")]
-    payload_new = payload_baseline + [record("b", "Graduate Bioinformatics Analyst")]
-    rules = build_rules(extra_family_terms={"data": ["bioinformatics analyst"]})
+    payload_new = payload_baseline + [record("b", "Graduate Events Coordinator")]
+    rules = build_rules(extra_family_terms={"data": ["events coordinator"]})
 
     # Default rules: the new title is not a target family.
     scan(payload_baseline)
@@ -268,7 +268,7 @@ def test_scan_uses_the_configured_rules(tmp_path, scan, record):
         override_store.close()
 
     assert [candidate.title for candidate in custom_outcome.candidates] == [
-        "Graduate Bioinformatics Analyst"
+        "Graduate Events Coordinator"
     ]
     assert stored.match is not None
     assert stored.match.decision is MatchOutcome.MATCH

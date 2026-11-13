@@ -460,4 +460,4 @@ def test_user_rules_match_the_cli_for_the_same_settings() -> None:
     assert rules.allowed_families == ("software", "data")
     assert rules.locations.mode == "pinned"
     assert rules.locations.cities == ("London",)
-    assert rules.version.startswith("m1.1+")
+    assert rules.version.startswith("m1.2+")

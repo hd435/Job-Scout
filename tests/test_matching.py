@@ -198,3 +198,96 @@ def test_matching_is_deterministic():
     job = make_job("Graduate Software Engineer")
 
     assert match_job(job) == match_job(job)
+
+
+# ---------------------------------------------------------------------------
+# D-108: engineering, science/R&D and supply chain
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Graduate Mechanical Engineer",
+        "Electronics Engineer - Graduate Programme 2027",
+        "Engineering and Technology Graduate Programme - UK",
+        "Manufacturing Engineer - Undergraduate Placement 2027",
+        "Graduate Civil Engineer",
+        "Junior Mechanical Engineer",
+    ],
+)
+def test_engineering_titles_match_the_engineering_family(title: str) -> None:
+    decision = match_job(make_job(title))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "family:engineering" in decision.reasons
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Graduate Research Scientist",
+        "Analytical Chemist - Graduate",
+        "Graduate Clinical Research Associate",
+        "Formulation Science Graduate",
+        "Materials Scientist (Graduate)",
+    ],
+)
+def test_science_titles_match_the_science_family(title: str) -> None:
+    decision = match_job(make_job(title))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "family:science" in decision.reasons
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Graduate Supply Chain Analyst",
+        "Procurement - Undergraduate Placement 2027",
+        "Graduate Logistics Planner",
+        "Demand Planning Graduate",
+    ],
+)
+def test_supply_chain_titles_match_the_supply_chain_family(title: str) -> None:
+    decision = match_job(make_job(title))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "family:supply_chain" in decision.reasons
+
+
+def test_people_science_is_not_a_science_family_role() -> None:
+    """Measured over-match: a bare `science` stem caught HR "People Science" schemes.
+
+    The stem list now names the sciences rather than the word, so a people-analytics scheme
+    stays out of a family that is meant to mean R&D.
+    """
+    decision = match_job(make_job("People Science Graduate Scheme"))
+
+    assert "family:science" not in decision.reasons
+
+
+def test_a_commercial_look_alike_is_held_for_review_not_alerted() -> None:
+    decision = match_job(make_job("Graduate Sales Engineering Programme"))
+
+    assert decision.decision is MatchOutcome.NEEDS_REVIEW
+    assert any(reason.startswith("review:family_conflict") for reason in decision.reasons)
+
+
+def test_software_roles_still_match_software() -> None:
+    """Overlap between families must not disturb the existing decision."""
+    decision = match_job(make_job("Graduate Software Engineer"))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "family:software" in decision.reasons
+
+
+def test_a_user_who_did_not_select_the_new_families_gets_nothing_new() -> None:
+    """No silent widening: a stored scope from before D-108 must keep its behaviour."""
+    from jobscout.matching import build_rules
+
+    rules = build_rules(role_families=["software", "data"])
+
+    decision = match_job(make_job("Graduate Mechanical Engineer"), rules)
+
+    assert decision.decision is not MatchOutcome.MATCH

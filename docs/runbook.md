@@ -722,6 +722,18 @@ sudo systemctl enable --now jobscout-bot
 journalctl -u jobscout-bot -f          # the bot logs one line per notable event
 ```
 
+**How the service spends its time (D-111).** One process does two jobs in one loop: it long-polls
+Telegram, then scans **at most one** due source, then polls again. While sources are still due the
+poll does not wait, so a sweep completes quickly without the bot going silent — a full sweep in one
+call used to block the poll for its entire duration (measured: median 1.0 s per source, mean 6.0 s,
+and one sitemap crawl of 102 minutes). The HTTP request ceiling (`[pacing].max_requests`) now
+belongs to a single board scan, so a long-running process cannot exhaust it permanently and one
+pathological source cannot consume the allowance for the rest of the sweep.
+
+Consequences worth knowing when reading the journal: a sweep appears as a sequence of
+`<source>: success …` lines rather than one block, and a source that is still `partial` after two
+consecutive passes is a real problem rather than cold-crawl behaviour.
+
 Windows: the same idea as section 3 — a `run-bot.cmd` wrapper running `jobscout bot`, registered
 with `New-ScheduledTaskAction` and restarted by the task's restart-on-failure setting.
 
