@@ -442,10 +442,11 @@ def run_live_check(
     sample_dir: Path | None = None,
     allowed_root: Path | None = None,
     max_records: int = DEFAULT_SAMPLE_RECORDS,
+    budget: int | None = None,
     now: str | None = None,
     allow_missing_fixture: bool = False,
 ) -> ValidationOutcome:
-    """Perform exactly one read-only request and judge the result.
+    """Perform exactly one read-only check and judge the result.
 
     `client` is injected so tests can prove the whole path offline; the caller decides
     the retry policy of the underlying client (the CLI builds it with no retries).
@@ -455,6 +456,10 @@ def run_live_check(
     `allow_missing_fixture` is first contact with a source that has no recorded payload yet:
     the adapter still parses the live response, but the shape comparison is skipped and the
     report says so rather than implying a contract was checked.
+
+    `budget` overrides the profile's request allowance. The profiles are sized for adapters
+    that answer in one request; a paginated source legitimately needs one request per page, so
+    a narrowed large board has to state its allowance rather than silently fail the check.
     """
     captured_at = now or _now_iso()
     profile = profile_for(source)
@@ -482,7 +487,8 @@ def run_live_check(
     if sample_dir is not None and allowed_root is not None:
         _ensure_within(sample_dir, allowed_root)
 
-    recording = RecordingClient(client, max_requests=profile.request_budget)
+    allowance = profile.request_budget if budget is None else budget
+    recording = RecordingClient(client, max_requests=allowance)
     adapter = _build_adapter(source, profile)
 
     try:
@@ -504,13 +510,13 @@ def run_live_check(
             lines=(f"Request failed: {exc.summary()}",),
         )
 
-    if not 1 <= len(recording.requests) <= profile.request_budget:
+    if not 1 <= len(recording.requests) <= allowance:
         return ValidationOutcome(
             ok=False,
             source_id=source.id,
             request_url=recording.requests[0] if recording.requests else None,
             scan=scan,
-            error=f"expected 1 to {profile.request_budget} request(s), the adapter made"
+            error=f"expected 1 to {allowance} request(s), the adapter made"
             f" {len(recording.requests)}",
             lines=(f"Request budget violated: {len(recording.requests)} request(s)",),
         )

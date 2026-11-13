@@ -1,0 +1,12 @@
+# G-Research runs Workday. Quantitative research and technology; the board is a single early-career-sized site.
+id = "gresearch"
+employer = "G-Research"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at gresearch.wd103.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, whole site"
+cadence_minutes = 30
+
+[options]
+host = "gresearch.wd103.myworkdayjobs.com"
+tenant = "gresearch"
+site = "g-research"
+locale = "en-US"

@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -63,6 +64,21 @@ REJECTED = {
     "mwinternshipprogram": "campus/aggregator board, not an employer",
     "checkout": "board token 404; uses a different ATS",
     "revolut": "board token 404; careers site is CAPTCHA-gated",
+    # Workday wave 1: enrolled, measured, then withdrawn. A global tenant narrowed by a
+    # `graduate` search still returns mostly non-UK roles, so the cost is per-scan noise.
+    "hp": (
+        "Workday group board: 333 postings in the graduate search, 4 UK, 0 matches. "
+        "Deferred rather than scanned; revisit if a UK or campus site is published"
+    ),
+    "mufg": (
+        "Workday group board returns world-wide roles: 36 postings, 2 UK, 0 matches. "
+        "Revisit if a UK graduate site is published"
+    ),
+    "pg": (
+        "Workday group board: 218 postings in the graduate search, 9 UK, 0 matches. P&G names "
+        "graduate-entry roles 'Manager', which the seniority exclusions reject; revisit if that "
+        "naming changes or a UK careers site appears"
+    ),
 }
 
 #: Platforms we can read, and the option each uses.
@@ -147,7 +163,7 @@ def inventory_rows(path: Path, evidence_date: str) -> list[dict[str, str]]:
             tenant = board.rstrip("/").split("/")[-1]
         rows.append(
             {
-                "employer": record.get("company", "").strip().casefold().replace(" ", "_"),
+                "employer": slugify(record.get("company", "")),
                 "name": record.get("company", "").strip(),
                 "platform": platform,
                 "tenant": tenant,
@@ -158,6 +174,12 @@ def inventory_rows(path: Path, evidence_date: str) -> list[dict[str, str]]:
             }
         )
     return rows
+
+
+def slugify(name: str) -> str:
+    """A stable id that merges with catalogue ids: "P&G" and "P&G" must not become two rows."""
+    cleaned = re.sub(r"[^a-z0-9]+", "_", name.strip().casefold()).strip("_")
+    return cleaned or "unknown"
 
 
 def merge(existing: list[dict[str, str]], incoming: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -188,24 +210,71 @@ def merge(existing: list[dict[str, str]], incoming: list[dict[str, str]]) -> lis
 
 
 def apply_rejections(rows: list[dict[str, str]], evidence_date: str) -> list[dict[str, str]]:
+    """Mark known rejections, keeping whatever connection detail was already discovered."""
+    by_slug = {slugify(row["employer"]): row for row in rows}
     by_id = {row["employer"]: row for row in rows}
+    dropped: set[str] = set()
     for employer, reason in REJECTED.items():
-        if employer in by_id:
-            by_id[employer]["status"] = "rejected"
-            by_id[employer]["reason"] = reason
-            by_id[employer]["evidence_date"] = evidence_date
-        else:
-            by_id[employer] = {
+        target = by_id.get(employer) or by_slug.get(slugify(employer))
+        if target is None:
+            target = {
                 "employer": employer,
                 "name": employer.replace("_", " ").title(),
                 "platform": "",
                 "tenant": "",
                 "site": "",
-                "status": "rejected",
-                "reason": reason,
-                "evidence_date": evidence_date,
             }
-    return list(by_id.values())
+            by_id[employer] = target
+        elif target["employer"] != employer:
+            # The discovery pass spelled the name differently ("P&G" -> p_g); the rejection
+            # belongs to the catalogue id, so fold the alias away rather than keep both.
+            dropped.add(target["employer"])
+        target["status"] = "rejected"
+        target["reason"] = reason
+        target["evidence_date"] = evidence_date
+    return [row for row in by_id.values() if row["employer"] not in dropped]
+
+
+def apply_measurements(rows: list[dict[str, str]], db: Path) -> list[dict[str, str]]:
+    """Fill each shipped row with what it actually contributed, from the scan database.
+
+    Contribution is the measure that matters (D-106): an employer that stores hundreds of roles
+    and matches none is recorded as such rather than counted as coverage.
+    """
+    import sqlite3
+
+    if not db.exists():
+        print(f"warning: {db} not found, contributions left blank", file=sys.stderr)
+        return rows
+    connection = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    measured: dict[str, tuple[int, int, int, int]] = {}
+    try:
+        for source_id, roles, uk, family, matches in connection.execute(
+            """
+            SELECT source_id,
+                   count(*),
+                   sum(CASE WHEN location_normalized_json LIKE '%"qualifies": true%'
+                            THEN 1 ELSE 0 END),
+                   sum(CASE WHEN match_reason LIKE '%"family:%' THEN 1 ELSE 0 END),
+                   sum(CASE WHEN match_decision = 'match' THEN 1 ELSE 0 END)
+            FROM jobs WHERE status = 'open' AND first_complete_scan_id IS NOT NULL
+            GROUP BY source_id
+            """
+        ):
+            measured[source_id] = (roles or 0, uk or 0, family or 0, matches or 0)
+    finally:
+        connection.close()
+
+    for row in rows:
+        if row["status"] != "added":
+            continue
+        values = measured.get(row["employer"])
+        if values is None:
+            continue
+        row["roles"], row["uk_roles"], row["family_roles"], row["matches"] = (
+            str(value) for value in values
+        )
+    return rows
 
 
 def cmd_seed(args: argparse.Namespace) -> int:
@@ -214,11 +283,20 @@ def cmd_seed(args: argparse.Namespace) -> int:
     if args.inventory:
         rows = merge(rows, inventory_rows(args.inventory, args.date))
     rows = apply_rejections(rows, args.date)
+    if args.db:
+        rows = apply_measurements(rows, args.db)
     write_registry(rows)
     counts = Counter(row["status"] for row in rows)
     print(f"registry: {REGISTRY} ({len(rows)} employers)")
     for status, count in sorted(counts.items()):
         print(f"  {status:<12}{count:>5}")
+    contributing = sum(
+        1
+        for row in rows
+        if row["status"] == "added" and row["matches"].isdigit() and int(row["matches"]) > 0
+    )
+    added = sum(1 for row in rows if row["status"] == "added")
+    print(f"  contributing (>=1 match) {contributing} of {added} shipped employers")
     return 0
 
 
@@ -282,6 +360,7 @@ def main() -> int:
 
     seed = sub.add_parser("seed", help="write or refresh the registry from the catalogue")
     seed.add_argument("--inventory", type=Path, help="employer-boards.json from a discovery pass")
+    seed.add_argument("--db", type=Path, help="scan database to record each source's contribution")
     seed.add_argument("--date", default="", help="evidence date to record, e.g. 2026-11-13")
     seed.set_defaults(func=cmd_seed)
 

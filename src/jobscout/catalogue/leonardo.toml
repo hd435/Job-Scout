@@ -1,0 +1,13 @@
+# Leonardo runs Workday. Defence and aerospace engineering; the group board is large, so the site's own graduate search bounds a scan.
+id = "leonardo"
+employer = "Leonardo"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at leonardocompany.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, narrowed by the site's own `graduate` search"
+cadence_minutes = 30
+
+[options]
+host = "leonardocompany.wd3.myworkdayjobs.com"
+tenant = "leonardocompany"
+site = "leonardocareersite"
+locale = "en-US"
+search_text = "graduate"

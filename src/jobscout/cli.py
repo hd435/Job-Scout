@@ -227,6 +227,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="skip the fixture comparison for a source with no recorded payload yet",
     )
+    validate.add_argument(
+        "--budget",
+        type=int,
+        help=(
+            "override the profile's request budget. A paginated source such as Workday needs"
+            " one request per page, so a narrowed large board needs a larger explicit budget"
+        ),
+    )
     validate.add_argument("--config", type=Path, help="TOML configuration file")
 
     schedule = subparsers.add_parser(
@@ -572,6 +580,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
             sample_dir=sample_dir,
             allowed_root=VALIDATION_ARTIFACT_ROOT,
             max_records=args.max_records,
+            budget=args.budget,
             allow_missing_fixture=args.live_only,
         )
     except ValueError as exc:
@@ -579,7 +588,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         return EXIT_FAILED
 
     print(f"Live validation: {source.id} ({source.employer}) - adapter {source.adapter}")
-    print(f"  Budget: {profile.request_budget} request(s)")
+    print(f"  Budget: {args.budget or profile.request_budget} request(s)")
     for line in outcome.lines:
         print(f"  {line}")
     if outcome.sample_path is not None:

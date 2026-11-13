@@ -1,115 +1,119 @@
 employer,name,platform,tenant,site,status,reason,roles,uk_roles,family_roles,matches,evidence_date
-abnormalsecurity,Abnormal Security,greenhouse,abnormalsecurity,,added,,,,,,2026-11-13
-affirm,Affirm,greenhouse,affirm,,added,,,,,,2026-11-13
-akunacapital,Akuna Capital,greenhouse,akunacapital,,added,,,,,,2026-11-13
-algolia,Algolia,greenhouse,algolia,,added,,,,,,2026-11-13
-anthropic,Anthropic,greenhouse,anthropic,,added,,,,,,2026-11-13
-aquatic_capital,Aquatic Capital Management,greenhouse,aquaticcapitalmanagement,,added,,,,,,2026-11-13
-arm,Arm,sitemap_html,,,added,,,,,,2026-11-13
-arondite,Arondite,workable,arondite,,added,,,,,,2026-11-13
-attio,Attio,ashby,attio,,added,,,,,,2026-11-13
-barclays,Barclays,workday,barclays,External_Career_Site_Barclays,added,,,,,,2026-11-13
-blackstone,Blackstone,workday,blackstone,blackstone_campus_careers,added,,,,,,2026-11-13
-blenheim_chalcot,Blenheim Chalcot,greenhouse,blenheimchalcot,,added,,,,,,2026-11-13
-bloomon,bloomon,lever,bloomon,,added,,,,,,2026-11-13
-braze,Braze,greenhouse,braze,,added,,,,,,2026-11-13
-capco,Capco,greenhouse,capco,,added,,,,,,2026-11-13
-catapult_sports,Catapult Sports,greenhouse,catapultsports,,added,,,,,,2026-11-13
-causaly,Causaly,ashby,causaly,,added,,,,,,2026-11-13
-celonis,Celonis,greenhouse,celonis,,added,,,,,,2026-11-13
-centrica,Centrica,workday,centrica,centrica,added,,,,,,2026-11-13
-cfo_insights,CFO Insights,greenhouse,cfoinsights,,added,,,,,,2026-11-13
-charles_river,Charles River Associates,greenhouse,charlesriverassociates,,added,,,,,,2026-11-13
-circleci,CircleCI,greenhouse,circleci,,added,,,,,,2026-11-13
-clearview,ClearView Healthcare Partners,greenhouse,clearviewhealthcarepartners,,added,,,,,,2026-11-13
-cognism,Cognism,greenhouse,cognism,,added,,,,,,2026-11-13
-cognition,Cognition,ashby,cognition,,added,,,,,,2026-11-13
-cohere,Cohere,ashby,cohere,,added,,,,,,2026-11-13
-contentful,Contentful,greenhouse,contentful,,added,,,,,,2026-11-13
-cursor,Cursor,ashby,cursor,,added,,,,,,2026-11-13
-databricks,Databricks,greenhouse,databricks,,added,,,,,,2026-11-13
-datadog,Datadog,greenhouse,datadog,,added,,,,,,2026-11-13
-deepgram,Deepgram,ashby,deepgram,,added,,,,,,2026-11-13
-deliveroo,Deliveroo,greenhouse,deliveroo,,added,,,,,,2026-11-13
-drw,DRW,greenhouse,drweng,,added,,,,,,2026-11-13
-ekimetrics,Ekimetrics,lever,ekimetrics,,added,,,,,,2026-11-13
-elastic,Elastic,greenhouse,elastic,,added,,,,,,2026-11-13
-elevenlabs,ElevenLabs,ashby,elevenlabs,,added,,,,,,2026-11-13
-fasanara,Fasanara,workable,fasanara,,added,,,,,,2026-11-13
-fastly,Fastly,greenhouse,fastly,,added,,,,,,2026-11-13
-figma,Figma,greenhouse,figma,,added,,,,,,2026-11-13
-fireworks,Fireworks AI,ashby,fireworks,,added,,,,,,2026-11-13
-five_rings,Five Rings,greenhouse,fiveringsllc,,added,,,,,,2026-11-13
-focusrite,Focusrite Group,workable,focusrite,,added,,,,,,2026-11-13
-form3,Form3,greenhouse,form3,,added,,,,,,2026-11-13
-gitlab,GitLab,greenhouse,gitlab,,added,,,,,,2026-11-13
-gocardless,GoCardless,greenhouse,gocardless,,added,,,,,,2026-11-13
-graphcore,Graphcore,greenhouse,graphcore,,added,,,,,,2026-11-13
-grayce,Grayce,workable,grayce,,added,,,,,,2026-11-13
-griffin,Griffin,ashby,griffin,,added,,,,,,2026-11-13
-gymshark,Gymshark,greenhouse,gymshark,,added,,,,,,2026-11-13
-headlands,Headlands Technologies,greenhouse,headlandstechnologiesllc,,added,,,,,,2026-11-13
-incident,Incident.io,ashby,incident,,added,,,,,,2026-11-13
-intercom,Intercom,greenhouse,intercom,,added,,,,,,2026-11-13
-janestreet,Jane Street,greenhouse,janestreet,,added,,,,,,2026-11-13
-javelin_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,added,,,,,,2026-11-13
-jfrog,JFrog,greenhouse,jfrog,,added,,,,,,2026-11-13
-klaviyo,Klaviyo,greenhouse,klaviyo,,added,,,,,,2026-11-13
-knowbe4,KnowBe4,greenhouse,knowbe4,,added,,,,,,2026-11-13
-legora,Legora,ashby,legora,,added,,,,,,2026-11-13
-linear,Linear,ashby,linear,,added,,,,,,2026-11-13
-lloyds_graduate,Lloyds Banking Group,workday,lbg,Graduate_careers,added,,,,,,2026-11-13
-longshot_systems,Longshot Systems,workable,longshot-systems-ltd,,added,,,,,,2026-11-13
-mbda,MBDA,workday,mbda,mbda-uk,added,,,,,,2026-11-13
-mindfoundry,Mind Foundry,greenhouse,mindfoundry,,added,,,,,,2026-11-13
-moneyfarm,Moneyfarm,workable,moneyfarm,,added,,,,,,2026-11-13
-mongodb,MongoDB,greenhouse,mongodb,,added,,,,,,2026-11-13
-monzo,Monzo,greenhouse,monzo,,added,,,,,,2026-11-13
-multiverse,Multiverse,ashby,multiverse,,added,,,,,,2026-11-13
-mytos,Mytos,lever,mytos,,added,,,,,,2026-11-13
-neo4j,Neo4j,greenhouse,neo4j,,added,,,,,,2026-11-13
-neptune_north,Neptune North,greenhouse,neptunenorth,,added,,,,,,2026-11-13
-newrocket,NewRocket,greenhouse,highmetric,,added,,,,,,2026-11-13
-nu_quantum,Nu Quantum,workable,nu-quantum,,added,,,,,,2026-11-13
-onetrust,OneTrust,greenhouse,onetrust,,added,,,,,,2026-11-13
-pagerduty,PagerDuty,greenhouse,pagerduty,,added,,,,,,2026-11-13
-palantir,Palantir Technologies,lever,palantir,,added,,,,,,2026-11-13
-perplexity,Perplexity,ashby,perplexity,,added,,,,,,2026-11-13
-point72,Point72,greenhouse,point72,,added,,,,,,2026-11-13
-posthog,PostHog,ashby,posthog,,added,,,,,,2026-11-13
-ramp,Ramp,ashby,ramp,,added,,,,,,2026-11-13
-retail_insights,Retail Insights,greenhouse,retailinsights,,added,,,,,,2026-11-13
-sardine,Sardine,ashby,sardine,,added,,,,,,2026-11-13
-scale_ai,Scale AI,greenhouse,scaleai,,added,,,,,,2026-11-13
-schonfeld,Schonfeld,greenhouse,schonfeld,,added,,,,,,2026-11-13
-sierra,Sierra,ashby,sierra,,added,,,,,,2026-11-13
-smartsheet,Smartsheet,greenhouse,smartsheet,,added,,,,,,2026-11-13
-socure,Socure,ashby,socure,,added,,,,,,2026-11-13
-stripe,Stripe,greenhouse,stripe,,added,,,,,,2026-11-13
-sumup,SumUp,greenhouse,sumup,,added,,,,,,2026-11-13
-symphony_comms,Symphony Communication Services,greenhouse,symphony,,added,,,,,,2026-11-13
-synthesia,Synthesia,ashby,synthesia,,added,,,,,,2026-11-13
-tailscale,Tailscale,greenhouse,tailscale,,added,,,,,,2026-11-13
-thoughtworks,Thoughtworks,greenhouse,thoughtworks,,added,,,,,,2026-11-13
-tide,Tide,greenhouse,tide,,added,,,,,,2026-11-13
-tower_research,Tower Research Capital,greenhouse,towerresearchcapital,,added,,,,,,2026-11-13
-truelayer,TrueLayer,greenhouse,truelayer,,added,,,,,,2026-11-13
-twilio,Twilio,greenhouse,twilio,,added,,,,,,2026-11-13
-typeform,Typeform,greenhouse,typeform,,added,,,,,,2026-11-13
-vanta,Vanta,ashby,vanta,,added,,,,,,2026-11-13
-vercel,Vercel,greenhouse,vercel,,added,,,,,,2026-11-13
-verkada,Verkada,greenhouse,verkada,,added,,,,,,2026-11-13
-wayve,Wayve,ashby,wayve,,added,,,,,,2026-11-13
-winthrop,Winthrop Technologies,workable,winthrop-technologies,,added,,,,,,2026-11-13
-winton,Winton,greenhouse,winton,,added,,,,,,2026-11-13
-wise,Wise,sitemap_html,,,added,,,,,,2026-11-13
-wolt,Wolt,greenhouse,wolt,,added,,,,,,2026-11-13
-wordsmith,Wordsmith,ashby,wordsmith,,added,,,,,,2026-11-13
-workman_llp,Workman LLP,workable,workman-llp,,added,,,,,,2026-11-13
-worldquant,WorldQuant,greenhouse,worldquant,,added,,,,,,2026-11-13
-writer,Writer,ashby,writer,,added,,,,,,2026-11-13
-zoopla,Zoopla,workable,zoopla,,added,,,,,,2026-11-13
-zopa,Zopa,lever,zopa,,added,,,,,,2026-11-13
+abnormalsecurity,Abnormal Security,greenhouse,abnormalsecurity,,added,,89,10,25,0,2026-11-13
+affirm,Affirm,greenhouse,affirm,,added,,219,14,136,1,2026-11-13
+akunacapital,Akuna Capital,greenhouse,akunacapital,,added,,31,1,22,0,2026-11-13
+algolia,Algolia,greenhouse,algolia,,added,,30,7,9,0,2026-11-13
+anthropic,Anthropic,greenhouse,anthropic,,added,,671,41,235,0,2026-11-13
+aquatic_capital,Aquatic Capital Management,greenhouse,aquaticcapitalmanagement,,added,,12,2,10,1,2026-11-13
+arm,Arm,sitemap_html,,,added,,405,103,169,0,2026-11-13
+arondite,Arondite,workable,arondite,,added,,25,21,11,2,2026-11-13
+attio,Attio,ashby,attio,,added,,22,9,8,0,2026-11-13
+barclays,Barclays,workday,barclays,External_Career_Site_Barclays,added,,75,34,12,0,2026-11-13
+blackstone,Blackstone,workday,blackstone,blackstone_campus_careers,added,,19,13,3,0,2026-11-13
+blenheim_chalcot,Blenheim Chalcot,greenhouse,blenheimchalcot,,added,,15,12,4,2,2026-11-13
+bloomon,bloomon,lever,bloomon,,added,,16,10,2,1,2026-11-13
+braze,Braze,greenhouse,braze,,added,,344,19,98,0,2026-11-13
+capco,Capco,greenhouse,capco,,added,,698,81,350,0,2026-11-13
+catapult_sports,Catapult Sports,greenhouse,catapultsports,,added,,18,5,9,0,2026-11-13
+causaly,Causaly,ashby,causaly,,added,,10,7,4,0,2026-11-13
+celonis,Celonis,greenhouse,celonis,,added,,264,21,80,0,2026-11-13
+centrica,Centrica,workday,centrica,centrica,added,,1,1,0,0,2026-11-13
+cfo_insights,CFO Insights,greenhouse,cfoinsights,,added,,364,251,24,3,2026-11-13
+charles_river,Charles River Associates,greenhouse,charlesriverassociates,,added,,85,11,31,1,2026-11-13
+circleci,CircleCI,greenhouse,circleci,,added,,15,5,7,0,2026-11-13
+clearview,ClearView Healthcare Partners,greenhouse,clearviewhealthcarepartners,,added,,24,7,19,0,2026-11-13
+cognism,Cognism,greenhouse,cognism,,added,,18,7,6,0,2026-11-13
+cognition,Cognition,ashby,cognition,,added,,114,12,21,0,2026-11-13
+cohere,Cohere,ashby,cohere,,added,,122,34,37,0,2026-11-13
+contentful,Contentful,greenhouse,contentful,,added,,24,14,2,0,2026-11-13
+cursor,Cursor,ashby,cursor,,added,,116,3,38,0,2026-11-13
+databricks,Databricks,greenhouse,databricks,,added,,895,46,388,2,2026-11-13
+datadog,Datadog,greenhouse,datadog,,added,,384,14,53,0,2026-11-13
+deepgram,Deepgram,ashby,deepgram,,added,,64,5,21,0,2026-11-13
+deliveroo,Deliveroo,greenhouse,deliveroo,,added,,186,120,48,1,2026-11-13
+drw,DRW,greenhouse,drweng,,added,,159,42,108,3,2026-11-13
+ekimetrics,Ekimetrics,lever,ekimetrics,,added,,26,3,18,0,2026-11-13
+elastic,Elastic,greenhouse,elastic,,added,,400,30,160,0,2026-11-13
+elevenlabs,ElevenLabs,ashby,elevenlabs,,added,,129,47,36,0,2026-11-13
+fasanara,Fasanara,workable,fasanara,,added,,9,8,3,0,2026-11-13
+fastly,Fastly,greenhouse,fastly,,added,,55,3,17,0,2026-11-13
+figma,Figma,greenhouse,figma,,added,,140,19,45,1,2026-11-13
+fireworks,Fireworks AI,ashby,fireworks,,added,,98,13,12,0,2026-11-13
+five_rings,Five Rings,greenhouse,fiveringsllc,,added,,19,4,10,2,2026-11-13
+focusrite,Focusrite Group,workable,focusrite,,added,,17,15,6,1,2026-11-13
+form3,Form3,greenhouse,form3,,added,,5,2,3,0,2026-11-13
+gitlab,GitLab,greenhouse,gitlab,,added,,250,36,65,0,2026-11-13
+gocardless,GoCardless,greenhouse,gocardless,,added,,29,8,13,0,2026-11-13
+graphcore,Graphcore,greenhouse,graphcore,,added,,197,115,107,0,2026-11-13
+grayce,Grayce,workable,grayce,,added,,12,12,8,3,2026-11-13
+gresearch,G-Research,workday,gresearch,g-research,added,,65,65,44,6,2026-11-13
+griffin,Griffin,ashby,griffin,,added,,5,5,2,0,2026-11-13
+gymshark,Gymshark,greenhouse,gymshark,,added,,6,3,2,0,2026-11-13
+headlands,Headlands Technologies,greenhouse,headlandstechnologiesllc,,added,,8,6,5,1,2026-11-13
+howden,Howden,workday,hyperiongrp,hyperion_external,added,,14,1,1,0,2026-11-13
+incident,Incident.io,ashby,incident,,added,,32,14,4,0,2026-11-13
+intercom,Intercom,greenhouse,intercom,,added,,115,30,29,0,2026-11-13
+janestreet,Jane Street,greenhouse,janestreet,,added,,217,60,74,0,2026-11-13
+javelin_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,added,,5,4,2,1,2026-11-13
+jfrog,JFrog,greenhouse,jfrog,,added,,76,4,18,0,2026-11-13
+klaviyo,Klaviyo,greenhouse,klaviyo,,added,,147,6,40,0,2026-11-13
+knowbe4,KnowBe4,greenhouse,knowbe4,,added,,58,6,19,0,2026-11-13
+legora,Legora,ashby,legora,,added,,339,45,69,0,2026-11-13
+leonardo,Leonardo,workday,leonardocompany,leonardocareersite,added,,84,68,47,0,2026-11-13
+linear,Linear,ashby,linear,,added,,33,2,3,0,2026-11-13
+lloyds_graduate,Lloyds Banking Group,workday,lbg,Graduate_careers,added,,17,17,14,1,2026-11-13
+longshot_systems,Longshot Systems,workable,longshot-systems-ltd,,added,,6,6,6,1,2026-11-13
+mbda,MBDA,workday,mbda,mbda-uk,added,,51,51,24,0,2026-11-13
+mindfoundry,Mind Foundry,greenhouse,mindfoundry,,added,,7,7,5,0,2026-11-13
+moneyfarm,Moneyfarm,workable,moneyfarm,,added,,15,7,8,1,2026-11-13
+mongodb,MongoDB,greenhouse,mongodb,,added,,391,10,105,0,2026-11-13
+monzo,Monzo,greenhouse,monzo,,added,,57,48,24,0,2026-11-13
+multiverse,Multiverse,ashby,multiverse,,added,,25,25,3,0,2026-11-13
+mytos,Mytos,lever,mytos,,added,,13,12,7,2,2026-11-13
+neo4j,Neo4j,greenhouse,neo4j,,added,,64,20,42,0,2026-11-13
+neptune_north,Neptune North,greenhouse,neptunenorth,,added,,22,18,19,0,2026-11-13
+newrocket,NewRocket,greenhouse,highmetric,,added,,48,5,22,1,2026-11-13
+nu_quantum,Nu Quantum,workable,nu-quantum,,added,,8,8,6,0,2026-11-13
+onetrust,OneTrust,greenhouse,onetrust,,added,,84,5,32,0,2026-11-13
+pagerduty,PagerDuty,greenhouse,pagerduty,,added,,47,3,16,0,2026-11-13
+palantir,Palantir Technologies,lever,palantir,,added,,301,46,218,11,2026-11-13
+perplexity,Perplexity,ashby,perplexity,,added,,143,28,53,1,2026-11-13
+pfizer,Pfizer,workday,pfizer,pfizercareers,added,,29,2,5,0,2026-11-13
+point72,Point72,greenhouse,point72,,added,,200,15,95,0,2026-11-13
+posthog,PostHog,ashby,posthog,,added,,10,1,3,0,2026-11-13
+ramp,Ramp,ashby,ramp,,added,,179,9,62,0,2026-11-13
+retail_insights,Retail Insights,greenhouse,retailinsights,,added,,250,236,7,3,2026-11-13
+sardine,Sardine,ashby,sardine,,added,,39,5,11,0,2026-11-13
+scale_ai,Scale AI,greenhouse,scaleai,,added,,170,24,68,2,2026-11-13
+schonfeld,Schonfeld,greenhouse,schonfeld,,added,,70,15,36,0,2026-11-13
+sierra,Sierra,ashby,sierra,,added,,198,36,50,2,2026-11-13
+smartsheet,Smartsheet,greenhouse,smartsheet,,added,,73,6,24,0,2026-11-13
+socure,Socure,ashby,socure,,added,,93,3,43,0,2026-11-13
+stripe,Stripe,greenhouse,stripe,,added,,789,39,178,2,2026-11-13
+sumup,SumUp,greenhouse,sumup,,added,,329,74,84,0,2026-11-13
+symphony_comms,Symphony Communication Services,greenhouse,symphony,,added,,17,8,4,0,2026-11-13
+synthesia,Synthesia,ashby,synthesia,,added,,31,19,11,0,2026-11-13
+tailscale,Tailscale,greenhouse,tailscale,,added,,79,3,19,0,2026-11-13
+thoughtworks,Thoughtworks,greenhouse,thoughtworks,,added,,47,2,20,0,2026-11-13
+tide,Tide,greenhouse,tide,,added,,100,22,21,0,2026-11-13
+tower_research,Tower Research Capital,greenhouse,towerresearchcapital,,added,,93,9,57,3,2026-11-13
+truelayer,TrueLayer,greenhouse,truelayer,,added,,3,1,0,0,2026-11-13
+twilio,Twilio,greenhouse,twilio,,added,,115,17,17,0,2026-11-13
+typeform,Typeform,greenhouse,typeform,,added,,6,4,0,0,2026-11-13
+vanta,Vanta,ashby,vanta,,added,,80,14,29,0,2026-11-13
+vercel,Vercel,greenhouse,vercel,,added,,87,4,21,0,2026-11-13
+verkada,Verkada,greenhouse,verkada,,added,,346,18,102,0,2026-11-13
+wayve,Wayve,ashby,wayve,,added,,167,61,77,0,2026-11-13
+winthrop,Winthrop Technologies,workable,winthrop-technologies,,added,,234,27,12,0,2026-11-13
+winton,Winton,greenhouse,winton,,added,,7,7,3,1,2026-11-13
+wise,Wise,sitemap_html,,,added,,222,108,61,0,2026-11-13
+wolt,Wolt,greenhouse,wolt,,added,,192,10,8,0,2026-11-13
+wordsmith,Wordsmith,ashby,wordsmith,,added,,25,17,2,0,2026-11-13
+workman_llp,Workman LLP,workable,workman-llp,,added,,23,23,1,0,2026-11-13
+worldquant,WorldQuant,greenhouse,worldquant,,added,,82,4,53,0,2026-11-13
+writer,Writer,ashby,writer,,added,,45,11,11,0,2026-11-13
+zoopla,Zoopla,workable,zoopla,,added,,15,15,2,0,2026-11-13
+zopa,Zopa,lever,zopa,,added,,30,30,13,0,2026-11-13
 1global,1GLOBAL,workable,1global,,candidate,,,,,,2026-11-13
 academy_of_medical_sciences,Academy of Medical Sciences,workable,academy-of-medical-sciences,,candidate,,,,,,2026-11-13
 accora,Accora,workable,accora,,candidate,,,,,,2026-11-13
@@ -123,7 +127,7 @@ analog_devices,Analog Devices,workday,analogdevices,external,candidate,,,,,,2026
 ankura,Ankura,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 ardian,Ardian,workday,ardian,ardiancareers,candidate,,,,,,2026-11-13
 arriva,Arriva,workday,arriva,careers,candidate,,,,,,2026-11-13
-atkinsréalis,AtkinsRéalis,,,,candidate,no public board found on the published job page,,,,,2026-11-13
+atkinsr_alis,AtkinsRéalis,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 autodesk,Autodesk,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 aveva,AVEVA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 avis_budget_group,Avis Budget Group,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -158,7 +162,7 @@ clearview_healthcare_partners,ClearView Healthcare Partners,greenhouse,clearview
 clearwater_analytics,Clearwater Analytics,workday,clearwateranalytics,clearwater_analytics_careers,candidate,,,,,,2026-11-13
 cloudflare,Cloudflare,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 clsa,CLSA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-clyde_&_co,Clyde & Co,workday,clydeco,clydecocareers,candidate,,,,,,2026-11-13
+clyde_co,Clyde & Co,workday,clydeco,clydecocareers,candidate,,,,,,2026-11-13
 cme_group,CME Group,workday,cmegroup,cme_careers,candidate,,,,,,2026-11-13
 control_risks,Control Risks,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 costello_medical,Costello Medical,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -167,18 +171,18 @@ creative_artists_agency,Creative Artists Agency,workday,caa,careers,candidate,,,
 crowdstrike,CrowdStrike,workday,crowdstrike,crowdstrikecareers,candidate,,,,,,2026-11-13
 danaher,Danaher,workday,danaher,danaherjobs,candidate,,,,,,2026-11-13
 decoded_limited,Decoded Limited,recruitee,decoded.recruitee.com,,candidate,,,,,,2026-11-13
-drw_-_university,DRW - University,greenhouse,drwuniversityjobs,,candidate,,,,,,2026-11-13
+drw_university,DRW - University,greenhouse,drwuniversityjobs,,candidate,,,,,,2026-11-13
 elasticstage,elasticStage,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 enermech,EnerMech,workable,enermech,,candidate,,,,,,2026-11-13
 enstar_group,Enstar Group,greenhouse,enstargrouplimited,,candidate,,,,,,2026-11-13
 entrust,Entrust,workday,entrust,entrustcareers,candidate,,,,,,2026-11-13
-"envoy_global,_inc.","Envoy Global, Inc.",greenhouse,envoyglobalinc,,candidate,,,,,,2026-11-13
+envoy_global_inc,"Envoy Global, Inc.",greenhouse,envoyglobalinc,,candidate,,,,,,2026-11-13
 eurostar_international,Eurostar International,workable,eurostar,,candidate,,,,,,2026-11-13
 evolution_recruitment_solutions,Evolution Recruitment Solutions,workable,evolution-recruitment-solutions,,candidate,,,,,,2026-11-13
 fanatics_commerce,Fanatics Commerce,greenhouse,fanaticscommerce,,candidate,,,,,,2026-11-13
 freshfields,Freshfields,workday,freshfields,fbd_101,candidate,,,,,,2026-11-13
 freudenberg,Freudenberg,workday,freudenberg,freudenberg-group,candidate,,,,,,2026-11-13
-g-research,G-Research,workday,gresearch,g-research,candidate,,,,,,2026-11-13
+g_research,G-Research,workday,gresearch,g-research,candidate,,,,,,2026-11-13
 gartner,Gartner,workday,gartner,ext,candidate,,,,,,2026-11-13
 ge_vernova,GE Vernova,workday,gevernova,vernova_externalsite,candidate,,,,,,2026-11-13
 grayling,Grayling,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -191,8 +195,6 @@ hellofresh,HelloFresh,greenhouse,hellofresh,,candidate,,,,,,2026-11-13
 hewlett_packard_enterprise,Hewlett Packard Enterprise,workday,hpe,jobsathpe,candidate,,,,,,2026-11-13
 hexcel,Hexcel,workday,hexcel,hexcelcareers,candidate,,,,,,2026-11-13
 hitachi,Hitachi,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-howden,Howden,workday,hyperiongrp,hyperion_external,candidate,,,,,,2026-11-13
-hp,HP,workday,hp,externalcareersite,candidate,,,,,,2026-11-13
 hudson_river_trading,Hudson River Trading,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 ik_partners,IK Partners,recruitee,ikpartners.recruitee.com,,candidate,,,,,,2026-11-13
 ingram_micro,Ingram Micro,workday,ingrammicro,ingrammicro,candidate,,,,,,2026-11-13
@@ -215,11 +217,11 @@ kla,KLA,workday,kla,search,candidate,,,,,,2026-11-13
 knight_frank,Knight Frank,workday,knightfrank,kf,candidate,,,,,,2026-11-13
 kone,KONE,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 la_fosse,La Fosse,workable,lafosse,,candidate,,,,,,2026-11-13
-landmark_information_group_-_internal,Landmark Information Group - Internal,greenhouse,liginternal,,candidate,,,,,,2026-11-13
+landmark_information_group_internal,Landmark Information Group - Internal,greenhouse,liginternal,,candidate,,,,,,2026-11-13
 landor,Landor,greenhouse,landor,,candidate,,,,,,2026-11-13
 legalvision,LegalVision,workable,legalvision,,candidate,,,,,,2026-11-13
 leonardocompany,leonardocompany,workday,leonardocompany,leonardocareersite,candidate,,,,,,2026-11-13
-levi_strauss_&_co.,Levi Strauss & Co.,,,,candidate,no public board found on the published job page,,,,,2026-11-13
+levi_strauss_co,Levi Strauss & Co.,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 liberty_global,Liberty Global,workday,libertyglobal,liberty_global_careers,candidate,,,,,,2026-11-13
 linklaters,Linklaters,workday,linklaters,linklaters,candidate,,,,,,2026-11-13
 longshot_systems_ltd,Longshot Systems Ltd,workable,longshot-systems-ltd,,candidate,,,,,,2026-11-13
@@ -228,11 +230,10 @@ lseg,LSEG,workday,lseg,careers,candidate,,,,,,2026-11-13
 mako,Mako,greenhouse,mako,,candidate,,,,,,2026-11-13
 mars,Mars,workday,mars,external,candidate,,,,,,2026-11-13
 mec_consulting_group,MEC Consulting Group,recruitee,mec.recruitee.com,,candidate,,,,,,2026-11-13
-merck_&_co._(msd),Merck & Co. (MSD),,,,candidate,no public board found on the published job page,,,,,2026-11-13
+merck_co_msd,Merck & Co. (MSD),,,,candidate,no public board found on the published job page,,,,,2026-11-13
 methods_business_and_digital_technology,Methods Business and Digital Technology,workable,methods,,candidate,,,,,,2026-11-13
 moonbug_entertainment,Moonbug Entertainment,workable,moonbug-entertainment,,candidate,,,,,,2026-11-13
 motorola_solutions,Motorola Solutions,workday,motorolasolutions,careers,candidate,,,,,,2026-11-13
-mufg,MUFG,workday,mufgub,mufg-careers,candidate,,,,,,2026-11-13
 myhcm,myhcm,workday,myhcm,betway,candidate,,,,,,2026-11-13
 nasdaq,Nasdaq,workday,nasdaq,global_external_site,candidate,,,,,,2026-11-13
 ncr_voyix,NCR Voyix,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -246,9 +247,8 @@ nxp,NXP,,,,candidate,no public board found on the published job page,,,,,2026-11
 octopus_legacy,Octopus Legacy,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 old_mill,Old Mill,workable,oldmill,,candidate,,,,,,2026-11-13
 ontic,Ontic,workday,ontic,onticcareers,candidate,,,,,,2026-11-13
-p&g,P&G,workday,pg,1000,candidate,,,,,,2026-11-13
-petlabco.,PetLabCo.,workable,petlab-co,,candidate,,,,,,2026-11-13
-pfizer,Pfizer,workday,pfizer,pfizercareers,candidate,,,,,,2026-11-13
+p_g,P&G,workday,pg,1000,candidate,,,,,,2026-11-13
+petlabco,PetLabCo.,workable,petlab-co,,candidate,,,,,,2026-11-13
 pjt_partners,PJT Partners,workday,pjtpartners,careers,candidate,,,,,,2026-11-13
 prologis,Prologis,workday,prologis,prologis_external_careers,candidate,,,,,,2026-11-13
 propharma_group,ProPharma Group,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -257,7 +257,6 @@ quick_release,Quick Release,,,,candidate,no public board found on the published 
 reed,Reed,workday,reed,reed_specialist_recruitment_careers,candidate,,,,,,2026-11-13
 reliaquest,ReliaQuest,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 roche,Roche,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-rolls-royce,Rolls-Royce,workday,rollsroyce,intern_graduate,candidate,,,,,,2026-11-13
 safran_engineering_services_uk_limited,Safran Engineering Services UK Limited,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 sailpoint_technologies,SailPoint Technologies,workday,sailpoint,sailpoint,candidate,,,,,,2026-11-13
 salesforce,Salesforce,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -269,7 +268,7 @@ sensata,Sensata,,,,candidate,no public board found on the published job page,,,,
 shell,Shell,workday,shell,shellcareers,candidate,,,,,,2026-11-13
 signifyd,Signifyd,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 slr_consulting,SLR Consulting,workday,slrconsulting,slrcareers,candidate,,,,,,2026-11-13
-smith+nephew,Smith+Nephew,,,,candidate,no public board found on the published job page,,,,,2026-11-13
+smith_nephew,Smith+Nephew,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 sonyglobal,sonyglobal,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 spectrum_control,Spectrum Control,workday,spectrumcontrol,spectrumcontrol,candidate,,,,,,2026-11-13
 spt_labtech,SPT Labtech,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -296,7 +295,7 @@ united_living,United Living,workday,unitedliving,united-infrastructure-careers,c
 universal_business_team,Universal Business Team,workable,ubteam,,candidate,,,,,,2026-11-13
 unum,Unum,workday,unum,external,candidate,,,,,,2026-11-13
 vertex_pharmaceuticals,Vertex Pharmaceuticals,workday,vrtx,vertex_careers,candidate,,,,,,2026-11-13
-vix_technology_&_kuba,Vix Technology & Kuba,workable,vix-technology,,candidate,,,,,,2026-11-13
+vix_technology_kuba,Vix Technology & Kuba,workable,vix-technology,,candidate,,,,,,2026-11-13
 vovi,Vovi,workable,vovi,,candidate,,,,,,2026-11-13
 wellington_management,Wellington Management,workday,wellington,external,candidate,,,,,,2026-11-13
 white_cap,White Cap,workday,whitecap,careers,candidate,,,,,,2026-11-13
@@ -305,8 +304,11 @@ andurilindustries,Andurilindustries,,,,rejected,2 511 postings for one UK early-
 canonical,Canonical,greenhouse,canonical,,rejected,"314 postings, 2 in a target family, none with an early-career signal",,,,,2026-11-13
 checkout,Checkout,,,,rejected,board token 404; uses a different ATS,,,,,2026-11-13
 ctccampusboard,Ctccampusboard,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-13
+hp,HP,workday,hp,externalcareersite,rejected,"Workday group board: 333 postings in the graduate search, 4 UK, 0 matches. Deferred rather than scanned; revisit if a UK or campus site is published",,,,,2026-11-13
 hr_wallingford,HR Wallingford,greenhouse,hrwallingford,,rejected,"4 postings, 1 in a target family, none with an early-career signal",,,,,2026-11-13
+mufg,MUFG,workday,mufgub,mufg-careers,rejected,"Workday group board returns world-wide roles: 36 postings, 2 UK, 0 matches. Revisit if a UK graduate site is published",,,,,2026-11-13
 mwinternshipprogram,Mwinternshipprogram,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-13
+pg,Pg,,,,rejected,"Workday group board: 218 postings in the graduate search, 9 UK, 0 matches. P&G names graduate-entry roles 'Manager', which the seniority exclusions reject; revisit if that naming changes or a UK careers site appears",,,,,2026-11-13
 revolut,Revolut,,,,rejected,board token 404; careers site is CAPTCHA-gated,,,,,2026-11-13
-rolls_royce,Rolls Royce,,,,rejected,"intern_graduate site is global: 94 postings, 7 UK, 0 matches, 94 detail requests per scan mostly for non-UK roles",,,,,2026-11-13
+rolls_royce,Rolls-Royce,workday,rollsroyce,intern_graduate,rejected,"intern_graduate site is global: 94 postings, 7 UK, 0 matches, 94 detail requests per scan mostly for non-UK roles",,,,,2026-11-13
 thirdbridge,Thirdbridge,,,,rejected,35 UK early-career roles but only 1 in a target family,,,,,2026-11-13
