@@ -109,6 +109,42 @@ def test_a_missing_board_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
     assert rows == []
 
 
+def test_a_temporary_failure_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
+    """Workday's wd5 cluster answered 521 for three tenants in a row: that is not a judgement."""
+    import json
+
+    sys.path.insert(0, str(TOOLS))
+    try:
+        import employer_registry
+    finally:
+        sys.path.pop(0)
+
+    probe_path = tmp_path / "probe.json"
+    probe_path.write_text(
+        json.dumps(
+            {
+                "records": [
+                    {
+                        "adapter": "workday",
+                        "slug": "acme.wd5.myworkdayjobs.com/acme/Acme",
+                        "employer": "Acme",
+                        "verdict": "reject",
+                        "verdict_reason": (
+                            "scan failed: request failed after retries status=521 retryable"
+                        ),
+                        "records_parsed": 0,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    rows = employer_registry.apply_probe([], probe_path, "2026-11-13")
+
+    assert rows == []
+
+
 def test_no_row_duplicates_a_feed_that_is_already_shipped() -> None:
     """A second row for the same board is how a candidate queue silently doubles.
 

@@ -247,6 +247,24 @@ def test_default_transport_marks_refused_connections_as_certain(monkeypatch) -> 
     assert exc.value.uncertain is False
 
 
+def test_default_transport_marks_a_reset_during_the_response_as_uncertain(monkeypatch) -> None:
+    """CPython raises this from the response read, not as a URLError, so it needs its own clause.
+
+    Seen live on Windows as `ConnectionResetError: [WinError 10054]` while resolving careers pages;
+    uncaught it escapes every caller that expects only HttpError.
+    """
+
+    def boom(*_args, **_kwargs):
+        raise ConnectionResetError(10054, "An existing connection was forcibly closed")
+
+    monkeypatch.setattr("urllib.request.urlopen", boom)
+
+    with pytest.raises(HttpError) as exc:
+        default_transport(HttpRequest("GET", "https://example.test/careers", {}), 1.0)
+    assert exc.value.retryable is True
+    assert exc.value.uncertain is True
+
+
 def test_connection_never_opened_classification() -> None:
     assert connection_never_opened(socket.gaierror("dns failure")) is True
     assert connection_never_opened(ConnectionRefusedError()) is True

@@ -346,10 +346,12 @@ def apply_probe(rows: list[dict[str, str]], path: Path, evidence_date: str) -> l
         if verdict not in ("defer", "reject"):
             continue
         reason = record.get("verdict_reason") or ""
-        if "status=404" in reason:
-            # A guessed slug that does not exist says nothing about the employer: it is a failed
-            # guess, not a verdict. Recording it would fill the table with hundreds of rows that
-            # each mean "this board is not at this address".
+        if "status=404" in reason or "retryable" in reason:
+            # A guessed slug that does not exist and a host that failed after retries both say
+            # nothing about the employer: the first is a failed guess, the second is a temporary
+            # fault (Workday's wd5 cluster answered 521 for three tenants in a row). Recording
+            # either would fill the table with rows that mean "try again", or worse, quietly
+            # reject an employer that is merely unreachable today.
             continue
         slug = record.get("slug", "")
         tenant = slug.split("/")[1] if record.get("adapter") == "workday" else slug

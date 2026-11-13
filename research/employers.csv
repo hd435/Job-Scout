@@ -13,8 +13,8 @@ beamng,BeamNG,workable,beamng,,added,,5,3,1,1,2026-11-13
 blackstone,Blackstone,workday,blackstone,blackstone_campus_careers,added,,19,13,3,0,2026-11-13
 blenheim_chalcot,Blenheim Chalcot,greenhouse,blenheimchalcot,,added,,15,12,4,2,2026-11-13
 bloomon,bloomon,lever,bloomon,,added,,16,10,2,1,2026-11-13
-braze,Braze,greenhouse,braze,,added,,344,19,98,0,2026-11-13
-capco,Capco,greenhouse,capco,,added,,698,81,350,0,2026-11-13
+braze,Braze,greenhouse,braze,,added,,345,19,98,0,2026-11-13
+capco,Capco,greenhouse,capco,,added,,697,81,350,0,2026-11-13
 catapult_sports,Catapult Sports,greenhouse,catapultsports,,added,,18,5,9,0,2026-11-13
 causaly,Causaly,ashby,causaly,,added,,10,7,4,0,2026-11-13
 celonis,Celonis,greenhouse,celonis,,added,,264,21,80,0,2026-11-13
@@ -26,11 +26,11 @@ civic,Civic,workable,civic,,added,,20,18,18,1,2026-11-13
 clearview,ClearView Healthcare Partners,greenhouse,clearviewhealthcarepartners,,added,,24,7,19,0,2026-11-13
 cognism,Cognism,greenhouse,cognism,,added,,18,7,6,0,2026-11-13
 cognition,Cognition,ashby,cognition,,added,,114,12,21,0,2026-11-13
-cohere,Cohere,ashby,cohere,,added,,122,34,37,0,2026-11-13
+cohere,Cohere,ashby,cohere,,added,,121,34,37,0,2026-11-13
 contentful,Contentful,greenhouse,contentful,,added,,24,14,2,0,2026-11-13
 costello_medical,Costello Medical,workable,costello-medical,,added,,35,18,7,0,2026-11-13
-cursor,Cursor,ashby,cursor,,added,,116,3,38,0,2026-11-13
-databricks,Databricks,greenhouse,databricks,,added,,895,46,382,2,2026-11-13
+cursor,Cursor,ashby,cursor,,added,,100,3,22,0,2026-11-13
+databricks,Databricks,greenhouse,databricks,,added,,893,46,380,2,2026-11-13
 datadog,Datadog,greenhouse,datadog,,added,,384,14,53,0,2026-11-13
 deepgram,Deepgram,ashby,deepgram,,added,,64,5,21,0,2026-11-13
 deliveroo,Deliveroo,greenhouse,deliveroo,,added,,186,120,48,1,2026-11-13
@@ -40,8 +40,8 @@ ekimetrics,Ekimetrics,lever,ekimetrics,,added,,26,3,18,0,2026-11-13
 elastic,Elastic,greenhouse,elastic,,added,,400,30,160,0,2026-11-13
 elevenlabs,ElevenLabs,ashby,elevenlabs,,added,,129,47,36,0,2026-11-13
 fasanara,Fasanara Capital,workable,fasanara,,added,,9,8,3,0,2026-11-13
-fastly,Fastly,greenhouse,fastly,,added,,55,3,17,0,2026-11-13
-figma,Figma,greenhouse,figma,,added,,140,19,43,1,2026-11-13
+fastly,Fastly,greenhouse,fastly,,added,,54,3,16,0,2026-11-13
+figma,Figma,greenhouse,figma,,added,,139,19,43,1,2026-11-13
 fireworks,Fireworks AI,ashby,fireworks,,added,,98,13,12,0,2026-11-13
 five_rings,Five Rings,greenhouse,fiveringsllc,,added,,19,4,10,2,2026-11-13
 focusrite,Focusrite Group,workable,focusrite,,added,,17,15,6,1,2026-11-13
@@ -61,7 +61,7 @@ janestreet,Jane Street,greenhouse,janestreet,,added,,217,60,74,0,2026-11-13
 javelin_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,added,,5,4,2,1,2026-11-13
 jfrog,JFrog,greenhouse,jfrog,,added,,76,4,18,0,2026-11-13
 jumptrading,Jump Trading,greenhouse,jumptrading,,added,,92,21,68,9,2026-11-13
-klaviyo,Klaviyo,greenhouse,klaviyo,,added,,147,6,40,0,2026-11-13
+klaviyo,Klaviyo,greenhouse,klaviyo,,added,,146,6,39,0,2026-11-13
 knowbe4,KnowBe4,greenhouse,knowbe4,,added,,58,6,19,0,2026-11-13
 legora,Legora,ashby,legora,,added,,339,45,69,0,2026-11-13
 leonardo,Leonardo,workday,leonardocompany,leonardocareersite,added,,84,68,47,0,2026-11-13
@@ -87,7 +87,7 @@ nu_quantum,Nu Quantum,workable,nu-quantum,,added,,8,8,6,0,2026-11-13
 onetrust,OneTrust,greenhouse,onetrust,,added,,84,5,32,0,2026-11-13
 pagerduty,PagerDuty,greenhouse,pagerduty,,added,,47,3,16,0,2026-11-13
 palantir,Palantir Technologies,lever,palantir,,added,,301,46,218,11,2026-11-13
-perplexity,Perplexity,ashby,perplexity,,added,,142,28,53,1,2026-11-13
+perplexity,Perplexity,ashby,perplexity,,added,,141,28,52,1,2026-11-13
 pfizer,Pfizer,workday,pfizer,pfizercareers,added,,29,2,5,0,2026-11-13
 point72,Point72,greenhouse,point72,,added,,200,15,98,0,2026-11-13
 posthog,PostHog,ashby,posthog,,added,,10,1,3,0,2026-11-13
@@ -99,7 +99,7 @@ schonfeld,Schonfeld,greenhouse,schonfeld,,added,,71,15,36,0,2026-11-13
 sierra,Sierra,ashby,sierra,,added,,198,36,56,2,2026-11-13
 smartsheet,Smartsheet,greenhouse,smartsheet,,added,,73,6,28,0,2026-11-13
 socure,Socure,ashby,socure,,added,,93,3,46,0,2026-11-13
-stripe,Stripe,greenhouse,stripe,,added,,787,39,205,2,2026-11-13
+stripe,Stripe,greenhouse,stripe,,added,,786,39,205,2,2026-11-13
 sumup,SumUp,greenhouse,sumup,,added,,329,74,86,0,2026-11-13
 symphony_comms,Symphony Communication Services,greenhouse,symphony,,added,,17,8,4,0,2026-11-13
 synthesia,Synthesia,ashby,synthesia,,added,,31,19,11,0,2026-11-13
@@ -112,12 +112,12 @@ twilio,Twilio,greenhouse,twilio,,added,,115,17,20,0,2026-11-13
 typeform,Typeform,greenhouse,typeform,,added,,6,4,0,0,2026-11-13
 unum,Unum,workday,unum,external,added,,3,1,1,0,2026-11-13
 vanta,Vanta,ashby,vanta,,added,,80,14,33,0,2026-11-13
-vercel,Vercel,greenhouse,vercel,,added,,87,4,25,0,2026-11-13
+vercel,Vercel,greenhouse,vercel,,added,,86,4,24,0,2026-11-13
 verkada,Verkada,greenhouse,verkada,,added,,346,18,124,0,2026-11-13
 wayve,Wayve,ashby,wayve,,added,,167,61,91,0,2026-11-13
 winthrop,Winthrop Technologies,workable,winthrop-technologies,,added,,234,27,51,0,2026-11-13
 winton,Winton,greenhouse,winton,,added,,7,7,3,1,2026-11-13
-wise,Wise,sitemap_html,,,added,,235,113,69,0,2026-11-13
+wise,Wise,sitemap_html,,,added,,229,113,68,0,2026-11-13
 wolt,Wolt,greenhouse,wolt,,added,,192,10,15,0,2026-11-13
 wordsmith,Wordsmith,ashby,wordsmith,,added,,25,17,4,0,2026-11-13
 workman_llp,Workman LLP,workable,workman-llp,,added,,23,23,1,0,2026-11-13
@@ -131,18 +131,14 @@ analog_devices,Analog Devices,workday,analogdevices,external,candidate,,,,,,2026
 ankura,Ankura,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 ardian,Ardian,workday,ardian,ardiancareers,candidate,,,,,,2026-11-13
 atkinsr_alis,AtkinsRéalis,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-aveva,AVEVA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 ayvens,Ayvens,workday,ayvens,ayvenscareers,candidate,,,,,,2026-11-13
 baker_hughes,Baker Hughes,workday,bakerhughes,bakerhughes,candidate,,,,,,2026-11-13
-bishop_fleming,Bishop Fleming,workday,bishopfleming,bf,candidate,,,,,,2026-11-13
 blackrock,BlackRock,workday,blackrock,blackrock_professional,candidate,,,,,,2026-11-13
 camlin,Camlin,rippling,jobs,,candidate,,,,,,2026-11-13
 capri,Capri,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 cgg,CGG,workday,cgg,viridiencareers,candidate,,,,,,2026-11-13
 chanel,CHANEL,workday,cc,chanelcareers,candidate,,,,,,2026-11-13
 clearwater_analytics,Clearwater Analytics,workday,clearwateranalytics,clearwater_analytics_careers,candidate,,,,,,2026-11-13
-clsa,CLSA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-clyde_co,Clyde & Co,workday,clydeco,clydecocareers,candidate,,,,,,2026-11-13
 cme_group,CME Group,workday,cmegroup,cme_careers,candidate,,,,,,2026-11-13
 crane_company,Crane Company,workday,cranecompany,careers,candidate,,,,,,2026-11-13
 creative_artists_agency,Creative Artists Agency,workday,caa,careers,candidate,,,,,,2026-11-13
@@ -204,6 +200,7 @@ accora,Accora,workable,accora,,deferred,no UK early-career role in an enabled fa
 albert_bartlett,Albert Bartlett,workable,albert-bartlett,,deferred,no UK early-career role in an enabled family (measured: 51 posting(s)),,,,,2026-11-13
 allwyn_uk,Allwyn UK,workable,allwynuk,,deferred,no UK early-career role in an enabled family (measured: 14 posting(s)),,,,,2026-11-13
 arriva,Arriva,workday,arriva,careers,deferred,"170 postings, 41 UK, none in an enabled family (operations and depot roles)",,,,,2026-11-13
+aveva,AVEVA,workday,aveva,AVEVA_careers,deferred,no UK early-career role in an enabled family (measured: 35 posting(s)),,,,,2026-11-13
 banana_moon_day_nurseries,Banana Moon Day Nurseries,workable,banana-moon-day-nurseries,,deferred,no UK early-career role in an enabled family (measured: 65 posting(s)),,,,,2026-11-13
 barfoots_of_botley,Barfoots of Botley,workable,barfoots-of-botley-2,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-13
 bcn_group,BCN Group,recruitee,bcngroup,,deferred,no UK early-career role in an enabled family (measured: 13 posting(s)),,,,,2026-11-13
@@ -213,6 +210,8 @@ box,Box,greenhouse,boxinc,,deferred,"only 6 UK of 148 (4%), below the 10% bar (m
 bridewell,Bridewell,workable,bridewell,,deferred,no UK early-career role in an enabled family (measured: 13 posting(s)),,,,,2026-11-13
 brompton,Brompton,workday,brompton,brompton,deferred,"10 postings, 7 UK, none in an enabled family",,,,,2026-11-13
 capital_economics,Capital Economics,workable,capital-economics,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-13
+clsa,CLSA,workday,citicclsa,External,deferred,no UK early-career role in an enabled family (measured: 16 posting(s)),,,,,2026-11-13
+clyde_co,Clyde & Co,workday,clydeco,clydecocareers,deferred,no UK early-career role in an enabled family (measured: 73 posting(s)),,,,,2026-11-13
 clydeco,Clydeco,,,,deferred,"10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",,,,,2026-11-13
 elasticstage,elasticStage,workable,elasticstage,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-13
 enermech,EnerMech,workable,enermech,,deferred,no UK early-career role in an enabled family (measured: 95 posting(s)),,,,,2026-11-13
@@ -266,6 +265,7 @@ autodesk,Autodesk,workable,autodesk,,rejected,board returned no roles (measured:
 avis_budget_group,Avis Budget Group,workable,avisbudgetgroup,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 avon,Avon,workable,avon,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 bbva,BBVA,workable,bbva,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
+bishop_fleming,Bishop Fleming,workday,bishopfleming,bf,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 boeing,Boeing,workable,boeing,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 bridges_electrical_engineers,Bridges Electrical Engineers,workable,bridges-electrical-engineers,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 bupa,Bupa,workable,bupa,,rejected,no UK roles at all (measured: 16 posting(s)),,,,,2026-11-13

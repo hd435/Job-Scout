@@ -393,6 +393,15 @@ Workday search were found — expect the same.
    guesses, 2 employers). A 404 is not recorded as a verdict on the employer — it is a failed
    guess, nothing more — so the sweep costs requests and no research debt.
 
+   **Before guessing, read the employer's own website** (`tools/resolve_careers.py`). It tries
+   `{name}.com`, `.co.uk`, `.uk` — plus the first word of a multi-word name, because a group's
+   domain often drops the tail ("Analog Devices" publishes on `analog.com`) — reads the root page
+   and `/careers`, and fingerprints the ATS the navigation links to. Batch 10 resolved 7 of 25
+   candidates this way, which is a far better rate than guessing: 28 % of the candidates whose
+   domain answered, and every hit arrives with the board's real address rather than a token to
+   verify. A connection that never opened (DNS, refused) means "not this domain"; a reset or a
+   timeout means nothing and is retried, so never treat one as a miss.
+
    **Record the verdict.** `python tools/employer_registry.py seed --inventory … --db …` writes the
    outcome into `research/employers.csv`, including the reason an employer was deferred or rejected.
    A probed employer that never reaches the catalogue is still research worth keeping — that is what
@@ -772,9 +781,60 @@ already taken.
   overlap against the incumbent — that is what justified this one.
 
 **State at the end of batch 9.** 126 employers shipped, of which 37 have contributed at least one
-match; registry 309 rows — 126 added, 73 candidates, 61 deferred, 49 rejected. The remaining queue
+match; registry 309 rows — 126 added, 69 candidates, 64 deferred, 50 rejected. The remaining queue
 is dominated by 55 Workday group boards that waves 1–3 showed to be low yield, so the next increment
 should not be another sweep of the same shape.
+
+**Batch 10 — 2026-11-13 — resolving boards from the employer's own website.**
+
+Batch 9 ran out of lead lists and showed guessing to be a 3 % game. The last untried route is the
+one a person would take: read the employer's own site and see which ATS its careers link points at.
+`tools/resolve_careers.py` does exactly that — root page first (a footer "Careers" link usually
+goes straight to the ATS), then `/careers`, across three domain suffixes and, for multi-word names,
+the first word on its own.
+
+| Outcome | Count |
+|---|---|
+| Employers attempted (resumable; stopped at 25 of 73) | 25 |
+| Resolved to a named ATS | 7 (all Workday) |
+| Domain answered, no known ATS in the page | 7 |
+| No domain answered | 11 |
+
+Every hit arrived with the board's real address, so nothing needed verifying: `ankura`, `aveva`,
+`bakerhughes`, `bishopfleming`, `citicclsa`, `clydeco`, `crowdstrike`. **None enrolled**, but the
+judgements are now correct and recorded:
+
+| Tenant | Full board | UK-narrowed | Verdict |
+|---|---|---|---|
+| `aveva` | 200+ roles, 17 UK (8 %) | 35 roles, 20 UK | deferred — no UK early-career role in a family |
+| `citicclsa` | 200+ roles, 10 UK (5 %) | 16 roles, 16 UK | deferred — same |
+| `clydeco` | 187 roles, 31 UK | 73 roles, 31 UK | deferred — same |
+| `bishopfleming` | 13 roles, 2 UK | 0 | rejected — nothing under a UK search |
+| `ankura`, `bakerhughes`, `crowdstrike` | — | — | **unjudged: status 521 after retries** |
+
+**Two things this batch taught that the earlier waves had hidden.**
+
+- *A truncated board must not be judged on its first page.* `aveva` looked like 8 % UK until the
+  page cap truncated a 500-role board; asked for the UK alone it is 20 of 35. The probe's UK-share
+  gate is only meaningful on a board it saw whole. For a large Workday tenant, narrow with a
+  fourth `search_text` field (`United Kingdom`) and judge that instead of the raw first page.
+- *A retryable failure is not a verdict.* Three `wd5` tenants answered 521 after retries. Recording
+  that would have rejected employers that are merely unreachable today, so `apply_probe` now drops
+  any failure marked retryable, exactly as it drops a 404 — the registry records judgements, not
+  outages.
+
+**A bug found by doing this.** `default_transport` normalised `URLError`, `HTTPError` and
+`TimeoutError` but not a `ConnectionResetError` raised from the response read, which is how CPython
+reports a reset mid-response — seen live here as `[WinError 10054]`. It escaped every caller that
+expects only `HttpError`, so one hostile connection could abort a scan pass. It is now a retryable,
+uncertain `HttpError`, with a test.
+
+**Where the resolver should point next.** Not at the remaining 48 registry candidates: they are
+mostly non-UK head offices and renamed subsidiaries, and the run's own output shows the pattern
+(`Allegro MicroSystems`, `Creative Artists Agency`, `CME Group`: no domain answered, and no UK
+early-career supply behind them). Its value is on a **new name list** — sector bodies, professional
+associations, regional ecosystems — where a resolver hit costs two requests and arrives with the
+board address. That is the next discovery increment.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes

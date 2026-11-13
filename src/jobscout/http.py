@@ -267,6 +267,17 @@ def default_transport(request: HttpRequest, timeout: float) -> HttpResponse:
         raise HttpError(
             "request timed out", url=request.url, retryable=True, uncertain=True
         ) from exc
+    except OSError as exc:
+        # A reset or a truncated read can happen after the request was sent, and CPython raises it
+        # from the response read rather than as a URLError: ConnectionResetError on Windows is the
+        # one that has been seen live. Left uncaught it escapes every caller that only expects
+        # HttpError, which turns one hostile connection into a crashed scan pass.
+        raise HttpError(
+            f"connection failed during response: {exc}",
+            url=request.url,
+            retryable=True,
+            uncertain=True,
+        ) from exc
 
 
 class UrllibHttpClient:
