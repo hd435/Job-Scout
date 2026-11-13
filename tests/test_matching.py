@@ -303,3 +303,46 @@ def test_operational_warehouse_titles_are_not_supply_chain_roles() -> None:
 
     assert "family:supply_chain" not in decision.reasons
     assert decision.decision is MatchOutcome.NO_MATCH
+
+
+# ---------------------------------------------------------------------------
+# D-113: a "Manager" title yields to an explicit early-career signal
+# ---------------------------------------------------------------------------
+
+
+def test_a_manager_title_with_an_early_career_signal_matches() -> None:
+    """P&G publishes graduate-entry roles as "Manager"; the PO accepted them as in scope."""
+    decision = match_job(make_job("New Graduates 2027: Supply Chain Manager"))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "note:entry_level_override:manager" in decision.reasons
+    assert not any(reason.startswith("exclude:seniority") for reason in decision.reasons)
+
+
+def test_a_manager_title_without_an_early_career_signal_still_excludes() -> None:
+    decision = match_job(make_job("Engineering Manager"))
+
+    assert decision.decision is MatchOutcome.NO_MATCH
+    assert "exclude:seniority:manager" in decision.reasons
+
+
+def test_another_seniority_word_blocks_the_manager_override() -> None:
+    """ "Senior Brand Manager (2027 MBA Graduates)" is a senior role whatever the bracket says."""
+    decision = match_job(make_job("Graduate Senior Brand Manager"))
+
+    assert decision.decision is MatchOutcome.NO_MATCH
+    assert "exclude:seniority:senior" in decision.reasons
+
+
+def test_the_override_still_needs_a_role_family() -> None:
+    """Being entry-level is not enough: "Finance Manager" is not a finance-family title."""
+    decision = match_job(make_job("New Graduates 2027: Finance Manager"))
+
+    assert decision.decision is MatchOutcome.NO_MATCH
+    assert "exclude:family:none" in decision.reasons
+
+
+def test_purchases_is_recognised_as_supply_chain() -> None:
+    decision = match_job(make_job("New Graduates 2027: Purchases Manager"))
+
+    assert "family:supply_chain" in decision.reasons

@@ -26,7 +26,7 @@ from types import MappingProxyType
 
 from .models import Job, LocationResult, MatchDecision, MatchOutcome
 
-RULES_VERSION = "m1.2"
+RULES_VERSION = "m1.3"
 
 LOCATION_MODES = ("pinned", "uk", "uk_plus_pinned")
 
@@ -797,7 +797,7 @@ ROLE_FAMILIES: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "supply chain",
             "logistics",
             "procurement",
-            "purchasing",
+            "purchas",
             "demand planning",
             "demand planner",
             "supply planner",
@@ -880,6 +880,11 @@ EARLY_CAREER_WORDS = (
     "placement",
     "campus",
 )
+
+#: Seniority words that yield to an explicit early-career signal (D-113). `manager` is the only
+#: one: employers such as P&G name graduate-entry roles "Manager", and the early-career gate still
+#: has to pass for the role to alert.
+ENTRY_LEVEL_TITLES = ("manager",)
 
 SENIORITY_EXCLUSIONS = (
     "senior",
@@ -1175,8 +1180,17 @@ def match_job(job: Job, rules: MatchingRules = DEFAULT_RULES) -> MatchDecision:
     )
 
     if seniority_hits:
+        # D-113: some employers name graduate-entry roles "Manager" — P&G publishes "New
+        # Graduates 2027: Finance Manager" and "Brand Manager - Graduate Entry". A manager title
+        # is only senior when the role is not explicitly an entry role, so `manager` yields to an
+        # early-career signal. Every other seniority word still excludes: "Senior Brand Manager
+        # (2027 MBA Graduates)" is a senior role whatever the bracket says.
+        overridable = tuple(hit for hit in seniority_hits if hit in ENTRY_LEVEL_TITLES)
+        blocking = tuple(hit for hit in seniority_hits if hit not in ENTRY_LEVEL_TITLES)
         if graduate_programme:
             notes.append(f"note:graduate_programme_override:{seniority_hits[0]}")
+        elif early_hits and overridable and not blocking:
+            notes.append(f"note:entry_level_override:{overridable[0]}")
         else:
             hard_exclusions.extend(f"exclude:seniority:{hit}" for hit in seniority_hits)
 
