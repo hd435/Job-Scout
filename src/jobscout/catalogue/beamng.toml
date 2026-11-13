@@ -1,0 +1,10 @@
+﻿# BeamNG runs Workable. Automotive simulation engineering; measured 2026-11-13: 5 postings,
+# 3 UK, 1 matching (Automotive Engineering Intern - Formula Student).
+id = "beamng"
+employer = "BeamNG"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "beamng"

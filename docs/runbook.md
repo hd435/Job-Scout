@@ -631,9 +631,43 @@ Largest contributors (roles / UK / matches): `cfo_insights` 363/250/3, `affirm` 
 set they chose until they open `/settings` — a wider catalogue never widens somebody's subscription
 silently.
 
-**What the batch proved, and what it did not.** It proved the candidate → validate → enable → baseline
-path works at scale for one adapter shape, and that `report` distinguishes stored roles from value
-delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible matches, because the
+**Batch 7 — 2026-11-13 — Workday waves 1–3, and what they actually taught (D-107).**
+
+Three waves probed 39 Workday tenants and enrolled 7. The counts are modest; the findings are not.
+
+| Wave | Probed | Enrolled | Why the rest failed |
+|---|---|---|---|
+| 1 | 7 global group boards | 4 (`gresearch` 6 matches, `leonardo` 68 UK, `pfizer`, `howden`) | HP 4 UK of 333, MUFG 2 of 36, P&G 9 of 218: a `graduate` search on a global tenant still returns world-wide roles |
+| 2 | 16 UK-heavy tenants | 3 (`matthey`, `unum`, `libertyglobal`) | 11 had **no UK early-career role in an enabled family**: United Living 200 postings and 65 UK for zero, Arriva 170/41, Knight Frank, JCDecaux, Brompton, SLR, Bishop Fleming, Clyde & Co, Reed. JLL (4 UK of 123) and Sulzer (15 of 200) fell below the UK-share bar |
+| 3 | 20 tenants × 15 site names, plus 57 one-request candidates re-judged | 4 (`lseg` 3 matches, `civic` 5, `beamng` 1, `mako` 1) | Site-name discovery: **2 hits in 300 requests** — dedicated early-career Workday sites are rare. Of 57 one-request candidates, 41 still had no UK early-career family role |
+
+Two conclusions worth remembering. **Being UK-heavy is not the same as hiring graduates in our
+families** — the UK mid-market publishes property, operations, retail and professional-services
+roles that the product deliberately does not match, so enrolling on UK share alone buys scan cost.
+And **the Workday surface that pays is narrow**: purpose-built campus sites (`lseg/graduate_careers`,
+`mbda-uk`, `blackstone_campus_careers`) and tenants whose whole board is the early-career set.
+
+Three tooling capabilities came out of it, all reusable:
+
+- `tools/probe_boards.py` reads Workday (`host/tenant/site[,search text]`) as well as the
+  one-request adapters, and prints an **`enrol`/`defer`/`reject` verdict with its reason**, applying
+  the 10 % UK-share bar.
+- `tools/discover_workday_sites.py` tries the conventional early-career site names against a tenant.
+- `tools/employer_registry.py --probe` records every verdict in `research/employers.csv`, so a
+  deferred board is a documented decision rather than a lost afternoon.
+
+Two matching defects were also found by measuring the new boards rather than by reading the code:
+a `warehouse` stem alerted on "Trainee Warehouse Operative" (removed — supply chain means planning
+and procurement, not shop-floor operations), and a bare `science` stem matched HR "People Science"
+schemes (already narrowed in batch 6).
+
+**Deploying this batch.** The catalogue ships with the package; `install.sh` picks it up. Existing
+subscribers keep the employer set they chose until they open `/settings`.
+
+**Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
+validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
+stored roles from value delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible
+matches, because the
 pinned London scope and the `seniority_unclear` review gate reject almost everything on these large
 tech boards. That ratio is the finding to act on before adding batch 2.
 

@@ -1,0 +1,13 @@
+﻿# LSEG's Workday graduate site. Discovery found `graduate_careers` among 15 conventional site
+# names tried against 20 tenants; measured 2026-11-13: 20 postings, 6 UK, 3 matching.
+id = "lseg"
+employer = "LSEG"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at lseg.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, graduate site"
+cadence_minutes = 30
+
+[options]
+host = "lseg.wd3.myworkdayjobs.com"
+tenant = "lseg"
+site = "graduate_careers"
+locale = "en-US"

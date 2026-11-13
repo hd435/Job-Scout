@@ -291,3 +291,15 @@ def test_a_user_who_did_not_select_the_new_families_gets_nothing_new() -> None:
     decision = match_job(make_job("Graduate Mechanical Engineer"), rules)
 
     assert decision.decision is not MatchOutcome.MATCH
+
+
+def test_operational_warehouse_titles_are_not_supply_chain_roles() -> None:
+    """Measured over-match: a `warehouse` stem alerted on "Trainee Warehouse Operative".
+
+    Supply chain means planning and procurement, not shop-floor operations, so the stem list
+    names the professional functions.
+    """
+    decision = match_job(make_job("Trainee Warehouse Operative"))
+
+    assert "family:supply_chain" not in decision.reasons
+    assert decision.decision is MatchOutcome.NO_MATCH

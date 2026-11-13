@@ -1,0 +1,10 @@
+﻿# Civic runs Workable. Civil and structural engineering graduate intake across five cities;
+# measured 2026-11-13: 20 postings, 18 UK, 5 matching under the default rules.
+id = "civic"
+employer = "Civic"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "civic"

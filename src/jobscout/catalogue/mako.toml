@@ -1,0 +1,10 @@
+﻿# Mako runs Greenhouse. Small London software employer; measured 2026-11-13: 2 postings,
+# 1 UK, 1 matching (Graduate Software Engineer, London).
+id = "mako"
+employer = "Mako"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "mako"

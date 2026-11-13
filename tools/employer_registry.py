@@ -190,8 +190,10 @@ def merge(existing: list[dict[str, str]], incoming: list[dict[str, str]]) -> lis
         if current is None:
             by_id[row["employer"]] = row
             continue
-        # Keep a human verdict and its reason; refresh everything measured.
-        if current.get("status") in ("rejected", "deferred"):
+        # A discovery pass must not overwrite a verdict a human recorded — but a source that has
+        # since shipped always wins, because the catalogue is its source of truth. Without that
+        # exception a row deferred before enrolment stayed deferred for ever (lseg).
+        if current.get("status") in ("rejected", "deferred") and row["status"] != "added":
             continue
         merged = dict(current)
         for key in ("name", "platform", "evidence_date"):
@@ -226,13 +228,10 @@ DEFERRED = {
     "bishopfleming": "13 postings, 2 UK, none in an enabled family",
     "clydeco": "10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",
     "linklaters": "graduate search returned 6 postings, none in the UK",
-    "lseg": "probe failed with HTTP 502; retry before judging (transient, not a verdict)",
 }
 
 
-def apply_statuses(
-    rows: list[dict[str, str]], evidence_date: str
-) -> list[dict[str, str]]:
+def apply_statuses(rows: list[dict[str, str]], evidence_date: str) -> list[dict[str, str]]:
     """Apply recorded rejections and deferrals, keeping any connection detail already found."""
     by_slug = {slugify(row["employer"]): row for row in rows}
     by_id = {row["employer"]: row for row in rows}
@@ -254,10 +253,55 @@ def apply_statuses(
             # The discovery pass spelled the name differently ("P&G" -> p_g); the verdict
             # belongs to the catalogue id, so fold the alias away rather than keep both.
             dropped.add(target["employer"])
+        if target.get("status") == "added":
+            # A shipped source's status comes from the catalogue, not from a note written before
+            # it was enrolled. (lseg was recorded as "retry after a 502" and is now shipped.)
+            continue
         target["status"] = status
         target["reason"] = reason
         target["evidence_date"] = evidence_date
     return [row for row in by_id.values() if row["employer"] not in dropped]
+
+
+def apply_probe(rows: list[dict[str, str]], path: Path, evidence_date: str) -> list[dict[str, str]]:
+    """Record a probe pass's verdicts: anything not enrolled is deferred or rejected, with reason.
+
+    This is what makes a sweep durable. A board that was judged and not enrolled is exactly the
+    research that gets repeated, so its measurement belongs in the table rather than in a
+    transcript. Shipped sources keep status `added`: the catalogue is their source of truth.
+    """
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    by_tenant = {row["tenant"]: row for row in rows if row["tenant"]}
+    by_slug = {slugify(row["employer"]): row for row in rows}
+    added: list[dict[str, str]] = []
+    for record in payload.get("records", []):
+        verdict = record.get("verdict")
+        if verdict not in ("defer", "reject"):
+            continue
+        reason = record.get("verdict_reason") or ""
+        slug = record.get("slug", "")
+        tenant = slug.split("/")[1] if record.get("adapter") == "workday" else slug
+        target = by_tenant.get(tenant) or by_slug.get(slugify(record.get("employer", "")))
+        if target is None:
+            employer = slugify(record.get("employer", "") or tenant)
+            if not employer:
+                continue
+            target = {
+                "employer": employer,
+                "name": record.get("employer", ""),
+                "platform": record.get("adapter", ""),
+                "tenant": tenant,
+                "site": slug.split("/")[2] if slug.count("/") == 2 else "",
+            }
+            added.append(target)
+            by_slug[slugify(employer)] = target
+        if target.get("status") == "added":
+            continue
+        measurement = record.get("records_parsed", 0)
+        target["status"] = "deferred" if verdict == "defer" else "rejected"
+        target["reason"] = f"{reason} (measured: {measurement} posting(s))"
+        target["evidence_date"] = evidence_date
+    return rows + added
 
 
 def apply_measurements(rows: list[dict[str, str]], db: Path) -> list[dict[str, str]]:
@@ -308,6 +352,8 @@ def cmd_seed(args: argparse.Namespace) -> int:
     if args.inventory:
         rows = merge(rows, inventory_rows(args.inventory, args.date))
     rows = apply_statuses(rows, args.date)
+    for probe_path in args.probe or ():
+        rows = apply_probe(rows, probe_path, args.date)
     if args.db:
         rows = apply_measurements(rows, args.db)
     write_registry(rows)
@@ -335,6 +381,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     added = {row["employer"] for row in rows if row["status"] == "added"}
 
     missing = sorted(catalogued - registered)
+    not_added = sorted(
+        row["employer"]
+        for row in rows
+        if row["employer"] in catalogued and row["status"] != "added"
+    )
     unshipped = sorted(added - catalogued)
     stale = sorted(
         row["employer"]
@@ -346,6 +397,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     if missing:
         print(f"error: {len(missing)} catalogued employer(s) missing from the registry:")
         for employer in missing:
+            print("   ", employer)
+        failures += 1
+    if not_added:
+        print(f"error: {len(not_added)} catalogued employer(s) not marked 'added':")
+        for employer in not_added:
             print("   ", employer)
         failures += 1
     if unshipped or stale:
@@ -386,6 +442,15 @@ def main() -> int:
     seed = sub.add_parser("seed", help="write or refresh the registry from the catalogue")
     seed.add_argument("--inventory", type=Path, help="employer-boards.json from a discovery pass")
     seed.add_argument("--db", type=Path, help="scan database to record each source's contribution")
+    seed.add_argument(
+        "--probe",
+        type=Path,
+        action="append",
+        help=(
+            "probe JSON from tools/probe_boards.py; its defer/reject verdicts are recorded"
+            " (repeatable)"
+        ),
+    )
     seed.add_argument("--date", default="", help="evidence date to record, e.g. 2026-11-13")
     seed.set_defaults(func=cmd_seed)
 
