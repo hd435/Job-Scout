@@ -129,9 +129,20 @@ class Scheduler:
         Notices are decided after the pass, not per source, because several sources failing
         for the same connectivity reason are one problem worth one message (D-086).
         """
+        self._begin_pass()
         moment = now or self._clock()
         runs = tuple(self._run_source(source, moment) for source in self.due_sources(moment))
         return self._notices_after_pass(runs)
+
+    def _begin_pass(self) -> None:
+        """Reset the HTTP request ceiling, which is a per-pass guard, not a per-process one.
+
+        Duck-typed because the scheduler is handed any `HttpClient`: a test fixture or a
+        recording client has no budget to reset.
+        """
+        reset = getattr(self._http_client, "begin_pass", None)
+        if callable(reset):
+            reset()
 
     def run_forever(
         self,

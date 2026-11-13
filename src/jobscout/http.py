@@ -129,6 +129,11 @@ class PacedHttpClient:
     domain) are spaced by the same clock, so coverage can grow without bursts.
 
     `clock` and `sleep` are injected so the spacing is testable without waiting.
+
+    The request ceiling belongs to **one scan pass**, so the caller resets it with
+    `begin_pass()`. A long-running service never restarts, so a counter that lived for the
+    process would eventually refuse every request and turn a healthy deployment into a
+    permanent failure once enough sources were added.
     """
 
     def __init__(
@@ -151,10 +156,24 @@ class PacedHttpClient:
     def policy(self) -> PacingPolicy:
         return self._policy
 
+    def begin_pass(self) -> None:
+        """Give the next scan pass its own request budget.
+
+        `PacingPolicy.max_requests` exists so one misconfigured pass cannot crawl the network
+        for ever, which makes it a per-pass ceiling — not a per-process one. Resetting here is
+        what keeps that promise for a process that runs for months: without it the ceiling is
+        reached once, permanently, and every later scan fails.
+
+        Host spacing is deliberately kept: a pass boundary is not a reason to send two requests
+        to the same host back to back.
+        """
+        self.requests = 0
+        self.waited = 0.0
+
     def _pace(self, url: str) -> None:
         if self.requests >= self._policy.max_requests:
             raise PacingBudgetExceeded(
-                f"per-process request budget of {self._policy.max_requests} exhausted;"
+                f"request budget of {self._policy.max_requests} exhausted for this scan pass;"
                 f" refused a request to {_host_of(url) or url}",
                 url=url,
             )

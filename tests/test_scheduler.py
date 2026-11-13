@@ -1168,3 +1168,54 @@ def test_a_failure_that_cannot_be_recorded_is_reported_and_isolated(
     assert store.get_source_state("palantir").consecutive_failures == 0
     assert runs[1].scanned is True
     assert store.get_source_state("acme").last_scan_status == "success"
+
+
+def test_two_consecutive_passes_each_get_their_own_request_budget(store: Storage) -> None:
+    """The service never restarts, so the ceiling must belong to a pass (D-111).
+
+    With a lifetime counter this is the failure that grows every time an employer is added:
+    the first pass exhausts the budget and every later scan fails until the process restarts.
+    """
+    from jobscout.http import PacedHttpClient, PacingPolicy
+
+    clock = StepClock()
+
+    class OneRequestAdapter:
+        adapter_id = "scripted"
+
+        def fetch_scan(self, config, http_client=None, *, known=None):
+            http_client.get_json("https://a.test/board")
+            return ScanResult(
+                source_id=config.id,
+                started_at=clock(),
+                finished_at=clock(),
+                status=ScanStatus.SUCCESS,
+                records_seen=0,
+                records_parsed=0,
+            )
+
+    client = PacedHttpClient(
+        type("Inner", (), {"get_json": staticmethod(lambda url: {})})(),
+        policy=PacingPolicy(default_seconds=0.0, max_requests=1),
+    )
+    source = palantir()
+    scheduler = Scheduler(
+        store,
+        app_config(source),
+        http_client=client,
+        clock=clock,
+        sleep=lambda _seconds: None,
+        adapter_factory=lambda _adapter: OneRequestAdapter(),
+    )
+
+    first = scheduler.run_once()
+    assert [run.status for run in first] == ["success"]
+    assert client.requests == 1
+
+    clock.advance(minutes=60)
+    second = scheduler.run_once()
+
+    assert [run.status for run in second] == ["success"], (
+        "a new pass must not inherit the old count"
+    )
+    assert client.requests == 1, "the counter belongs to the pass that just ran"

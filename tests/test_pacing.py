@@ -183,6 +183,44 @@ def test_a_sitemap_scan_fails_visibly_when_the_budget_runs_out(tmp_path: Path) -
 # configuration -------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# The budget is a per-pass guard, not a per-process one (D-111)
+# ---------------------------------------------------------------------------
+
+
+def test_a_new_pass_gets_a_fresh_budget() -> None:
+    """A long-running service never restarts, so a lifetime counter would end in permanent failure."""
+    client, inner, _time = paced(PacingPolicy(default_seconds=0.0, max_requests=2))
+    for _ in range(2):
+        client.begin_pass()
+        client.get_json("https://a.test/1")
+        client.get_json("https://a.test/2")
+
+    assert inner.urls == ["https://a.test/1", "https://a.test/2"] * 2
+    assert client.requests == 2, "the counter reflects the pass that just ran"
+
+
+def test_the_budget_still_stops_a_single_runaway_pass() -> None:
+    client, _inner, _time = paced(PacingPolicy(default_seconds=0.0, max_requests=2))
+    client.begin_pass()
+    client.get_json("https://a.test/1")
+    client.get_json("https://a.test/2")
+
+    with pytest.raises(PacingBudgetExceeded, match="for this scan pass"):
+        client.get_json("https://a.test/3")
+
+
+def test_a_pass_boundary_keeps_host_spacing() -> None:
+    """Resetting the count must not reset the clock: two passes back to back still space out."""
+    client, _inner, time = paced(PacingPolicy(default_seconds=0.5, max_requests=10))
+    client.begin_pass()
+    client.get_json("https://a.test/1")
+    client.begin_pass()
+    client.get_json("https://a.test/2")
+
+    assert time.naps == [0.5], "the second request still waits out the host interval"
+
+
 def test_the_defaults_are_on_and_conservative() -> None:
     assert DEFAULT_PACING.default_seconds > 0
     assert DEFAULT_PACING.max_requests >= 1000
