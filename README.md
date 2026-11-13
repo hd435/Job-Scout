@@ -2,7 +2,7 @@
 
 A personal UK early-career job monitor. It reads **official employer and ATS job boards**, records every role it observes, and alerts on Telegram when a **new** role matches the target role families and locations.
 
-**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery) and v0.7 (hosted service) are delivered. The hosted service is deployed and its employer coverage has grown from 12 to 76 enabled in three measured batches (see [docs/runbook.md](./docs/runbook.md) §7c). The **coverage target is still short** — the intended ~100 enabled employers has not been reached — and the seven-day reliability measurement (AC-20) is still open, so the MVP is not complete.
+**Current state:** v0.5 (configurable scope), v0.6 (scale-out machinery), v0.7 (hosted service) and v0.8 (Oracle Always Free deployment) are delivered. The catalogue holds **111 employers** (110 offered by the hosted service) after six measured expansion batches (see [docs/runbook.md](./docs/runbook.md) §7c). The next stage is [v0.9 — scaling to 1 000+](./docs/iterations/v0.9-scaling-to-1000.md), where **opportunity coverage** — the share of real UK early-career vacancies discovered — is the success measure and employer count is only the means (D-106). The seven-day reliability measurement (AC-20) remains open, so the MVP is not yet signed off.
 
 Deployment: the approved target is **Oracle Cloud Always Free**, which costs nothing to keep running (D-101). [docs/deployment.md](./docs/deployment.md) covers provisioning, the one-command installer in `deploy/oracle/`, health checks, backups and the restore drill; the Windows scheduled task remains the fallback until the VM is running.
 
