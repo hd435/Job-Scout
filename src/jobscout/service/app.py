@@ -355,19 +355,19 @@ class BotApp:
     def _digest_cache_entries(self, user: Any) -> tuple[DigestEntry, ...]:
         """The user's whole match set, recomputed only when the answer could have changed.
 
-        The scope (fingerprint + subscriptions) covers their choices; `jobs_change_seq` covers the
-        jobs, and it moves on any insert, deletion or digest-relevant edit — a closed role, a
-        retitled role or a new direct link included. Keying on the highest job id alone missed
-        every change that reused an existing row.
+        The scope (fingerprint + subscriptions) covers their choices; `digest_version` covers
+        the jobs at the employers they actually follow. Keying on a catalogue-wide counter was
+        wrong at scale: any change anywhere invalidated every user's cache, so page flips
+        recomputed the full match set — 3.36 ms per role.
         """
         fingerprint = self._store.get_fingerprint(user.id)
         subscriptions = tuple(sorted(self._store.list_subscriptions(user.id)))
-        jobs_seq = self._storage.jobs_change_seq()
+        version = self._storage.digest_version(subscriptions)
         cached = self._digest_cache.get(user.id)
-        if cached is not None and cached[:3] == (fingerprint, subscriptions, jobs_seq):
+        if cached is not None and cached[:3] == (fingerprint, subscriptions, version):
             return cached[3]
         entries = digest_entries(self._storage, self._store, user)
-        self._digest_cache[user.id] = (fingerprint, subscriptions, jobs_seq, entries)
+        self._digest_cache[user.id] = (fingerprint, subscriptions, version, entries)
         return entries
 
     def _digest_buttons(self, page: DigestPage) -> Rows | None:

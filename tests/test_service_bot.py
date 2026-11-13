@@ -786,3 +786,89 @@ def test_an_on_tick_that_returns_nothing_keeps_the_normal_long_poll() -> None:
     loop.run(max_iterations=2)
 
     assert api.timeouts == [None, None]
+
+
+def test_a_change_at_an_unwatched_employer_does_not_recompute_the_digest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A digest only depends on the employers the user follows (D-112).
+
+    The old key was catalogue-wide, so with a growing catalogue nearly every page flip
+    recomputed the user's whole match set.
+    """
+    calls: list[int] = []
+    real = app_module.digest_entries
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(app_module, "digest_entries", counting)
+    bot = _digest_app(tmp_path, 6)
+    store = bot.service  # type: ignore[attr-defined]
+    storage = store.storage
+
+    bot.handle_update(message_update(111, "/digest"))
+    assert len(calls) == 1
+
+    other = SourceConfig(
+        id="other_co",
+        employer="Other Co",
+        adapter="lever",
+        options={"site": "other_co"},
+        access_note="test fixture",
+    )
+    payload = tmp_path / "other.json"
+    payload.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "o1",
+                    "text": "Graduate Software Engineer",
+                    "categories": {
+                        "location": "London, United Kingdom",
+                        "allLocations": ["London, United Kingdom"],
+                    },
+                    "workplaceType": "onsite",
+                    "descriptionPlain": "Fixture.",
+                    "createdAt": 1759276800000,
+                    "hostedUrl": "https://example.test/o1",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    run_scan(
+        storage,
+        get_adapter("lever"),
+        other,
+        FixtureHttpClient(payload),
+        rules=DEFAULT_RULES,
+        clock=lambda: "2026-10-25T09:00:00Z",
+    )
+
+    bot.handle_update(message_update(111, "/digest"))
+
+    assert len(calls) == 1, "a role at an employer the user does not follow changes nothing"
+    assert "6 matching open roles" in bot.api.last  # type: ignore[attr-defined]
+
+
+def test_a_change_at_a_watched_employer_does_recompute_the_digest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls: list[int] = []
+    real = app_module.digest_entries
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(app_module, "digest_entries", counting)
+    bot = _digest_app(tmp_path, 6)
+    storage = bot.service.storage  # type: ignore[attr-defined]
+
+    bot.handle_update(message_update(111, "/digest"))
+    storage.connection.execute("UPDATE jobs SET title = 'Graduate Software Developer' WHERE id = 1")
+    bot.handle_update(message_update(111, "/digest"))
+
+    assert len(calls) == 2

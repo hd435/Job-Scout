@@ -31,7 +31,7 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             )
         }
-        assert version == 8
+        assert version == 9
         assert {
             "sources",
             "scans",
@@ -44,10 +44,11 @@ def test_schema_and_migrations_are_idempotent(tmp_path: Path) -> None:
             "service_subscriptions",
             "service_sessions",
             "service_meta",
+            "jobs_source_seq",
         } <= tables
 
     with Storage.open(path) as storage:
-        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 8
+        assert storage.connection.execute("PRAGMA user_version").fetchone()[0] == 9
 
 
 def test_open_creates_missing_parent_directory(tmp_path: Path) -> None:
@@ -272,3 +273,32 @@ def test_stored_match_decisions_do_not_move_the_counter(store: Storage, scan, re
     )
 
     assert store.jobs_change_seq() == before
+
+
+def test_the_change_counter_is_kept_per_source(store: Storage, scan, record) -> None:
+    """A change at one employer must not invalidate a digest over a different one (D-112)."""
+    scan([record("a", "Graduate Software Engineer")])
+    before = store.digest_version(("palantir",))
+
+    store.connection.execute("UPDATE jobs SET title = 'Graduate Data Engineer'")
+
+    assert store.digest_version(("palantir",)) != before
+    assert store.digest_version(("some_other_employer",)) == (), "an unwatched source has no entry"
+
+
+def test_a_source_that_never_changed_reports_the_same_version(store: Storage, scan, record) -> None:
+    scan([record("a", "Graduate Software Engineer")])
+    first = store.digest_version(("palantir",))
+
+    scan([record("a", "Graduate Software Engineer")])  # same board, no change
+
+    assert store.digest_version(("palantir",)) == first
+
+
+def test_the_catalogue_total_is_still_available(store: Storage, scan, record) -> None:
+    """`jobs_change_seq` stays for whole-catalogue callers; it sums the per-source counters."""
+    before = store.jobs_change_seq()
+
+    scan([record("a", "Graduate Software Engineer")])
+
+    assert store.jobs_change_seq() > before

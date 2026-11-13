@@ -233,6 +233,45 @@ BEGIN
 END;
 """
 
+_MIGRATION_9 = """
+CREATE TABLE jobs_source_seq (
+    source_id TEXT PRIMARY KEY,
+    seq INTEGER NOT NULL DEFAULT 0
+);
+
+DROP TRIGGER jobs_change_insert;
+DROP TRIGGER jobs_change_delete;
+DROP TRIGGER jobs_change_update;
+
+CREATE TRIGGER jobs_source_change_insert AFTER INSERT ON jobs BEGIN
+    INSERT INTO jobs_source_seq (source_id, seq) VALUES (NEW.source_id, 1)
+    ON CONFLICT(source_id) DO UPDATE SET seq = jobs_source_seq.seq + 1;
+END;
+
+CREATE TRIGGER jobs_source_change_delete AFTER DELETE ON jobs BEGIN
+    INSERT INTO jobs_source_seq (source_id, seq) VALUES (OLD.source_id, 1)
+    ON CONFLICT(source_id) DO UPDATE SET seq = jobs_source_seq.seq + 1;
+END;
+
+CREATE TRIGGER jobs_source_change_update AFTER UPDATE ON jobs
+WHEN OLD.title IS NOT NEW.title
+  OR OLD.employer IS NOT NEW.employer
+  OR OLD.location_raw IS NOT NEW.location_raw
+  OR OLD.location_normalized_json IS NOT NEW.location_normalized_json
+  OR OLD.description IS NOT NEW.description
+  OR OLD.url IS NOT NEW.url
+  OR OLD.posted_at IS NOT NEW.posted_at
+  OR OLD.closing_at IS NOT NEW.closing_at
+  OR OLD.status IS NOT NEW.status
+  OR OLD.first_complete_scan_id IS NOT NEW.first_complete_scan_id
+BEGIN
+    INSERT INTO jobs_source_seq (source_id, seq) VALUES (NEW.source_id, 1)
+    ON CONFLICT(source_id) DO UPDATE SET seq = jobs_source_seq.seq + 1;
+END;
+
+DELETE FROM service_meta WHERE key = 'jobs_change_seq';
+"""
+
 _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_1,
     _MIGRATION_2,
@@ -242,6 +281,7 @@ _MIGRATIONS: tuple[str, ...] = (
     _MIGRATION_6,
     _MIGRATION_7,
     _MIGRATION_8,
+    _MIGRATION_9,
 )
 
 
@@ -611,13 +651,35 @@ class Storage:
     def jobs_change_seq(self) -> int:
         """A counter that moves whenever anything a digest could show has changed.
 
-        Triggers on `jobs` maintain it (migration 8), so a closed role, a retitled role, a new
-        direct link, a new description or a role that has just earned complete-scan eligibility
-        all bump it — while scan bookkeeping (`last_seen_scan_id`, `consecutive_misses`, stored
-        match decisions) deliberately does not. Caches keyed on this move only when a result
-        could actually differ.
+        Triggers on `jobs` maintain a **per-source** counter (migration 9), so a closed role, a
+        retitled role, a new direct link, a new description or a role that has just earned
+        complete-scan eligibility all bump the count — while scan bookkeeping
+        (`last_seen_scan_id`, `consecutive_misses`, stored match decisions) deliberately does
+        not. This total spans the whole catalogue; use `digest_version()` when what matters is
+        one user's own sources.
         """
-        return self.read_meta("jobs_change_seq") or 0
+        row = self._conn.execute("SELECT coalesce(sum(seq), 0) AS total FROM jobs_source_seq")
+        return int(row.fetchone()["total"])
+
+    def digest_version(self, source_ids: Sequence[str]) -> tuple[tuple[str, int], ...]:
+        """The change state of the sources one user follows, in one query.
+
+        A digest result only changes when something changes at an employer that user follows,
+        so this is the invalidation key: a role appearing at an employer nobody subscribes to
+        must not throw away everyone's cached page. Returns the pairs sorted, so it compares
+        exactly and cheaply.
+        """
+        if not source_ids:
+            return ()
+        placeholders = ",".join("?" * len(source_ids))
+        rows = self._conn.execute(
+            f"""
+            SELECT source_id, seq FROM jobs_source_seq
+            WHERE source_id IN ({placeholders}) ORDER BY source_id
+            """,
+            tuple(source_ids),
+        ).fetchall()
+        return tuple((row["source_id"], int(row["seq"])) for row in rows)
 
     def last_outage_notice_at(self, *, chat_id: str) -> str | None:
         """When an aggregated connectivity notice last reached this chat.
