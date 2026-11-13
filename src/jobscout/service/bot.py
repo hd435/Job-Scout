@@ -193,9 +193,14 @@ class PollingLoop:
         self._sleep = sleep
         self._error_sleep = error_sleep
 
-    def poll_once(self) -> int:
-        """One poll, one dispatch round. Returns how many updates were handled."""
-        updates = self._api.get_updates(self._offset)
+    def poll_once(self, *, timeout: int | None = None) -> int:
+        """One poll, one dispatch round. Returns how many updates were handled.
+
+        `timeout` overrides the long-poll hold. The loop sets it to 0 while scan work is
+        queued, so a sweep makes progress without leaving messages unanswered for the length
+        of a long poll.
+        """
+        updates = self._api.get_updates(self._offset, timeout=timeout)
         for update in updates:
             update_id = update.get("update_id")
             if isinstance(update_id, int):
@@ -207,14 +212,14 @@ class PollingLoop:
 
     def run(self, *, max_iterations: int | None = None) -> None:
         iterations = 0
+        pending = False
         while max_iterations is None or iterations < max_iterations:
             iterations += 1
             try:
-                self.poll_once()
+                self.poll_once(timeout=0 if pending else None)
             except BotApiError:
                 self._sleep(self._error_sleep)
-            if self._on_tick is not None:
-                self._on_tick()
+            pending = bool(self._on_tick and self._on_tick())
 
 
 __all__ = ["BotApi", "BotApiError", "Button", "PollingLoop", "Rows"]

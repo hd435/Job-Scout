@@ -20,7 +20,7 @@ from jobscout.notifier import Notifier
 from jobscout.scanner import run_scan
 from jobscout.service import app as app_module
 from jobscout.service.app import BotApp, parse_update
-from jobscout.service.bot import BotApi
+from jobscout.service.bot import BotApi, PollingLoop
 from jobscout.service.packs import EMPLOYMENT, FAMILIES, LOCATIONS
 from jobscout.service.store import ServiceStore
 from jobscout.sources import get_adapter
@@ -744,3 +744,45 @@ def test_page_navigation_after_a_change_reuses_the_new_result(tmp_path: Path, mo
         bot.handle_update(callback_update(111, f"d:{page}"))
 
     assert len(calls) == 2, "one recompute for the change, then the cache serves every page"
+
+
+class FixedApi:
+    """Records the poll timeout the loop asked for."""
+
+    def __init__(self, updates: list[dict] | None = None) -> None:
+        self.timeouts: list[int | None] = []
+        self._updates = updates or []
+
+    def get_updates(self, offset, *, timeout=None):
+        self.timeouts.append(timeout)
+        return list(self._updates)
+
+
+def test_the_poll_loop_stops_long_polling_while_scan_work_is_queued() -> None:
+    api = FixedApi()
+    pending = [True, True, False]
+
+    loop = PollingLoop(
+        api,  # type: ignore[arg-type]
+        on_update=lambda _update: None,
+        on_tick=lambda: pending.pop(0) if pending else False,
+    )
+    loop.run(max_iterations=4)
+
+    assert api.timeouts == [None, 0, 0, None], (
+        "the first poll waits, then the hold is dropped while work is queued, then it waits again"
+    )
+
+
+def test_an_on_tick_that_returns_nothing_keeps_the_normal_long_poll() -> None:
+    """Existing callers return None; that must not be read as 'work pending'."""
+    api = FixedApi()
+
+    loop = PollingLoop(
+        api,  # type: ignore[arg-type]
+        on_update=lambda _update: None,
+        on_tick=lambda: None,
+    )
+    loop.run(max_iterations=2)
+
+    assert api.timeouts == [None, None]

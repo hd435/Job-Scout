@@ -129,20 +129,24 @@ class Scheduler:
         Notices are decided after the pass, not per source, because several sources failing
         for the same connectivity reason are one problem worth one message (D-086).
         """
-        self._begin_pass()
         moment = now or self._clock()
         runs = tuple(self._run_source(source, moment) for source in self.due_sources(moment))
         return self._notices_after_pass(runs)
 
-    def _begin_pass(self) -> None:
-        """Reset the HTTP request ceiling, which is a per-pass guard, not a per-process one.
+    def run_next_due(self, *, now: str | None = None) -> tuple[tuple[SourceRun, ...], bool]:
+        """Scan at most one due source, so a caller can interleave scanning with other work.
 
-        Duck-typed because the scheduler is handed any `HttpClient`: a test fixture or a
-        recording client has no budget to reset.
+        The hosted service polls Telegram in the same loop, so a full sweep in one call makes
+        the bot silent for its duration. Returns the run (empty when nothing was due) and
+        whether more sources are still due, which lets the caller poll without its long hold
+        while there is work queued.
         """
-        reset = getattr(self._http_client, "begin_pass", None)
-        if callable(reset):
-            reset()
+        moment = now or self._clock()
+        due = self.due_sources(moment)
+        if not due:
+            return (), False
+        runs = self._notices_after_pass((self._run_source(due[0], moment),))
+        return runs, len(due) > 1
 
     def run_forever(
         self,
@@ -188,6 +192,7 @@ class Scheduler:
                 skipped_reason="another scheduler already claimed this run",
             )
         self._claim_retries.pop(source.id, None)
+        self._begin_scan()
 
         try:
             adapter = self._adapter_factory(source.adapter)
@@ -225,6 +230,16 @@ class Scheduler:
             next_run_at=next_run,
             post_run_error=delivery_error,
         )
+
+    def _begin_scan(self) -> None:
+        """Reset the HTTP request ceiling, which bounds one board, not the whole process.
+
+        Duck-typed because the scheduler is handed any `HttpClient`: a test fixture or a
+        recording client has no budget to reset.
+        """
+        reset = getattr(self._http_client, "begin_scan", None)
+        if callable(reset):
+            reset()
 
     def _back_off_failed_claim(
         self, source: SourceConfig, *, expected: str | None, now: str, next_run_at: str

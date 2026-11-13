@@ -905,11 +905,19 @@ def _cmd_bot(args: argparse.Namespace) -> int:
             rules=app.matching,
         )
 
-        def tick() -> None:
-            runs = scheduler.run_once()
-            if runs:
-                _print_source_runs(runs)
-                bot_app.notify()
+        def tick() -> bool:
+            """Scan at most one due source, then keep the bot answerable.
+
+            Returns True while more sources are due, so the loop stops long-polling and comes
+            straight back. A tick that scanned nothing always returns False, so a source whose
+            claim keeps failing cannot spin the loop.
+            """
+            runs, more_due = scheduler.run_next_due()
+            if not runs:
+                return False
+            _print_source_runs(runs)
+            bot_app.notify()
+            return more_due
 
         loop = PollingLoop(
             api,

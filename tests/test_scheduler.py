@@ -1219,3 +1219,63 @@ def test_two_consecutive_passes_each_get_their_own_request_budget(store: Storage
         "a new pass must not inherit the old count"
     )
     assert client.requests == 1, "the counter belongs to the pass that just ran"
+
+
+# ---------------------------------------------------------------------------
+# Interleaving: the bot must stay answerable while scanning (D-111)
+# ---------------------------------------------------------------------------
+
+
+def test_a_tick_scans_one_source_and_reports_the_rest(store: Storage) -> None:
+    """A full sweep inside the poll loop makes the bot silent for its whole duration."""
+    clock = StepClock()
+    adapters = {
+        "scripted": ScriptedAdapter(
+            [
+                ScanResult(
+                    source_id="palantir",
+                    started_at=START,
+                    finished_at=START,
+                    status=ScanStatus.SUCCESS,
+                    records_seen=0,
+                    records_parsed=0,
+                )
+            ]
+        )
+    }
+    scheduler = make_scheduler(
+        store, app_config(palantir(), second_source()), clock, adapters=adapters
+    )
+
+    first, more = scheduler.run_next_due()
+
+    assert len(first) == 1, "one source per tick"
+    assert more is True, "the caller is told there is more to do"
+    second, _more = scheduler.run_next_due()
+    assert len(second) == 1
+    assert adapters["scripted"].calls == 2
+
+
+def test_a_tick_with_nothing_due_reports_no_work(store: Storage) -> None:
+    clock = StepClock()
+    adapters = {
+        "scripted": ScriptedAdapter(
+            [
+                ScanResult(
+                    source_id="palantir",
+                    started_at=START,
+                    finished_at=START,
+                    status=ScanStatus.SUCCESS,
+                    records_seen=0,
+                    records_parsed=0,
+                )
+            ]
+        )
+    }
+    scheduler = make_scheduler(store, app_config(palantir()), clock, adapters=adapters)
+    scheduler.run_next_due()  # consumes the one due source
+
+    runs, more = scheduler.run_next_due()
+
+    assert runs == ()
+    assert more is False, "nothing due must not ask the loop to spin"
