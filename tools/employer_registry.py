@@ -182,6 +182,62 @@ def slugify(name: str) -> str:
     return cleaned or "unknown"
 
 
+def feed_key(row: dict[str, str]) -> tuple[str, str, str]:
+    """The identity of a feed: a tenant on a platform. Two rows with the same key are one source."""
+    return (
+        (row.get("platform") or "").casefold(),
+        (row.get("tenant") or "").casefold(),
+        (row.get("site") or "").casefold(),
+    )
+
+
+def name_key(row: dict[str, str]) -> str:
+    """The employer name in comparable form: "The Focusrite Group" becomes "focusrite group"."""
+    cleaned = re.sub(r"[^a-z0-9]+", " ", (row.get("name") or "").casefold())
+    return re.sub(r"^the\s+", "", re.sub(r"\s+", " ", cleaned)).strip()
+
+
+def dedupe(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[str]]:
+    """Drop discovery rows that describe a feed the catalogue already ships.
+
+    A discovery pass keys its rows by the employer name it found (`charles_river_associates`) while
+    the catalogue keys them by source id (`charles_river`), so re-seeding an inventory after those
+    employers were enrolled appended a second row for the very same board. The board is the
+    identity, not the spelling, so the shipped row wins and the duplicate is dropped. A genuinely
+    different board for an already-covered employer (a separate `university` board, say) keeps its
+    own key and its own row.
+
+    A boardless row for an employer that has since shipped is dropped too: there is nothing left to
+    find for it, and leaving it as a candidate makes the expansion queue look longer than it is.
+    """
+
+    def usable(row: dict[str, str]) -> bool:
+        return any(feed_key(row))
+
+    shipped = {feed_key(row) for row in rows if row.get("status") == "added" and usable(row)}
+    shipped_names = {name_key(row) for row in rows if row.get("status") == "added"}
+    kept: list[dict[str, str]] = []
+    dropped: list[str] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        if row.get("status") == "added":
+            kept.append(row)
+            continue
+        key = feed_key(row)
+        if key in shipped:
+            dropped.append(f"{row['employer']} ({row.get('platform') or '?'}/{row.get('tenant')})")
+            continue
+        if not usable(row) and name_key(row) in shipped_names:
+            dropped.append(f"{row['employer']} (already shipped, no board recorded)")
+            continue
+        if usable(row) and key in seen:
+            dropped.append(f"{row['employer']} ({row.get('platform')}/{row.get('tenant')})")
+            continue
+        seen.add(key)
+        kept.append(row)
+    return kept, dropped
+
+
 def merge(existing: list[dict[str, str]], incoming: list[dict[str, str]]) -> list[dict[str, str]]:
     """Add or refresh rows without discarding a verdict a human recorded."""
     by_id = {row["employer"]: row for row in existing}
@@ -228,6 +284,24 @@ DEFERRED = {
     "bishopfleming": "13 postings, 2 UK, none in an enabled family",
     "clydeco": "10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",
     "linklaters": "graduate search returned 6 postings, none in the UK",
+    # Registry sweep (2026-11-13): probed straight from the registry's own candidate list.
+    "albert_bartlett": "51 postings, all UK, none in an enabled family (manufacturing operatives)",
+    # A staffing agency rather than an employer: its postings name client companies, so an alert
+    # would misattribute the employer. Same premise as D-109's aggregator hold, which keeps the
+    # catalogue made of employers' own systems.
+    "evolution_recruitment_solutions": (
+        "recruitment agency, not an employer: 3 postings, 1 in a family, but each names a client"
+        " company rather than hiring in its own right"
+    ),
+    # DRW runs a second board for university and event hiring that the group board does not mirror:
+    # measured 2026-11-13, its 1 role ("Software Developer Intern - Industrial Placement") appears
+    # nowhere in `drweng`'s 159. Worth having, but enrolling it makes two sources share one
+    # employer, which the loader warns about and which the employer-level duplicate safeguard
+    # exists to stop. Held until the Product Owner decides whether that is acceptable.
+    "drw_university": (
+        "second board for an already-covered employer (1 university-only placement role);"
+        " needs a decision on whether an employer may have two sources"
+    ),
 }
 
 
@@ -279,6 +353,11 @@ def apply_probe(rows: list[dict[str, str]], path: Path, evidence_date: str) -> l
         if verdict not in ("defer", "reject"):
             continue
         reason = record.get("verdict_reason") or ""
+        if "status=404" in reason:
+            # A guessed slug that does not exist says nothing about the employer: it is a failed
+            # guess, not a verdict. Recording it would fill the table with hundreds of rows that
+            # each mean "this board is not at this address".
+            continue
         slug = record.get("slug", "")
         tenant = slug.split("/")[1] if record.get("adapter") == "workday" else slug
         target = by_tenant.get(tenant) or by_slug.get(slugify(record.get("employer", "")))
@@ -297,6 +376,13 @@ def apply_probe(rows: list[dict[str, str]], path: Path, evidence_date: str) -> l
             by_slug[slugify(employer)] = target
         if target.get("status") == "added":
             continue
+        if not target.get("tenant") and slug:
+            # Keep the address that was actually probed: a deferred row that says only "no
+            # qualifying role" invites the next pass to go looking for the board again.
+            target["platform"] = record.get("adapter", "")
+            target["tenant"] = tenant
+            if record.get("adapter") == "workday" and slug.count("/") == 2:
+                target["site"] = slug.split("/")[2]
         measurement = record.get("records_parsed", 0)
         target["status"] = "deferred" if verdict == "defer" else "rejected"
         target["reason"] = f"{reason} (measured: {measurement} posting(s))"
@@ -354,6 +440,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
     rows = apply_statuses(rows, args.date)
     for probe_path in args.probe or ():
         rows = apply_probe(rows, probe_path, args.date)
+    rows, duplicates = dedupe(rows)
     if args.db:
         rows = apply_measurements(rows, args.db)
     write_registry(rows)
@@ -361,6 +448,10 @@ def cmd_seed(args: argparse.Namespace) -> int:
     print(f"registry: {REGISTRY} ({len(rows)} employers)")
     for status, count in sorted(counts.items()):
         print(f"  {status:<12}{count:>5}")
+    if duplicates:
+        print(f"  dropped {len(duplicates)} row(s) describing a feed that is already shipped:")
+        for entry in duplicates:
+            print("   ", entry)
     contributing = sum(
         1
         for row in rows
@@ -392,6 +483,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         for row in rows
         if row["status"] == "added" and row["employer"] not in catalogued
     )
+    _, duplicate_rows = dedupe(rows)
 
     failures = 0
     if missing:
@@ -409,6 +501,14 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"error: {len(drifted)} registry 'added' row(s) not in the catalogue:")
         for employer in drifted:
             print("   ", employer)
+        failures += 1
+    if duplicate_rows:
+        print(
+            f"error: {len(duplicate_rows)} row(s) duplicate a feed already in the registry"
+            " (run `seed` to drop them):"
+        )
+        for entry in duplicate_rows:
+            print("   ", entry)
         failures += 1
     if not failures:
         print(f"registry and catalogue agree: {len(catalogued)} employers, all recorded")

@@ -1,0 +1,13 @@
+# Workable board `costello-medical` behind Costello Medical.
+# Discovery 2026-11-13 (slug sweep, probe-slugs): 35 roles, 18 UK,
+# 1 in a target family, 1 matching under the default rules.
+# Example: Graduate Data Analyst
+id = "costello_medical"
+employer = "Costello Medical"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "costello-medical"
+uk_employer = true

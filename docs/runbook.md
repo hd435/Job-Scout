@@ -386,6 +386,13 @@ Workday search were found — expect the same.
    boards across 214 employers in about four minutes and turned the guess into a measured
    inventory. Any similar list that links to employers' own postings works the same way.
 
+   **When the page reveals nothing, guess — but last.** `tools/guess_slugs.py` writes the two
+   shapes tenants actually use (no spaces, hyphenated) for every registry candidate with no board,
+   across the five one-request platforms; `probe_boards.py` then tests them. Expect about 3 % of
+   guesses to resolve to a real board and well under 1 % to be worth enrolling (batch 9: 375
+   guesses, 2 employers). A 404 is not recorded as a verdict on the employer — it is a failed
+   guess, nothing more — so the sweep costs requests and no research debt.
+
    **Record the verdict.** `python tools/employer_registry.py seed --inventory … --db …` writes the
    outcome into `research/employers.csv`, including the reason an employer was deferred or rejected.
    A probed employer that never reaches the catalogue is still research worth keeping — that is what
@@ -695,6 +702,77 @@ boards.
 
 **Deploying this batch.** The catalogue ships with the package; `install.sh` picks it up. Existing
 subscribers keep the employer set they chose until they open `/settings`.
+
+**Batch 9 — 2026-11-13 — the lead lists ran out, so the sweep did (registry hygiene).**
+
+Batch 8 closed by saying the productive surface was new lead lists. Two unused lists were to hand
+(`uklist3`, a visa-sponsorship cut of the same weekly round-up, and a Workopia page). Both were
+exhausted by measurement rather than by assertion:
+
+- `uklist3` parses cleanly and every one of its employers is **already** in the registry. It is a
+  different cut of the same population, not a new one.
+- The Workopia page is a landing page with FAQs and no job rows at all: 1 217 lines, zero table
+  rows, so there is nothing to resolve a board from.
+
+That is a finding worth recording, not a failure: the accessible public UK early-career round-ups
+all draw on the same employer set, so **more of the same lead source cannot add coverage**. The
+next gain has to come from a different kind of source (sector bodies, regional ecosystems) or from
+better use of the inventory already held.
+
+**The registry had silently doubled.** Re-probing the registry's own candidate list found nine
+boards worth enrolling — and every one already had a catalogue file. The cause: a discovery pass
+keys its rows by the employer name it found (`charles_river_associates`) while the catalogue keys
+them by source id (`charles_river`), so re-seeding an inventory after enrolment appended a second
+row for the same board. Thirteen such duplicates were found, four of them Workday (`gresearch`,
+`matthey`, `leonardocompany`, `libertyglobal`), so the queue read 125 candidates when 112 were real.
+`tools/employer_registry.py` now dedupes on the **feed** — platform, tenant, site — because that is
+what a source is, while a genuinely different board for a covered employer (DRW's university board)
+keeps its own key. `check` fails on a duplicate rather than only reporting it, and a row deferred
+after a probe now records the board it probed, so the next pass does not go looking for it again.
+
+**Then the sweep that was left.** With the inventories spent, the 53 employers whose published job
+page never revealed a board were resolved by guessing the tenant: `tools/guess_slugs.py` writes
+`platform,slug,name` for each, using the two shapes tenants actually use (no spaces, hyphenated)
+across the five one-request platforms.
+
+| Outcome | Count |
+|---|---|
+| Guesses probed | 375 |
+| Resolved to a real board | 12 (3.2 %) |
+| **Enrolled** | **2** |
+| Deferred with a reason | 7 |
+| Rejected (no UK roles, or an empty board) | 3 |
+| 404 — no such tenant, not recorded as a verdict | 332 |
+
+| Source | Board | Roles | UK | Matches | Why |
+|---|---|---|---|---|---|
+| `jumptrading` | `jumptrading` | 92 | 21 | 9 | best find of the sweep: quantitative and trading early-career roles |
+| `costello_medical` | `costello-medical` | 35 | 18 | 1 | medical-communications graduate roles; the science family makes it visible |
+
+A 0.5 % enrolment rate is what guessing costs, and it is the right price for one request per guess:
+375 requests, no human time, two employers. The volume was not the point — the point is that the
+guess is now a **measured** fallback rather than the opening move. Batch 3's 4.5 % hit rate has
+fallen to 3.2 % of guesses resolving at all, which is the expected shape as the easy names are
+already taken.
+
+**Two deferred for a decision rather than a measurement.**
+
+- **Recruitment agencies are out of scope, by extension of D-109.** `Evolution Recruitment
+  Solutions` publishes 3 roles with 1 in a family, but it is a staffing agency: its postings name
+  client companies, so an alert would attribute a vacancy to the wrong employer. The same premise
+  that put aggregators on hold — the catalogue is made of employers' own systems — covers this.
+  If the Product Owner ever wants agency boards, that is a scope decision, not a data one.
+- **A second board for an already-covered employer is held pending a decision.** DRW runs a
+  `drwuniversityjobs` board whose single role ("Software Developer Intern - Industrial Placement")
+  appears nowhere in `drweng`'s 159 — genuinely incremental coverage. Enrolling it makes two
+  sources share one employer, which the loader warns about (`the same role can then alert twice`)
+  and which the employer-level duplicate safeguard exists to prevent. Worth 1 role; not worth
+  quietly weakening a safeguard before asking.
+
+**State at the end of batch 9.** 125 employers shipped, of which 36 have contributed at least one
+match; registry 309 rows — 125 added, 73 candidates, 62 deferred, 49 rejected. The remaining queue
+is dominated by 59 Workday group boards that waves 1–3 showed to be low yield, so the next increment
+should not be another sweep of the same shape.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
