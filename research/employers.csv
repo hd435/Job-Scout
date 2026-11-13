@@ -70,6 +70,7 @@ lseg,LSEG,workday,lseg,graduate_careers,added,,25,8,16,2,2026-11-13
 mako,Mako,greenhouse,mako,,added,,2,1,1,1,2026-11-13
 matthey,Johnson Matthey,workday,matthey,ext_career_site,added,,4,2,4,0,2026-11-13
 mbda,MBDA,workday,mbda,mbda-uk,added,,51,51,24,0,2026-11-13
+mec,MEC Consulting Group,recruitee,,,added,,5,5,3,0,2026-11-13
 mindfoundry,Mind Foundry,greenhouse,mindfoundry,,added,,7,7,5,0,2026-11-13
 moneyfarm,Moneyfarm,workable,moneyfarm,,added,,15,7,8,1,2026-11-13
 mongodb,MongoDB,greenhouse,mongodb,,added,,391,10,105,0,2026-11-13
@@ -151,7 +152,6 @@ carrier,Carrier,,,,candidate,no public board found on the published job page,,,,
 cgg,CGG,workday,cgg,viridiencareers,candidate,,,,,,2026-11-13
 chanel,CHANEL,workday,cc,chanelcareers,candidate,,,,,,2026-11-13
 charles_river_associates,Charles River Associates,greenhouse,charlesriverassociates,,candidate,,,,,,2026-11-13
-city_science,City Science,recruitee,cityscience.recruitee.com,,candidate,,,,,,2026-11-13
 clearwater_analytics,Clearwater Analytics,workday,clearwateranalytics,clearwater_analytics_careers,candidate,,,,,,2026-11-13
 cloudflare,Cloudflare,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 clsa,CLSA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -163,7 +163,6 @@ crane_company,Crane Company,workday,cranecompany,careers,candidate,,,,,,2026-11-
 creative_artists_agency,Creative Artists Agency,workday,caa,careers,candidate,,,,,,2026-11-13
 crowdstrike,CrowdStrike,workday,crowdstrike,crowdstrikecareers,candidate,,,,,,2026-11-13
 danaher,Danaher,workday,danaher,danaherjobs,candidate,,,,,,2026-11-13
-decoded_limited,Decoded Limited,recruitee,decoded.recruitee.com,,candidate,,,,,,2026-11-13
 drw_university,DRW - University,greenhouse,drwuniversityjobs,,candidate,,,,,,2026-11-13
 elasticstage,elasticStage,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 entrust,Entrust,workday,entrust,entrustcareers,candidate,,,,,,2026-11-13
@@ -181,7 +180,6 @@ hewlett_packard_enterprise,Hewlett Packard Enterprise,workday,hpe,jobsathpe,cand
 hexcel,Hexcel,workday,hexcel,hexcelcareers,candidate,,,,,,2026-11-13
 hitachi,Hitachi,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 hudson_river_trading,Hudson River Trading,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-ik_partners,IK Partners,recruitee,ikpartners.recruitee.com,,candidate,,,,,,2026-11-13
 ingram_micro,Ingram Micro,workday,ingrammicro,ingrammicro,candidate,,,,,,2026-11-13
 irhythmtech,irhythmtech,workday,irhythmtech,irhythm,candidate,,,,,,2026-11-13
 javelin_global_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,candidate,,,,,,2026-11-13
@@ -240,12 +238,10 @@ synthomer,Synthomer,workday,synthomer,synthomercareers,candidate,,,,,,2026-11-13
 teledyne_flir,Teledyne FLIR,workday,flir,flircareers,candidate,,,,,,2026-11-13
 tencent,Tencent,workday,tencent,tencent_careers,candidate,,,,,,2026-11-13
 thales,Thales,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-the_event_academy,The Event Academy,recruitee,theeventacademy.recruitee.com,,candidate,,,,,,2026-11-13
 the_focusrite_group,The Focusrite Group,workable,focusrite,,candidate,,,,,,2026-11-13
 the_specialist_works,The Specialist Works,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 the_walt_disney_company,The Walt Disney Company,workday,disney,disneycareer,candidate,,,,,,2026-11-13
 thomson_reuters,Thomson Reuters,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-toad_hall_nursery,Toad Hall Nursery,recruitee,toadhallnursery.recruitee.com,,candidate,,,,,,2026-11-13
 transunion,TransUnion,workday,transunion,transunion,candidate,,,,,,2026-11-13
 united_living,United Living,workday,unitedliving,united-infrastructure-careers,candidate,,,,,,2026-11-13
 vertex_pharmaceuticals,Vertex Pharmaceuticals,workday,vrtx,vertex_careers,candidate,,,,,,2026-11-13
@@ -297,8 +293,10 @@ slrconsulting,Slrconsulting,,,,deferred,"18 postings, 3 UK, none in an enabled f
 stepstone_group,StepStone Group,greenhouse,stepstone,,deferred,no UK early-career role in an enabled family (measured: 64 posting(s)),,,,,2026-11-13
 suade,Suade,workable,suade,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-13
 sulzer,Sulzer,workday,sulzer,sulzerjobs,deferred,"200 postings, 15 UK (8 %); UK share below the 10 % bar",,,,,2026-11-13
+the_event_academy,The Event Academy,recruitee,theeventacademy.recruitee.com,,deferred,no UK early-career role in an enabled family (measured: 19 posting(s)),,,,,2026-11-13
 thg_ingenuity,THG Ingenuity,greenhouse,thgingenuity,,deferred,no UK early-career role in an enabled family (measured: 49 posting(s)),,,,,2026-11-13
 third_bridge,Third Bridge,greenhouse,thirdbridge,,deferred,no UK early-career role in an enabled family (measured: 144 posting(s)),,,,,2026-11-13
+toad_hall_nursery,Toad Hall Nursery,recruitee,toadhallnursery.recruitee.com,,deferred,no UK early-career role in an enabled family (measured: 26 posting(s)),,,,,2026-11-13
 torqcommodities,TORQCOMMODITIES,workable,torqcommodities,,deferred,no UK early-career role in an enabled family (measured: 24 posting(s)),,,,,2026-11-13
 unitedliving,Unitedliving,,,,deferred,"200 postings, 65 UK, none in an enabled family (site, quantity surveying)",,,,,2026-11-13
 universal_business_team,Universal Business Team,workable,ubteam,,deferred,no UK early-career role in an enabled family (measured: 95 posting(s)),,,,,2026-11-13
@@ -307,11 +305,14 @@ vovi,Vovi,workable,vovi,,deferred,no UK early-career role in an enabled family (
 andurilindustries,Andurilindustries,,,,rejected,2 511 postings for one UK early-career match; disproportionate scan cost,,,,,2026-11-13
 canonical,Canonical,greenhouse,canonical,,rejected,"314 postings, 2 in a target family, none with an early-career signal",,,,,2026-11-13
 checkout,Checkout,,,,rejected,board token 404; uses a different ATS,,,,,2026-11-13
+city_science,City Science,recruitee,cityscience.recruitee.com,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 ctccampusboard,Ctccampusboard,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-13
+decoded_limited,Decoded Limited,recruitee,decoded.recruitee.com,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 eurostar_international,Eurostar International,workable,eurostar,,rejected,no UK roles at all (measured: 14 posting(s)),,,,,2026-11-13
 gunnebo_entrance_control,Gunnebo Entrance Control,workable,gunnebo-entrance-control,,rejected,no UK roles at all (measured: 20 posting(s)),,,,,2026-11-13
 hp,HP,workday,hp,externalcareersite,rejected,"Workday group board: 333 postings in the graduate search, 4 UK, 0 matches. Deferred rather than scanned; revisit if a UK or campus site is published",,,,,2026-11-13
 hr_wallingford,HR Wallingford,greenhouse,hrwallingford,,rejected,"4 postings, 1 in a target family, none with an early-career signal",,,,,2026-11-13
+ik_partners,IK Partners,recruitee,ikpartners.recruitee.com,,rejected,no UK roles at all (measured: 2 posting(s)),,,,,2026-11-13
 mufg,MUFG,workday,mufgub,mufg-careers,rejected,"Workday group board returns world-wide roles: 36 postings, 2 UK, 0 matches. Revisit if a UK graduate site is published",,,,,2026-11-13
 mwinternshipprogram,Mwinternshipprogram,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-13
 pg,Pg,,,,rejected,"Workday group board: 218 postings in the graduate search, 9 UK, 0 matches. P&G names graduate-entry roles 'Manager', which the seniority exclusions reject; revisit if that naming changes or a UK careers site appears",,,,,2026-11-13

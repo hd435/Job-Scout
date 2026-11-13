@@ -193,11 +193,30 @@ WORKABLE_PROFILE = ValidationProfile(
     records_key="jobs",
 )
 
+#: Recruitee's offer object. `guid` and `id` are both identifiers; `careers_url` is the public page.
+RECRUITEE_WATCHED_FIELDS: dict[str, type] = {
+    "title": str,
+    "guid": str,
+    "careers_url": str,
+    "location": str,
+    "description": str,
+    "published_at": str,
+    "remote": bool,
+    "hybrid": bool,
+}
+
+RECRUITEE_PROFILE = ValidationProfile(
+    watched_fields=RECRUITEE_WATCHED_FIELDS,
+    required_fields=("title", "careers_url"),
+    records_key="offers",
+)
+
 ADAPTER_PROFILES: dict[str, ValidationProfile] = {
     "lever": PALANTIR_PROFILE,
     "greenhouse": MONZO_PROFILE,
     "ashby": ASHBY_PROFILE,
     "workable": WORKABLE_PROFILE,
+    "recruitee": RECRUITEE_PROFILE,
     "workday": LLOYDS_PROFILE,
     "sitemap_html": SITEMAP_PROFILE,
 }

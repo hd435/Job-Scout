@@ -664,6 +664,38 @@ schemes (already narrowed in batch 6).
 **Deploying this batch.** The catalogue ships with the package; `install.sh` picks it up. Existing
 subscribers keep the employer set they chose until they open `/settings`.
 
+**Batch 8 — 2026-11-13 — a Recruitee adapter, and the queue that was left.**
+
+Recruitee was the largest identified platform we could not read (6 known employers, and it is
+common among UK mid-market firms). The adapter follows the same one-request shape as Workable:
+`https://{account}.recruitee.com/api/offers/` returns every offer with description, requirements,
+published date, location list and remote/hybrid flags. `guid` is the stable identifier and
+`careers_url` is the public offer page.
+
+Sweeping the six known accounts:
+
+| Account | Offers | UK | Outcome |
+|---|---|---|---|
+| MEC Consulting Group | 5 | 5 | **enrolled** — 1 match (Graduate Acoustic Consultant); the science family is what makes it visible |
+| The Event Academy | 19 | 19 | deferred — event-industry roles, none in an enabled family |
+| Toad Hall Nursery | 26 | 26 | deferred — childcare roles, none in an enabled family |
+| IK Partners | 2 | 0 | rejected — no UK roles |
+| Decoded, City Science | 0 | 0 | rejected — empty boards |
+
+One employer from six is a modest return, and it is the honest one: Recruitee's UK presence in this
+sample is mid-market and service-sector, so the adapter's value is **future optionality** — any
+Recruitee employer is now one catalogue file — rather than immediate coverage. It stays because the
+cost is a single request per scan.
+
+The expansion queue at the end of this batch, from `tools/employer_registry.py report`, is 59
+Workday tenants, 53 employers with no public board found, 8 Workable, 3 Greenhouse, 1 Recruitee
+and 1 Rippling. The Workday remainder is almost entirely group boards, which waves 1–3 showed to
+be low yield; the productive surface now is new lead lists rather than more probing of the same
+boards.
+
+**Deploying this batch.** The catalogue ships with the package; `install.sh` picks it up. Existing
+subscribers keep the employer set they chose until they open `/settings`.
+
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
 stored roles from value delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible

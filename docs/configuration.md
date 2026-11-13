@@ -114,7 +114,7 @@ One table per employer, for an override or a one-off experiment. Listing any `[[
 |---|---|---|---|
 | `id` | string | required | Stable identifier used by `--source`, the database and the report |
 | `employer` | string | required | Display name used in alerts and reports |
-| `adapter` | string | required | `lever`, `greenhouse`, `workday`, or `sitemap_html` |
+| `adapter` | string | required | `lever`, `greenhouse`, `ashby`, `workable`, `recruitee`, `workday`, or `sitemap_html` |
 | `enabled` | bool | `true` | Disabled sources are kept in config but never scanned or counted against targets |
 | `cadence_minutes` | int | `30` | Minimum gap between scans of this source |
 | `access_note` | string | `""` | Recorded access basis (D-087). Optional here; `config validate` names any that omit it |
@@ -130,6 +130,9 @@ or a required option that is missing, is an error naming the source and the key
 |---|---|---|
 | `lever` | — | `site` (defaults to the source id), `uk_employer` |
 | `greenhouse` | — | `board` (defaults to the source id), `uk_employer` |
+| `ashby` | — | `board` (defaults to the source id), `uk_employer` |
+| `workable` | — | `account` (defaults to the source id), `uk_employer` |
+| `recruitee` | — | `account` (defaults to the source id), `uk_employer` |
 | `workday` | `host`, `tenant`, `site` | `locale`, `page_size`, `max_pages`, `search_text`, `uk_employer` |
 | `sitemap_html` | `job_url_pattern` and `sitemap_urls` (or `sitemap`) | `sitemap_child_pattern`, `location_from`, `max_sitemap_documents`, `max_detail_fetches`, `request_delay_seconds`, `uk_employer` |
 

@@ -1,0 +1,11 @@
+# MEC Consulting Group runs Recruitee. Environmental and acoustic consultancy — the science family
+# is what makes this visible. Measured 2026-11-13: 5 offers, 5 UK, 1 matching (Graduate Acoustic
+# Consultant).
+id = "mec"
+employer = "MEC Consulting Group"
+adapter = "recruitee"
+access_note = "public Recruitee offers API (acme.recruitee.com/api/offers), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "mec"

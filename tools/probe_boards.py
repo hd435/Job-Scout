@@ -47,7 +47,7 @@ from jobscout.sources import get_adapter  # noqa: E402
 #: Adapters a probe can read directly. Greenhouse, Ashby, Lever and Workable answer in one
 #: request; Workday pages, so it is probed with a bounded number of pages and no detail lookups
 #: (enough to judge the board, not to build a complete scan).
-PROBEABLE = ("greenhouse", "ashby", "lever", "workable", "workday")
+PROBEABLE = ("greenhouse", "ashby", "lever", "workable", "recruitee", "workday")
 
 #: Workday probe limits: ten listing pages is 200 postings, which is more than enough to judge
 #: whether a tenant is worth enrolling and keeps one candidate to a bounded number of requests.
@@ -90,7 +90,7 @@ def source_for(adapter: str, slug: str, employer: str, search_text: str = "") ->
     if adapter in ("greenhouse", "ashby"):
         options: dict[str, Any] = {"board": slug}
         source_id = slug
-    elif adapter == "workable":
+    elif adapter in ("workable", "recruitee"):
         options = {"account": slug}
         source_id = slug
     elif adapter == "workday":
