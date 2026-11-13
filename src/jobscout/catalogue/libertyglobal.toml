@@ -1,0 +1,14 @@
+# Liberty Global runs Workday. Telecommunications; the board is narrowed by the site's own
+# `graduate` search. Measured 2026-11-13: 5 postings, 4 UK, 1 in an enabled family, 1 matching.
+id = "libertyglobal"
+employer = "Liberty Global"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at libertyglobal.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, narrowed by the site's own `graduate` search"
+cadence_minutes = 30
+
+[options]
+host = "libertyglobal.wd3.myworkdayjobs.com"
+tenant = "libertyglobal"
+site = "liberty_global_careers"
+locale = "en-US"
+search_text = "graduate"

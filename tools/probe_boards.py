@@ -44,35 +44,66 @@ from jobscout.matching import (  # noqa: E402
 from jobscout.models import MatchOutcome, ScanStatus  # noqa: E402
 from jobscout.sources import get_adapter  # noqa: E402
 
-#: Adapters whose whole board arrives in one response, so one probe request is honest.
-PROBEABLE = ("greenhouse", "ashby", "lever", "workable")
+#: Adapters a probe can read directly. Greenhouse, Ashby, Lever and Workable answer in one
+#: request; Workday pages, so it is probed with a bounded number of pages and no detail lookups
+#: (enough to judge the board, not to build a complete scan).
+PROBEABLE = ("greenhouse", "ashby", "lever", "workable", "workday")
+
+#: Workday probe limits: ten listing pages is 200 postings, which is more than enough to judge
+#: whether a tenant is worth enrolling and keeps one candidate to a bounded number of requests.
+WORKDAY_PROBE_PAGES = 10
 
 
-def parse_candidates(path: Path) -> list[tuple[str, str, str]]:
-    candidates: list[tuple[str, str, str]] = []
+def parse_candidates(path: Path) -> list[tuple[str, str, str, str]]:
+    """Parse `adapter,slug,employer[,search_text]` lines.
+
+    A Workday slug is one path-like field: `host/tenant/site`, e.g.
+    `lseg.wd3.myworkdayjobs.com/LSEG/Careers`. The optional fourth field is the site's own
+    search text, which is how a large group board is narrowed before it is judged.
+    """
+    candidates: list[tuple[str, str, str, str]] = []
     for raw in path.read_text(encoding="utf-8-sig").splitlines():
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         parts = [part.strip() for part in line.split(",")]
-        if len(parts) != 3:
-            raise SystemExit(f"bad candidate line (want adapter,slug,employer): {raw!r}")
-        adapter, slug, employer = parts
+        if len(parts) not in (3, 4):
+            raise SystemExit(
+                f"bad candidate line (want adapter,slug,employer[,search_text]): {raw!r}"
+            )
+        adapter, slug, employer = parts[:3]
+        search_text = parts[3] if len(parts) == 4 else ""
         if adapter not in PROBEABLE:
-            raise SystemExit(f"adapter {adapter!r} is not probeable in one request ({PROBEABLE})")
-        candidates.append((adapter, slug, employer))
+            raise SystemExit(
+                f"adapter {adapter!r} cannot be probed (supported: {', '.join(PROBEABLE)})"
+            )
+        if adapter == "workday" and slug.count("/") != 2:
+            raise SystemExit(
+                f"a workday slug must be host/tenant/site, e.g."
+                f" lseg.wd3.myworkdayjobs.com/LSEG/Careers — got {slug!r}"
+            )
+        candidates.append((adapter, slug, employer, search_text))
     return candidates
 
 
-def source_for(adapter: str, slug: str, employer: str) -> SourceConfig:
+def source_for(adapter: str, slug: str, employer: str, search_text: str = "") -> SourceConfig:
     if adapter in ("greenhouse", "ashby"):
-        options = {"board": slug}
+        options: dict[str, Any] = {"board": slug}
+        source_id = slug
     elif adapter == "workable":
         options = {"account": slug}
+        source_id = slug
+    elif adapter == "workday":
+        host, tenant, site = slug.split("/")
+        options = {"host": host, "tenant": tenant, "site": site, "locale": "en-US"}
+        if search_text:
+            options["search_text"] = search_text
+        source_id = tenant
     else:
         options = {"site": slug}
+        source_id = slug
     return SourceConfig(
-        id=slug,
+        id=source_id,
         employer=employer,
         adapter=adapter,
         options=options,
@@ -80,13 +111,22 @@ def source_for(adapter: str, slug: str, employer: str) -> SourceConfig:
     )
 
 
-def probe(adapter: str, slug: str, employer: str) -> dict[str, Any]:
-    source = source_for(adapter, slug, employer)
-    result = get_adapter(adapter).fetch_scan(source, UrllibHttpClient())
+def adapter_for(adapter: str) -> Any:
+    if adapter == "workday":
+        from jobscout.sources.workday import WorkdayAdapter
+
+        return WorkdayAdapter(max_pages=WORKDAY_PROBE_PAGES, max_detail_lookups=0)
+    return get_adapter(adapter)
+
+
+def probe(adapter: str, slug: str, employer: str, search_text: str = "") -> dict[str, Any]:
+    source = source_for(adapter, slug, employer, search_text)
+    result = adapter_for(adapter).fetch_scan(source, UrllibHttpClient())
     record: dict[str, Any] = {
         "adapter": adapter,
         "slug": slug,
         "employer": employer,
+        "search_text": search_text,
         "status": str(result.status),
         "records_seen": result.records_seen,
         "records_parsed": result.records_parsed,
@@ -104,7 +144,41 @@ def probe(adapter: str, slug: str, employer: str) -> dict[str, Any]:
     }
     if result.status is not ScanStatus.FAILED:
         _classify(result, record)
+    record["uk_share"] = (
+        round(record["uk_roles"] / record["records_parsed"], 3) if record["records_parsed"] else 0.0
+    )
+    record["verdict"], record["verdict_reason"] = verdict(record)
     return record
+
+
+#: A tenant is worth enrolling when a meaningful share of what it publishes is in the UK, it
+#: publishes early-career roles in an enabled family, and it is not a global board dressed up
+#: with a `graduate` search. Workday wave 1 learned the last one the expensive way: HP returned
+#: 333 postings and 4 UK roles, MUFG 36 and 2, P&G 218 and 9.
+MIN_UK_SHARE = 0.10
+
+
+def verdict(record: dict[str, Any]) -> tuple[str, str]:
+    """`enrol`, `defer` or `reject`, with the reason recorded so the decision is reproducible."""
+    if record["status"] in ("failed", "error"):
+        return "reject", f"scan failed: {(record.get('error') or '')[:80]}"
+    if not record["records_parsed"]:
+        return "reject", "board returned no roles"
+    if not record["uk_roles"]:
+        return "reject", "no UK roles at all"
+    if record["uk_share"] < MIN_UK_SHARE:
+        return (
+            "defer",
+            f"only {record['uk_roles']} UK of {record['records_parsed']}"
+            f" ({record['uk_share']:.0%}), below the {MIN_UK_SHARE:.0%} bar",
+        )
+    if not record["early_family_roles"]:
+        return "defer", "no UK early-career role in an enabled family"
+    return (
+        "enrol",
+        f"{record['early_family_roles']} UK early-career family role(s),"
+        f" {record['uk_share']:.0%} of the board is UK",
+    )
 
 
 def _classify(result: Any, record: dict[str, Any]) -> None:
@@ -154,9 +228,9 @@ def main() -> int:
 
     records: list[dict[str, Any]] = []
     counters: Counter[str] = Counter()
-    for index, (adapter, slug, employer) in enumerate(candidates, start=1):
+    for index, (adapter, slug, employer, search_text) in enumerate(candidates, start=1):
         try:
-            record = probe(adapter, slug, employer)
+            record = probe(adapter, slug, employer, search_text)
         except Exception as exc:  # a broken candidate must not stop the batch
             record = {
                 "adapter": adapter,
@@ -171,11 +245,10 @@ def main() -> int:
             print(f"{index:>3} {adapter:<10} {slug:<24} FAILED  {(record.get('error') or '')[:70]}")
         else:
             print(
-                f"{index:>3} {adapter:<10} {slug:<24} {record['status']:<13}"
+                f"{index:>3} {adapter:<10} {slug[:30]:<30} {record['status']:<13}"
                 f" roles={record['records_parsed']:<4} uk={record['uk_roles']:<4}"
-                f" fam={record['family_roles']:<4} early={record['early_roles']:<3}"
                 f" both={record['early_family_roles']:<3} match={record['matches']:<2}"
-                f" {', '.join(record['early_titles'][:2])[:60]}"
+                f" {record.get('verdict', ''):<7} {(record.get('verdict_reason') or '')[:60]}"
             )
         time.sleep(args.sleep)
 
@@ -188,22 +261,22 @@ def main() -> int:
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"\n{out}")
 
-    keep = sorted(
-        (r for r in records if r.get("uk_roles", 0) >= 1),
-        key=lambda r: (
-            r.get("early_family_roles", 0),
-            r.get("family_roles", 0),
-            r.get("uk_roles", 0),
-        ),
-        reverse=True,
+    enrolling = [record for record in records if record.get("verdict") == "enrol"]
+    enrolling.sort(
+        key=lambda r: (r.get("early_family_roles", 0), r.get("matches", 0)), reverse=True
     )
-    print(f"\n{len(keep)} board(s) with at least one UK role, best first:")
-    for record in keep:
+    print(f"\n{len(enrolling)} board(s) worth enrolling, best first:")
+    for record in enrolling:
         print(
-            f"  {record['adapter']:<10} {record['slug']:<24} uk={record['uk_roles']:<4}"
-            f" fam={record['family_roles']:<4} early={record['early_roles']:<3}"
-            f" both={record['early_family_roles']:<3} {record['employer']}"
+            f"  {record['adapter']:<10} {record['slug']:<30} uk={record['uk_roles']:<4}"
+            f" both={record['early_family_roles']:<3} match={record['matches']:<2}"
+            f" {record['employer']}"
         )
+    deferred = [record for record in records if record.get("verdict") == "defer"]
+    if deferred:
+        print(f"\n{len(deferred)} deferred (recorded so the research is not repeated):")
+        for record in deferred:
+            print(f"  {record['slug']:<30} {record['verdict_reason']}")
     return 0
 
 

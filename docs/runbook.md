@@ -371,17 +371,32 @@ Workday search were found — expect the same.
    (`board`), Workable (`account`), Workday (`host`/`tenant`/`site`), or a sitemap of job URLs whose
    pages carry schema.org `JobPosting` JSON-LD. The per-adapter keys are in [configuration.md](./configuration.md).
    A site needing another shape needs an adapter, and that is development, not configuration.
-   For the one-request shapes (Greenhouse, Ashby, Lever, Workable) you do not have to guess: put the
-   candidate on a line of `adapter,slug,Employer` and run
-   `python tools/probe_boards.py --input candidates.txt`. It reports roles, UK roles, roles in a
-   target family and early-career signals for every candidate, in one request each — that is how
-   expansion batch 2 chose its 43 employers (D-100).
+   Greenhouse, Ashby, Lever, Workable **and Workday** can all be probed: put the candidate on a line
+   of `adapter,slug,Employer[,search text]` and run
+   `python tools/probe_boards.py --input candidates.txt`. A Workday slug is one path-like field —
+   `host/tenant/site` — and the optional fourth field is the site's own search text, which is how a
+   large group board is narrowed before it is judged. The tool reports roles, UK roles, family
+   roles, early-career signals, matches **and a verdict** (`enrol`/`defer`/`reject`) with its reason.
+   That is how expansion batch 2 chose its 43 employers (D-100) and how the Workday waves were
+   judged (D-107).
    **Better: start from an employer, not a slug.** Guessing board tokens had fallen to a 4.5 % hit
    rate by batch 3. Batch 4-6 instead started from a public weekly list of UK graduate, internship,
    placement and apprenticeship roles whose rows name the employer, then fetched one published job
    page per employer to read the board URL it actually uses (the page carries it). That found 158
    boards across 214 employers in about four minutes and turned the guess into a measured
    inventory. Any similar list that links to employers' own postings works the same way.
+
+   **Record the verdict.** `python tools/employer_registry.py seed --inventory … --db …` writes the
+   outcome into `research/employers.csv`, including the reason an employer was deferred or rejected.
+   A probed employer that never reaches the catalogue is still research worth keeping — that is what
+   stops the next batch repeating it.
+
+   **Workday specifically.** Prefer the employer's early-career site (`intern_graduate`,
+   `*_campus_careers`, `Graduate_careers`) over its group board; `mbda-uk` returns 73 graduate roles
+   and completes, while a 731-role group board exceeds the page cap and never does. For a large
+   group board, narrow with `search_text` and judge the **UK share**: narrowing a global tenant with
+   `graduate` still returns world-wide roles, and wave 1 measured HP at 4 UK of 333, MUFG 2 of 36
+   and P&G 9 of 218 — all withdrawn. The probe tool now defers anything below a 10 % UK share.
 2. **Write one catalogue file** in your catalogue directory. It must carry an `access_note`
    naming the public endpoint it reads and the hygiene applied (D-087) — that is the record AC-19
    asks for, and the loader rejects a file without one. For a sitemap site, open its sitemap

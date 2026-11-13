@@ -1,0 +1,15 @@
+# Johnson Matthey runs Workday. Chemicals and materials engineering; the group board is narrowed
+# by the site's own `graduate` search. Measured 2026-11-13: 4 postings, 2 UK, 2 in an enabled
+# family, 2 matching under the default rules.
+id = "matthey"
+employer = "Johnson Matthey"
+adapter = "workday"
+access_note = "public Workday careers site (CXS API at matthey.wd3.myworkdayjobs.com), listing POST plus bounded detail requests, page cap 200, narrowed by the site's own `graduate` search"
+cadence_minutes = 30
+
+[options]
+host = "matthey.wd3.myworkdayjobs.com"
+tenant = "matthey"
+site = "ext_career_site"
+locale = "en-US"
+search_text = "graduate"

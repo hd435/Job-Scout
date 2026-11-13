@@ -3,9 +3,9 @@ abnormalsecurity,Abnormal Security,greenhouse,abnormalsecurity,,added,,89,10,25,
 affirm,Affirm,greenhouse,affirm,,added,,219,14,136,1,2026-11-13
 akunacapital,Akuna Capital,greenhouse,akunacapital,,added,,31,1,22,0,2026-11-13
 algolia,Algolia,greenhouse,algolia,,added,,30,7,9,0,2026-11-13
-anthropic,Anthropic,greenhouse,anthropic,,added,,671,41,235,0,2026-11-13
+anthropic,Anthropic,greenhouse,anthropic,,added,,671,41,233,0,2026-11-13
 aquatic_capital,Aquatic Capital Management,greenhouse,aquaticcapitalmanagement,,added,,12,2,10,1,2026-11-13
-arm,Arm,sitemap_html,,,added,,405,103,169,0,2026-11-13
+arm,Arm,sitemap_html,,,added,,405,103,183,0,2026-11-13
 arondite,Arondite,workable,arondite,,added,,25,21,11,2,2026-11-13
 attio,Attio,ashby,attio,,added,,22,9,8,0,2026-11-13
 barclays,Barclays,workday,barclays,External_Career_Site_Barclays,added,,75,34,12,0,2026-11-13
@@ -60,9 +60,11 @@ klaviyo,Klaviyo,greenhouse,klaviyo,,added,,147,6,40,0,2026-11-13
 knowbe4,KnowBe4,greenhouse,knowbe4,,added,,58,6,19,0,2026-11-13
 legora,Legora,ashby,legora,,added,,339,45,69,0,2026-11-13
 leonardo,Leonardo,workday,leonardocompany,leonardocareersite,added,,84,68,47,0,2026-11-13
+libertyglobal,Liberty Global,workday,libertyglobal,liberty_global_careers,added,,5,4,1,1,2026-11-13
 linear,Linear,ashby,linear,,added,,33,2,3,0,2026-11-13
 lloyds_graduate,Lloyds Banking Group,workday,lbg,Graduate_careers,added,,17,17,14,1,2026-11-13
 longshot_systems,Longshot Systems,workable,longshot-systems-ltd,,added,,6,6,6,1,2026-11-13
+matthey,Johnson Matthey,workday,matthey,ext_career_site,added,,4,2,4,0,2026-11-13
 mbda,MBDA,workday,mbda,mbda-uk,added,,51,51,24,0,2026-11-13
 mindfoundry,Mind Foundry,greenhouse,mindfoundry,,added,,7,7,5,0,2026-11-13
 moneyfarm,Moneyfarm,workable,moneyfarm,,added,,15,7,8,1,2026-11-13
@@ -79,41 +81,42 @@ pagerduty,PagerDuty,greenhouse,pagerduty,,added,,47,3,16,0,2026-11-13
 palantir,Palantir Technologies,lever,palantir,,added,,301,46,218,11,2026-11-13
 perplexity,Perplexity,ashby,perplexity,,added,,143,28,53,1,2026-11-13
 pfizer,Pfizer,workday,pfizer,pfizercareers,added,,29,2,5,0,2026-11-13
-point72,Point72,greenhouse,point72,,added,,200,15,95,0,2026-11-13
+point72,Point72,greenhouse,point72,,added,,200,15,98,0,2026-11-13
 posthog,PostHog,ashby,posthog,,added,,10,1,3,0,2026-11-13
-ramp,Ramp,ashby,ramp,,added,,179,9,62,0,2026-11-13
+ramp,Ramp,ashby,ramp,,added,,179,9,71,0,2026-11-13
 retail_insights,Retail Insights,greenhouse,retailinsights,,added,,250,236,7,3,2026-11-13
-sardine,Sardine,ashby,sardine,,added,,39,5,11,0,2026-11-13
-scale_ai,Scale AI,greenhouse,scaleai,,added,,170,24,68,2,2026-11-13
-schonfeld,Schonfeld,greenhouse,schonfeld,,added,,70,15,36,0,2026-11-13
-sierra,Sierra,ashby,sierra,,added,,198,36,50,2,2026-11-13
-smartsheet,Smartsheet,greenhouse,smartsheet,,added,,73,6,24,0,2026-11-13
-socure,Socure,ashby,socure,,added,,93,3,43,0,2026-11-13
-stripe,Stripe,greenhouse,stripe,,added,,789,39,178,2,2026-11-13
-sumup,SumUp,greenhouse,sumup,,added,,329,74,84,0,2026-11-13
+sardine,Sardine,ashby,sardine,,added,,39,5,12,0,2026-11-13
+scale_ai,Scale AI,greenhouse,scaleai,,added,,170,24,77,2,2026-11-13
+schonfeld,Schonfeld,greenhouse,schonfeld,,added,,71,15,36,0,2026-11-13
+sierra,Sierra,ashby,sierra,,added,,198,36,56,2,2026-11-13
+smartsheet,Smartsheet,greenhouse,smartsheet,,added,,73,6,28,0,2026-11-13
+socure,Socure,ashby,socure,,added,,93,3,46,0,2026-11-13
+stripe,Stripe,greenhouse,stripe,,added,,789,39,205,2,2026-11-13
+sumup,SumUp,greenhouse,sumup,,added,,329,74,86,0,2026-11-13
 symphony_comms,Symphony Communication Services,greenhouse,symphony,,added,,17,8,4,0,2026-11-13
 synthesia,Synthesia,ashby,synthesia,,added,,31,19,11,0,2026-11-13
-tailscale,Tailscale,greenhouse,tailscale,,added,,79,3,19,0,2026-11-13
+tailscale,Tailscale,greenhouse,tailscale,,added,,79,3,23,0,2026-11-13
 thoughtworks,Thoughtworks,greenhouse,thoughtworks,,added,,47,2,20,0,2026-11-13
 tide,Tide,greenhouse,tide,,added,,100,22,21,0,2026-11-13
-tower_research,Tower Research Capital,greenhouse,towerresearchcapital,,added,,93,9,57,3,2026-11-13
+tower_research,Tower Research Capital,greenhouse,towerresearchcapital,,added,,92,9,61,3,2026-11-13
 truelayer,TrueLayer,greenhouse,truelayer,,added,,3,1,0,0,2026-11-13
-twilio,Twilio,greenhouse,twilio,,added,,115,17,17,0,2026-11-13
+twilio,Twilio,greenhouse,twilio,,added,,115,17,20,0,2026-11-13
 typeform,Typeform,greenhouse,typeform,,added,,6,4,0,0,2026-11-13
-vanta,Vanta,ashby,vanta,,added,,80,14,29,0,2026-11-13
-vercel,Vercel,greenhouse,vercel,,added,,87,4,21,0,2026-11-13
-verkada,Verkada,greenhouse,verkada,,added,,346,18,102,0,2026-11-13
-wayve,Wayve,ashby,wayve,,added,,167,61,77,0,2026-11-13
-winthrop,Winthrop Technologies,workable,winthrop-technologies,,added,,234,27,12,0,2026-11-13
+unum,Unum,workday,unum,external,added,,3,1,1,0,2026-11-13
+vanta,Vanta,ashby,vanta,,added,,80,14,33,0,2026-11-13
+vercel,Vercel,greenhouse,vercel,,added,,87,4,25,0,2026-11-13
+verkada,Verkada,greenhouse,verkada,,added,,346,18,124,0,2026-11-13
+wayve,Wayve,ashby,wayve,,added,,167,61,91,0,2026-11-13
+winthrop,Winthrop Technologies,workable,winthrop-technologies,,added,,234,27,51,0,2026-11-13
 winton,Winton,greenhouse,winton,,added,,7,7,3,1,2026-11-13
 wise,Wise,sitemap_html,,,added,,222,108,61,0,2026-11-13
-wolt,Wolt,greenhouse,wolt,,added,,192,10,8,0,2026-11-13
-wordsmith,Wordsmith,ashby,wordsmith,,added,,25,17,2,0,2026-11-13
+wolt,Wolt,greenhouse,wolt,,added,,192,10,17,0,2026-11-13
+wordsmith,Wordsmith,ashby,wordsmith,,added,,25,17,4,0,2026-11-13
 workman_llp,Workman LLP,workable,workman-llp,,added,,23,23,1,0,2026-11-13
-worldquant,WorldQuant,greenhouse,worldquant,,added,,82,4,53,0,2026-11-13
-writer,Writer,ashby,writer,,added,,45,11,11,0,2026-11-13
+worldquant,WorldQuant,greenhouse,worldquant,,added,,82,4,54,0,2026-11-13
+writer,Writer,ashby,writer,,added,,45,11,13,0,2026-11-13
 zoopla,Zoopla,workable,zoopla,,added,,15,15,2,0,2026-11-13
-zopa,Zopa,lever,zopa,,added,,30,30,13,0,2026-11-13
+zopa,Zopa,lever,zopa,,added,,30,30,15,0,2026-11-13
 1global,1GLOBAL,workable,1global,,candidate,,,,,,2026-11-13
 academy_of_medical_sciences,Academy of Medical Sciences,workable,academy-of-medical-sciences,,candidate,,,,,,2026-11-13
 accora,Accora,workable,accora,,candidate,,,,,,2026-11-13
@@ -126,7 +129,6 @@ altera,Altera,workday,altera,altera,candidate,,,,,,2026-11-13
 analog_devices,Analog Devices,workday,analogdevices,external,candidate,,,,,,2026-11-13
 ankura,Ankura,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 ardian,Ardian,workday,ardian,ardiancareers,candidate,,,,,,2026-11-13
-arriva,Arriva,workday,arriva,careers,candidate,,,,,,2026-11-13
 atkinsr_alis,AtkinsRéalis,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 autodesk,Autodesk,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 aveva,AVEVA,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -146,7 +148,6 @@ boeing,Boeing,,,,candidate,no public board found on the published job page,,,,,2
 box,Box,greenhouse,boxinc,,candidate,,,,,,2026-11-13
 bridewell,Bridewell,workable,bridewell,,candidate,,,,,,2026-11-13
 bridges_electrical_engineers,Bridges Electrical Engineers,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-brompton,Brompton,workday,brompton,brompton,candidate,,,,,,2026-11-13
 bupa,Bupa,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 camlin,Camlin,rippling,jobs,,candidate,,,,,,2026-11-13
 capita,Capita,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -203,9 +204,7 @@ interpath_advisory,Interpath Advisory,workable,interpath-advisory,,candidate,,,,
 intertek,Intertek,workable,intertek,,candidate,,,,,,2026-11-13
 irhythmtech,irhythmtech,workday,irhythmtech,irhythm,candidate,,,,,,2026-11-13
 javelin_global_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,candidate,,,,,,2026-11-13
-jcdecaux,JCDecaux,workday,jcdecaux,externalsitejcduk,candidate,,,,,,2026-11-13
 jensen_hughes,Jensen Hughes,greenhouse,jensenhughes,,candidate,,,,,,2026-11-13
-jll,JLL,workday,jll,jllcareers,candidate,,,,,,2026-11-13
 johnson_matthey,Johnson Matthey,workday,matthey,ext_career_site,candidate,,,,,,2026-11-13
 jump_crypto,Jump Crypto,greenhouse,jumpcrypto,,candidate,,,,,,2026-11-13
 jump_trading,Jump Trading,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -223,10 +222,8 @@ legalvision,LegalVision,workable,legalvision,,candidate,,,,,,2026-11-13
 leonardocompany,leonardocompany,workday,leonardocompany,leonardocareersite,candidate,,,,,,2026-11-13
 levi_strauss_co,Levi Strauss & Co.,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 liberty_global,Liberty Global,workday,libertyglobal,liberty_global_careers,candidate,,,,,,2026-11-13
-linklaters,Linklaters,workday,linklaters,linklaters,candidate,,,,,,2026-11-13
 longshot_systems_ltd,Longshot Systems Ltd,workable,longshot-systems-ltd,,candidate,,,,,,2026-11-13
 lonza,Lonza,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-lseg,LSEG,workday,lseg,careers,candidate,,,,,,2026-11-13
 mako,Mako,greenhouse,mako,,candidate,,,,,,2026-11-13
 mars,Mars,workday,mars,external,candidate,,,,,,2026-11-13
 mec_consulting_group,MEC Consulting Group,recruitee,mec.recruitee.com,,candidate,,,,,,2026-11-13
@@ -254,7 +251,6 @@ prologis,Prologis,workday,prologis,prologis_external_careers,candidate,,,,,,2026
 propharma_group,ProPharma Group,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 prosapient,proSapient,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 quick_release,Quick Release,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-reed,Reed,workday,reed,reed_specialist_recruitment_careers,candidate,,,,,,2026-11-13
 reliaquest,ReliaQuest,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 roche,Roche,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 safran_engineering_services_uk_limited,Safran Engineering Services UK Limited,,,,candidate,no public board found on the published job page,,,,,2026-11-13
@@ -275,7 +271,6 @@ spt_labtech,SPT Labtech,,,,candidate,no public board found on the published job 
 state_street,State Street,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 stepstone_group,StepStone Group,greenhouse,stepstone,,candidate,,,,,,2026-11-13
 suade,Suade,workable,suade,,candidate,,,,,,2026-11-13
-sulzer,Sulzer,workday,sulzer,sulzerjobs,candidate,,,,,,2026-11-13
 symphony_communication_services,Symphony Communication Services,greenhouse,symphony,,candidate,,,,,,2026-11-13
 synthomer,Synthomer,workday,synthomer,synthomercareers,candidate,,,,,,2026-11-13
 teledyne_flir,Teledyne FLIR,workday,flir,flircareers,candidate,,,,,,2026-11-13
@@ -293,13 +288,25 @@ torqcommodities,TORQCOMMODITIES,workable,torqcommodities,,candidate,,,,,,2026-11
 transunion,TransUnion,workday,transunion,transunion,candidate,,,,,,2026-11-13
 united_living,United Living,workday,unitedliving,united-infrastructure-careers,candidate,,,,,,2026-11-13
 universal_business_team,Universal Business Team,workable,ubteam,,candidate,,,,,,2026-11-13
-unum,Unum,workday,unum,external,candidate,,,,,,2026-11-13
 vertex_pharmaceuticals,Vertex Pharmaceuticals,workday,vrtx,vertex_careers,candidate,,,,,,2026-11-13
 vix_technology_kuba,Vix Technology & Kuba,workable,vix-technology,,candidate,,,,,,2026-11-13
 vovi,Vovi,workable,vovi,,candidate,,,,,,2026-11-13
 wellington_management,Wellington Management,workday,wellington,external,candidate,,,,,,2026-11-13
 white_cap,White Cap,workday,whitecap,careers,candidate,,,,,,2026-11-13
 winthrop_technologies,Winthrop Technologies,workable,winthrop-technologies,,candidate,,,,,,2026-11-13
+arriva,Arriva,workday,arriva,careers,deferred,"170 postings, 41 UK, none in an enabled family (operations and depot roles)",,,,,2026-11-13
+bishopfleming,Bishopfleming,,,,deferred,"13 postings, 2 UK, none in an enabled family",,,,,2026-11-13
+brompton,Brompton,workday,brompton,brompton,deferred,"10 postings, 7 UK, none in an enabled family",,,,,2026-11-13
+clydeco,Clydeco,,,,deferred,"10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",,,,,2026-11-13
+jcdecaux,JCDecaux,workday,jcdecaux,externalsitejcduk,deferred,"14 postings, 11 UK, none in an enabled family",,,,,2026-11-13
+jll,JLL,workday,jll,jllcareers,deferred,"123 postings, 4 UK (3 %); UK share below the 10 % bar",,,,,2026-11-13
+knightfrank,Knightfrank,,,,deferred,"3 postings, 1 UK, none in an enabled family",,,,,2026-11-13
+linklaters,Linklaters,workday,linklaters,linklaters,deferred,"graduate search returned 6 postings, none in the UK",,,,,2026-11-13
+lseg,LSEG,workday,lseg,careers,deferred,"probe failed with HTTP 502; retry before judging (transient, not a verdict)",,,,,2026-11-13
+reed,Reed,workday,reed,reed_specialist_recruitment_careers,deferred,"4 postings in the graduate search, 3 UK, none in an enabled family",,,,,2026-11-13
+slrconsulting,Slrconsulting,,,,deferred,"18 postings, 3 UK, none in an enabled family",,,,,2026-11-13
+sulzer,Sulzer,workday,sulzer,sulzerjobs,deferred,"200 postings, 15 UK (8 %); UK share below the 10 % bar",,,,,2026-11-13
+unitedliving,Unitedliving,,,,deferred,"200 postings, 65 UK, none in an enabled family (site, quantity surveying)",,,,,2026-11-13
 andurilindustries,Andurilindustries,,,,rejected,2 511 postings for one UK early-career match; disproportionate scan cost,,,,,2026-11-13
 canonical,Canonical,greenhouse,canonical,,rejected,"314 postings, 2 in a target family, none with an early-career signal",,,,,2026-11-13
 checkout,Checkout,,,,rejected,board token 404; uses a different ATS,,,,,2026-11-13

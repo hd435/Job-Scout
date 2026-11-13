@@ -209,12 +209,37 @@ def merge(existing: list[dict[str, str]], incoming: list[dict[str, str]]) -> lis
     return list(by_id.values())
 
 
-def apply_rejections(rows: list[dict[str, str]], evidence_date: str) -> list[dict[str, str]]:
-    """Mark known rejections, keeping whatever connection detail was already discovered."""
+#: Employers probed and deliberately not enrolled yet, with the measurement that decided it.
+#: Deferred rather than rejected: the platform may publish early-career roles seasonally.
+DEFERRED = {
+    # Workday wave 2 (2026-11-13). Mostly UK-heavy tenants whose boards publish operational or
+    # professional roles rather than the enabled families.
+    "reed": "4 postings in the graduate search, 3 UK, none in an enabled family",
+    "jll": "123 postings, 4 UK (3 %); UK share below the 10 % bar",
+    "knightfrank": "3 postings, 1 UK, none in an enabled family",
+    "unitedliving": "200 postings, 65 UK, none in an enabled family (site, quantity surveying)",
+    "brompton": "10 postings, 7 UK, none in an enabled family",
+    "slrconsulting": "18 postings, 3 UK, none in an enabled family",
+    "sulzer": "200 postings, 15 UK (8 %); UK share below the 10 % bar",
+    "jcdecaux": "14 postings, 11 UK, none in an enabled family",
+    "arriva": "170 postings, 41 UK, none in an enabled family (operations and depot roles)",
+    "bishopfleming": "13 postings, 2 UK, none in an enabled family",
+    "clydeco": "10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",
+    "linklaters": "graduate search returned 6 postings, none in the UK",
+    "lseg": "probe failed with HTTP 502; retry before judging (transient, not a verdict)",
+}
+
+
+def apply_statuses(
+    rows: list[dict[str, str]], evidence_date: str
+) -> list[dict[str, str]]:
+    """Apply recorded rejections and deferrals, keeping any connection detail already found."""
     by_slug = {slugify(row["employer"]): row for row in rows}
     by_id = {row["employer"]: row for row in rows}
     dropped: set[str] = set()
-    for employer, reason in REJECTED.items():
+    entries = [(employer, reason, "rejected") for employer, reason in REJECTED.items()]
+    entries += [(employer, reason, "deferred") for employer, reason in DEFERRED.items()]
+    for employer, reason, status in entries:
         target = by_id.get(employer) or by_slug.get(slugify(employer))
         if target is None:
             target = {
@@ -226,10 +251,10 @@ def apply_rejections(rows: list[dict[str, str]], evidence_date: str) -> list[dic
             }
             by_id[employer] = target
         elif target["employer"] != employer:
-            # The discovery pass spelled the name differently ("P&G" -> p_g); the rejection
+            # The discovery pass spelled the name differently ("P&G" -> p_g); the verdict
             # belongs to the catalogue id, so fold the alias away rather than keep both.
             dropped.add(target["employer"])
-        target["status"] = "rejected"
+        target["status"] = status
         target["reason"] = reason
         target["evidence_date"] = evidence_date
     return [row for row in by_id.values() if row["employer"] not in dropped]
@@ -282,7 +307,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
     rows = merge(rows, catalogue_rows(args.date))
     if args.inventory:
         rows = merge(rows, inventory_rows(args.inventory, args.date))
-    rows = apply_rejections(rows, args.date)
+    rows = apply_statuses(rows, args.date)
     if args.db:
         rows = apply_measurements(rows, args.db)
     write_registry(rows)
