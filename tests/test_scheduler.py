@@ -1279,3 +1279,51 @@ def test_a_tick_with_nothing_due_reports_no_work(store: Storage) -> None:
 
     assert runs == ()
     assert more is False, "nothing due must not ask the loop to spin"
+
+
+def test_checking_what_is_due_does_not_rewrite_every_source(store: Storage) -> None:
+    """The service asks this on every poll cycle, so it must not be N upserts per tick."""
+    clock = StepClock()
+    scheduler = make_scheduler(store, app_config(palantir(), second_source()), clock, adapters={})
+    ensured: list[str] = []
+    original = store.ensure_source
+
+    def counting(config, **kwargs):
+        ensured.append(config.id)
+        return original(config, **kwargs)
+
+    store.ensure_source = counting  # type: ignore[method-assign]
+
+    scheduler.due_sources()
+    scheduler.due_sources()
+    scheduler.due_sources()
+
+    assert sorted(ensured) == ["acme", "palantir"], (
+        "each source is reconciled once per process, not once per poll cycle"
+    )
+
+
+def test_a_new_source_is_reconciled_and_due_on_first_sight(store: Storage) -> None:
+    clock = StepClock()
+    adapters = {
+        "scripted": ScriptedAdapter(
+            [
+                ScanResult(
+                    source_id="palantir",
+                    started_at=START,
+                    finished_at=START,
+                    status=ScanStatus.SUCCESS,
+                    records_seen=0,
+                    records_parsed=0,
+                )
+            ]
+        )
+    }
+    scheduler = make_scheduler(store, app_config(palantir()), clock, adapters=adapters)
+    scheduler.run_next_due()  # palantir is now scheduled ahead
+
+    late = SourceConfig(id="lateco", employer="Late Co", adapter="scripted", cadence_minutes=30)
+    scheduler._app = app_config(palantir(), late)  # type: ignore[attr-defined]
+
+    due = [source.id for source in scheduler.due_sources()]
+    assert due == ["lateco"], "a source added since start-up is picked up without a restart"

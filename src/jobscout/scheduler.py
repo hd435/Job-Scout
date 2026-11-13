@@ -96,21 +96,33 @@ class Scheduler:
         # Sources this process could not claim; memory only, so a failing database cannot
         # turn every source into a zero-second sleep (D-063).
         self._claim_retries: dict[str, datetime] = {}
+        # Sources whose configuration row this process has already reconciled.
+        self._ensured: set[str] = set()
 
     # scheduling ------------------------------------------------------------
 
     def due_sources(self, now: str | None = None) -> tuple[SourceConfig, ...]:
-        """Enabled sources that have never run or whose next run is due."""
+        """Enabled sources that have never run or whose next run is due.
+
+        One query answers the whole question. Each source's configuration row is reconciled
+        once per process rather than on every poll cycle, which is what made this O(N) writes
+        per tick; a changed `cadence_minutes` therefore takes effect on restart, as the rest of
+        the loaded configuration already does.
+        """
         moment = now or self._clock()
         moment_at = _parse_iso(moment)
+        schedule = self._storage.source_schedule()
         due: list[SourceConfig] = []
         for source in self._app.enabled_sources():
+            if source.id not in self._ensured:
+                self._storage.ensure_source(source)
+                self._ensured.add(source.id)
+                schedule.setdefault(source.id, None)
             retry_at = self._claim_retries.get(source.id)
             if retry_at is not None and retry_at > moment_at:
                 continue  # this process is backing off a failed claim
-            self._storage.ensure_source(source)
-            state = self._storage.get_source_state(source.id)
-            if state is None or state.next_run_at is None or state.next_run_at <= moment:
+            next_run = schedule.get(source.id)
+            if next_run is None or next_run <= moment:
                 due.append(source)
         return tuple(due)
 
@@ -312,6 +324,7 @@ class Scheduler:
 
     def _seconds_until_next_due(self) -> float:
         moment = _parse_iso(self._clock())
+        schedule = self._storage.source_schedule()
         soonest: datetime | None = None
         for source in self._app.enabled_sources():
             retry_at = self._claim_retries.get(source.id)
@@ -319,10 +332,10 @@ class Scheduler:
                 # A failed claim this process could not record still has to pace the loop.
                 candidate = retry_at
             else:
-                state = self._storage.get_source_state(source.id)
-                if state is None or state.next_run_at is None:
+                next_run = schedule.get(source.id)
+                if next_run is None:
                     return 0.0
-                candidate = _parse_iso(state.next_run_at)
+                candidate = _parse_iso(next_run)
             if soonest is None or candidate < soonest:
                 soonest = candidate
         if soonest is None:

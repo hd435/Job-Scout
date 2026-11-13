@@ -370,6 +370,17 @@ class Storage:
             ),
         )
 
+    def source_schedule(self) -> dict[str, str | None]:
+        """Every stored source's `next_run_at`, in one query.
+
+        The scheduler asks "what is due?" on every poll cycle, so asking per source turned a
+        cheap question into N round trips — and, worse, into N upserts, because loading a
+        source also refreshed its configuration row. At a thousand employers that is a
+        thousand writes a second on an instance with an eighth of a core.
+        """
+        rows = self._conn.execute("SELECT id, next_run_at FROM sources").fetchall()
+        return {row["id"]: row["next_run_at"] for row in rows}
+
     def get_source_state(self, source_id: str) -> SourceState | None:
         row = self._conn.execute(
             """
