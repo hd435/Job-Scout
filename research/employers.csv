@@ -35,6 +35,7 @@ datadog,Datadog,greenhouse,datadog,,added,,384,14,53,0,2026-11-13
 deepgram,Deepgram,ashby,deepgram,,added,,64,5,21,0,2026-11-13
 deliveroo,Deliveroo,greenhouse,deliveroo,,added,,186,120,48,1,2026-11-13
 drw,DRW,greenhouse,drweng,,added,,159,42,108,3,2026-11-13
+drw_university,DRW,greenhouse,drwuniversityjobs,,added,,1,1,1,1,2026-11-13
 ekimetrics,Ekimetrics,lever,ekimetrics,,added,,26,3,18,0,2026-11-13
 elastic,Elastic,greenhouse,elastic,,added,,400,30,160,0,2026-11-13
 elevenlabs,ElevenLabs,ashby,elevenlabs,,added,,129,47,36,0,2026-11-13
@@ -213,7 +214,6 @@ bridewell,Bridewell,workable,bridewell,,deferred,no UK early-career role in an e
 brompton,Brompton,workday,brompton,brompton,deferred,"10 postings, 7 UK, none in an enabled family",,,,,2026-11-13
 capital_economics,Capital Economics,workable,capital-economics,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-13
 clydeco,Clydeco,,,,deferred,"10 postings, 4 UK, none in an enabled family (trainee solicitor is not a family)",,,,,2026-11-13
-drw_university,DRW - University,greenhouse,drwuniversityjobs,,deferred,second board for an already-covered employer (1 university-only placement role); needs a decision on whether an employer may have two sources,,,,,2026-11-13
 elasticstage,elasticStage,workable,elasticstage,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-13
 enermech,EnerMech,workable,enermech,,deferred,no UK early-career role in an enabled family (measured: 95 posting(s)),,,,,2026-11-13
 enstar_group,Enstar Group,greenhouse,enstargrouplimited,,deferred,no UK early-career role in an enabled family (measured: 19 posting(s)),,,,,2026-11-13

@@ -121,7 +121,9 @@ cities = ["London"]
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Result: OK - the configuration loaded" in captured.out
+    # The bundled catalogue pairs two DRW boards deliberately (D-115), so a warning can accompany
+    # a sound configuration: what must hold is that the configuration was accepted.
+    assert "Result: OK" in captured.out + captured.err
 
 
 def test_validate_reports_an_invalid_value_by_name(tmp_path: Path, capsys) -> None:

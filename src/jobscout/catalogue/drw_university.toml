@@ -1,0 +1,17 @@
+# Greenhouse board `drwuniversityjobs` behind DRW.
+# Discovery 2026-11-13 (registry sweep, probe-wave4): 1 role, 1 UK,
+# 1 in a target family, 1 with an early-career signal, 1 matching.
+# Example: Software Developer Intern - Industrial Placement
+#
+# A second board for an employer already covered by `drw`, allowed by D-115 because the two do not
+# overlap: measured on 2026-11-13, the 1 role here appears nowhere in `drweng`'s 159. DRW runs
+# separate university and event boards and the early-career roles live on this one. The loader
+# warns that two sources share an employer; that warning is expected here and accepted.
+id = "drw_university"
+employer = "DRW"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "drwuniversityjobs"

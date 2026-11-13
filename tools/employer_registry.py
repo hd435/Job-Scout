@@ -293,15 +293,8 @@ DEFERRED = {
         "recruitment agency, not an employer: 3 postings, 1 in a family, but each names a client"
         " company rather than hiring in its own right"
     ),
-    # DRW runs a second board for university and event hiring that the group board does not mirror:
-    # measured 2026-11-13, its 1 role ("Software Developer Intern - Industrial Placement") appears
-    # nowhere in `drweng`'s 159. Worth having, but enrolling it makes two sources share one
-    # employer, which the loader warns about and which the employer-level duplicate safeguard
-    # exists to stop. Held until the Product Owner decides whether that is acceptable.
-    "drw_university": (
-        "second board for an already-covered employer (1 university-only placement role);"
-        " needs a decision on whether an employer may have two sources"
-    ),
+    # DRW runs a second board for university and event hiring that the group board does not mirror;
+    # it is enrolled rather than deferred (D-115 allows a second source for a covered employer).
 }
 
 

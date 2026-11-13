@@ -759,19 +759,21 @@ already taken.
 
 - **Recruitment agencies are out of scope, by extension of D-109.** `Evolution Recruitment
   Solutions` publishes 3 roles with 1 in a family, but it is a staffing agency: its postings name
-  client companies, so an alert would attribute a vacancy to the wrong employer. The same premise
-  that put aggregators on hold — the catalogue is made of employers' own systems — covers this.
-  If the Product Owner ever wants agency boards, that is a scope decision, not a data one.
-- **A second board for an already-covered employer is held pending a decision.** DRW runs a
+  client companies, so an alert would attribute a vacancy to the wrong employer. The Product Owner
+  settled this on 2026-11-13 (**D-114**), so it is a scope rule now rather than a pending question:
+  a source must be an employer's own careers system, and a prober who finds an agency should record
+  it as deferred with that reason instead of reopening the question.
+- **A second board for an already-covered employer is allowed (D-115).** DRW runs a
   `drwuniversityjobs` board whose single role ("Software Developer Intern - Industrial Placement")
-  appears nowhere in `drweng`'s 159 — genuinely incremental coverage. Enrolling it makes two
-  sources share one employer, which the loader warns about (`the same role can then alert twice`)
-  and which the employer-level duplicate safeguard exists to prevent. Worth 1 role; not worth
-  quietly weakening a safeguard before asking.
+  appears nowhere in `drweng`'s 159 — genuinely incremental coverage, so it is enrolled. Two sources
+  now share one employer, which the loader warns about (`the same role can then alert twice`); the
+  warning is kept, because deduplication is per source id and the operator should see the risk, and
+  the reason is recorded in the catalogue file. Before enrolling a second board, measure title
+  overlap against the incumbent — that is what justified this one.
 
-**State at the end of batch 9.** 125 employers shipped, of which 36 have contributed at least one
-match; registry 309 rows — 125 added, 73 candidates, 62 deferred, 49 rejected. The remaining queue
-is dominated by 59 Workday group boards that waves 1–3 showed to be low yield, so the next increment
+**State at the end of batch 9.** 126 employers shipped, of which 37 have contributed at least one
+match; registry 309 rows — 126 added, 73 candidates, 61 deferred, 49 rejected. The remaining queue
+is dominated by 55 Workday group boards that waves 1–3 showed to be low yield, so the next increment
 should not be another sweep of the same shape.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
