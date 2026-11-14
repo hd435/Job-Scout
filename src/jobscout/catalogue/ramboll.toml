@@ -1,0 +1,15 @@
+# Smartrecruiters board `Ramboll3` behind Ramboll.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 1037 roles,
+# 109 UK, 16 in an enabled family with an
+# early-career signal, 16 matching under the default rules.
+# Example: Graduate Electrical Engineer - Data Centres 2027
+id = "ramboll"
+employer = "Ramboll"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "Ramboll3"
+country = "gb"

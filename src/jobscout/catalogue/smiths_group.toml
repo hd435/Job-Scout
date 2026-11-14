@@ -1,0 +1,15 @@
+# Smartrecruiters board `SmithsGroup2` behind Smiths Group.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 567 roles,
+# 48 UK, 2 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Data Analyst Apprentice
+id = "smiths_group"
+employer = "Smiths Group"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "SmithsGroup2"
+country = "gb"

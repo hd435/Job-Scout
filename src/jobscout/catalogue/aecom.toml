@@ -1,0 +1,15 @@
+# Smartrecruiters board `AECOM2` behind AECOM.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 4000 roles,
+# 1038 UK, 109 in an enabled family with an
+# early-career signal, 107 matching under the default rules.
+# Example: Graduate Structural Engineer - Manchester (2027 start)
+id = "aecom"
+employer = "AECOM"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "AECOM2"
+country = "gb"

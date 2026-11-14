@@ -1,0 +1,16 @@
+# Smartrecruiters board `TTP1` behind TTP.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 55 roles,
+# 55 UK, 14 in an enabled family with an
+# early-career signal, 14 matching under the default rules.
+# Example: Summer Internship – Chemical Engineering Consultant – 2027
+id = "ttp"
+employer = "TTP"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "TTP1"
+country = "gb"
+uk_employer = true

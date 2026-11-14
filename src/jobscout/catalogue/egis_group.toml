@@ -1,0 +1,15 @@
+# Smartrecruiters board `EgisGroup` behind Egis Group.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 1636 roles,
+# 125 UK, 4 in an enabled family with an
+# early-career signal, 4 matching under the default rules.
+# Example: Junior Electrical Engineer
+id = "egis_group"
+employer = "Egis Group"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "EgisGroup"
+country = "gb"

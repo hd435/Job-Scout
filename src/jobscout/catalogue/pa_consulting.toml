@@ -1,0 +1,15 @@
+# Smartrecruiters board `PAConsulting` behind PA Consulting.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 204 roles,
+# 152 UK, 22 in an enabled family with an
+# early-career signal, 22 matching under the default rules.
+# Example: 2027 Graduate - Digital & Data Analyst - Manchester
+id = "pa_consulting"
+employer = "PA Consulting"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "PAConsulting"
+country = "gb"

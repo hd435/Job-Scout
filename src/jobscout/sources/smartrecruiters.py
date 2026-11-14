@@ -48,6 +48,7 @@ class SmartRecruitersAdapter:
     ) -> ScanResult:
         started_at = _now_iso()
         identifier = str(config.options.get("company") or config.id)
+        country = str(config.options.get("country") or "").strip().casefold()
         jobs: list[Job] = []
         skipped: list[SkipReason] = []
         seen_ids: set[str] = set()
@@ -61,6 +62,11 @@ class SmartRecruitersAdapter:
                 f"{POSTINGS_ENDPOINT.format(identifier=identifier)}"
                 f"?limit={PAGE_SIZE}&offset={offset}"
             )
+            if country:
+                # Asking the tenant for one country is not a filter over what we read, it is what
+                # we read: a global board is 4 000 postings of which a few hundred are UK, and
+                # paying 40 requests to store 3 000 unavailable roles is waste.
+                url += f"&country={country}"
             try:
                 payload = http_client.get_json(url)
             except HttpError as exc:

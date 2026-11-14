@@ -1,0 +1,15 @@
+# Smartrecruiters board `FrasersGroup` behind Frasers Group.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 471 roles,
+# 265 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Trainee Data Analyst - Elevation Programme
+id = "frasers_group"
+employer = "Frasers Group"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "FrasersGroup"
+country = "gb"

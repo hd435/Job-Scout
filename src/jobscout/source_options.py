@@ -33,7 +33,7 @@ OPTIONAL_OPTIONS: dict[str, frozenset[str]] = {
     "ashby": frozenset({"board", "uk_employer"}),
     "workable": frozenset({"account", "uk_employer"}),
     "recruitee": frozenset({"account", "uk_employer"}),
-    "smartrecruiters": frozenset({"company", "uk_employer"}),
+    "smartrecruiters": frozenset({"company", "country", "uk_employer"}),
     "workday": frozenset({"locale", "page_size", "max_pages", "search_text", "uk_employer"}),
     "sitemap_html": frozenset(
         {

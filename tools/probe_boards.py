@@ -159,11 +159,17 @@ def probe(adapter: str, slug: str, employer: str, search_text: str = "") -> dict
     return record
 
 
-#: A tenant is worth enrolling when a meaningful share of what it publishes is in the UK, it
+#: A tenant is worth enrolling when it publishes enough UK roles to be a real UK employer, it
 #: publishes early-career roles in an enabled family, and it is not a global board dressed up
 #: with a `graduate` search. Workday wave 1 learned the last one the expensive way: HP returned
 #: 333 postings and 4 UK roles, MUFG 36 and 2, P&G 218 and 9.
 MIN_UK_SHARE = 0.10
+
+#: The share bar alone excludes exactly the employers worth having when their tenant is global:
+#: Bosch publishes 64 UK roles out of 4 000, Smiths Group 48 of 567, Egis 125 of 1 636. A small
+#: share of a very large board is still a substantial UK presence, so plenty of UK roles stands in
+#: for a high share. The early-career condition below still has to pass either way.
+MIN_UK_ROLES = 20
 
 
 def verdict(record: dict[str, Any]) -> tuple[str, str]:
@@ -174,18 +180,19 @@ def verdict(record: dict[str, Any]) -> tuple[str, str]:
         return "reject", "board returned no roles"
     if not record["uk_roles"]:
         return "reject", "no UK roles at all"
-    if record["uk_share"] < MIN_UK_SHARE:
+    if record["uk_share"] < MIN_UK_SHARE and record["uk_roles"] < MIN_UK_ROLES:
         return (
             "defer",
             f"only {record['uk_roles']} UK of {record['records_parsed']}"
-            f" ({record['uk_share']:.0%}), below the {MIN_UK_SHARE:.0%} bar",
+            f" ({record['uk_share']:.0%}), below the {MIN_UK_SHARE:.0%} bar"
+            f" and under {MIN_UK_ROLES} UK roles",
         )
     if not record["early_family_roles"]:
         return "defer", "no UK early-career role in an enabled family"
     return (
         "enrol",
         f"{record['early_family_roles']} UK early-career family role(s),"
-        f" {record['uk_share']:.0%} of the board is UK",
+        f" {record['uk_roles']} UK role(s) on the board",
     )
 
 

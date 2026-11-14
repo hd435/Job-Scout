@@ -1,0 +1,19 @@
+# Smartrecruiters board `SOCOTECUKIreland` behind SOCOTEC UK & Ireland.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 131 roles,
+# 126 UK, 0 in an enabled family with an
+# early-career signal, 0 matching under the default rules.
+#
+# Monitored seasonally (D-117): 19 of its UK roles are in
+# an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+id = "socotec_uk_ireland"
+employer = "SOCOTEC UK & Ireland"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "SOCOTECUKIreland"
+country = "gb"
+uk_employer = true

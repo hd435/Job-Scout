@@ -410,6 +410,13 @@ Workday search were found — expect the same.
    Workable "early-career" hit is often a stale posting or a mention in a description, not a live
    graduate scheme.
 
+   **The larger index is SmartRecruiters.** `tools/harvest_smartrecruiters.py` queries
+   `jobs.smartrecruiters.com/sr-jobs/search` per keyword, keeps GB postings whose title carries an
+   early-career signal, and writes `smartrecruiters,{identifier},{employer}` lines. Batch 14 read
+   4 969 postings and found 28 new UK employers, of which 14 were worth a source and carried over
+   180 matches between them — far better than Workable, because its UK base is larger employers
+   rather than startups. Ask the adapter for `country = "gb"` and a global tenant stays affordable.
+
    **Record the verdict.** `python tools/employer_registry.py seed --inventory … --db …` writes the
    outcome into `research/employers.csv`, including the reason an employer was deferred or rejected.
    A probed employer that never reaches the catalogue is still research worth keeping — that is what
@@ -1011,6 +1018,78 @@ for a 4 % resolution rate, it is a last resort, not a routine.
 
 **State at the end of batch 13.** Catalogue **178 → 188**; registry 578 rows — 188 added, 66
 candidates, 257 deferred, 67 rejected. **43** employers contribute at least one match, up from 40.
+
+**Batch 14 — 2026-11-14 — the first-party audit, a second index, and a gate that was too strict.**
+
+**The audit.** Every Workable account's own self-description was read (70 boards, one request each)
+and searched for the language businesses use when they recruit for other people —
+`tools/audit_first_party.py`. **One violation in 70**: `la_fosse`, "an international talent solutions
+business … leveraging our recruitment, academy, solutions and executive search offerings". Removed,
+recorded as deferred with that reason, and added to the generator's `NEVER_ENROL` list. The three
+initial flags (`Javelin`, `Lanes Group`, `Zaizi`) were employers describing their own clients, which
+is why a flag is a prompt to read rather than a verdict.
+
+**Two bugs the audit exposed, both worth more than the removal.**
+
+- *Registry drift could not self-heal.* A row claiming `added` was protected from re-classification
+  even after its source left the catalogue, so D-114's exclusion of `la_fosse` could never take
+  effect. The guard now protects only ids that the catalogue actually ships. Both directions are
+  tested.
+- *The generator wrote an option the adapter never read.* `add_sources.py` wrote `company` for
+  Recruitee, which reads `account`, so `bcn_group` silently fell back to its own id and read a
+  different tenant. Recruitee and SmartRecruiters were not in the option schema at all, which is why
+  nothing caught it; both are declared now, and a test asserts every option the generator writes is
+  one the adapter accepts.
+
+**A second index: SmartRecruiters.** Same opportunity-first shape as the Workable harvest, against a
+much larger index — `jobs.smartrecruiters.com/sr-jobs/search` answers a keyword and location, and
+every posting names the company identifier whose own tenant carries the role. A new adapter reads
+`api.smartrecruiters.com/v1/companies/{identifier}/postings`, paged 100 at a time, no auth, with the
+apply link pointing at the employer's own tenant page.
+
+| Funnel | Count |
+|---|---|
+| Postings read (7 keywords) | 4,969 |
+| New UK employers with early-career roles | 28 |
+| Probed | 28 |
+| **Enrolled** | **14** |
+
+**The 10 % UK-share gate was excluding exactly the employers worth having.** Bosch publishes 64 UK
+roles out of 4 000, Smiths Group 48 of 567, Egis 125 of 1 636 — a small share of a very large global
+tenant, which looked identical to the noise the gate was built to reject (HP: 4 UK of 333). A
+**floor of 20 UK roles** now stands in for a high share; the early-career condition still has to pass
+either way. That change is what turned the batch from 1 enrolment to 14.
+
+| Source | UK roles | Matches | Sector |
+|---|---|---|---|
+| `aecom` | 1 038 | **107** | engineering consultancy |
+| `pa_consulting` | 152 | **22** | consulting |
+| `ramboll` | 109 | **16** | engineering consultancy |
+| `ttp` | 55 | **14** | science and technology |
+| `bosch_group` | 64 | **12** | manufacturing |
+| `adler_allan` | 214 | 4 | security services |
+| `egis_group` | 125 | 4 | infrastructure |
+| `smiths_group`, `edf_uk`, `sw_group`, `frasers_group`, `radius_limited` | 23–74 | 1 each | energy, manufacturing, finance, retail |
+| `legalandgeneral`, `socotec_uk_ireland` | 27, 126 | 0 | seasonal (D-117) |
+
+**Two bounds that keep growth honest.**
+
+- **Public sector stays out (D-109).** `Portsmouth Hospitals University NHS Trust` passed every
+  measure and was refused by a new `OUT_OF_SCOPE` guard in the generator, so a good board cannot
+  re-admit one by accident.
+- **A seasonal source must be small.** Three boards passed D-117 with zero matches and enormous
+  size — `greene_king` (4 000 UK roles), `home_instead` (2 661), `wsh_group` (840) — which would have
+  cost 66 requests per scan and thousands of stored rows to alert nothing. Seasonal enrolments are
+  now capped at 300 UK roles; a board with matches is exempt, because it has earned its place.
+
+**Country filtering keeps the big boards affordable.** `--country=gb` on the postings API is not a
+filter over what we read, it is what we read: AECOM drops from 5 490 postings to 1 450, Bosch to 68.
+Without it both boards exceeded the page cap and scanned as `partial` — correctly refusing to
+baseline, but never completing.
+
+**State at the end of batch 14.** Catalogue **187 → 201**; registry 606 rows — 201 added, 66
+candidates, 272 deferred, 67 rejected. **49** employers contribute at least one match, up from 43,
+and the fourteen new sources alone carry more than 180.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes

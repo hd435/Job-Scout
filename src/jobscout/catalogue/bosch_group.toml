@@ -1,0 +1,15 @@
+# Smartrecruiters board `BoschGroup` behind Bosch Group.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 4000 roles,
+# 64 UK, 12 in an enabled family with an
+# early-career signal, 12 matching under the default rules.
+# Example: Undergraduate Placement Year 2027 – Engineering Internship in Product Reliability department – Heat Pumps
+id = "bosch_group"
+employer = "Bosch Group"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "BoschGroup"
+country = "gb"

@@ -81,6 +81,30 @@ NEVER_ENROL = {
 }
 
 
+#: Employer shapes that are out of scope regardless of what the board publishes, so a discovery pass
+#: cannot re-admit them by finding a good board. D-109 holds public-sector expansion; D-114 excludes
+#: recruiters. Matched against the employer name, case-insensitively.
+OUT_OF_SCOPE = (
+    ("nhs", "public sector is on hold by D-109 (NHS organisation)"),
+    ("hospital", "public sector is on hold by D-109 (hospital trust)"),
+    ("university", "public sector is on hold by D-109 (university)"),
+    ("council", "public sector is on hold by D-109 (local government)"),
+    ("borough of", "public sector is on hold by D-109 (local government)"),
+    ("recruitment", "recruitment agency, out of scope by D-114"),
+    ("staffing", "staffing agency, out of scope by D-114"),
+    ("talent solutions", "recruitment business, out of scope by D-114"),
+)
+
+
+def out_of_scope(employer: str) -> str | None:
+    """The reason this employer is out of scope, or None when it is fine to consider."""
+    name = employer.casefold()
+    for fragment, reason in OUT_OF_SCOPE:
+        if fragment in name:
+            return reason
+    return None
+
+
 def slugify(name: str) -> str:
     """A short stable id: "Fuse Energy" -> fuse_energy, and never a different employer's id."""
     cleaned = re.sub(r"[^a-z0-9]+", "_", name.strip().casefold()).strip("_")
@@ -143,6 +167,10 @@ def render(record: dict[str, object], source_id: str, today: str) -> str:
         lines += [f'host = "{host}"', f'tenant = "{tenant}"', f'site = "{site}"']
     else:
         lines.append(f'{OPTION_KEY[adapter]} = "{slug}"')
+    if adapter == "smartrecruiters":
+        # Read the employer's UK postings directly: a global tenant is thousands of roles we would
+        # store and never alert on.
+        lines.append('country = "gb"')
     # `uk_employer` relaxes town-name ambiguity on boards that only hire in the UK.
     parsed = int(record.get("records_parsed") or 0)
     uk = int(record.get("uk_roles") or 0)
@@ -173,6 +201,15 @@ def main() -> int:
         help="with --min-family-roles, the share of the board that must be UK",
     )
     parser.add_argument(
+        "--max-seasonal-roles",
+        type=int,
+        default=300,
+        help=(
+            "do not enrol a seasonal board (one with no match today) bigger than this: a 4 000-role"
+            " board costs 40 requests per scan and 4 000 rows to store, for no alerts yet"
+        ),
+    )
+    parser.add_argument(
         "--accept-unmeasured",
         action="store_true",
         help="write a board with zero matches but with early-career family roles",
@@ -192,6 +229,8 @@ def main() -> int:
     skipped: list[str] = []
     for record in payload.get("records", []):
         verdict = record.get("verdict")
+        employer = str(record.get("employer") or "").strip()
+        slug = str(record.get("slug") or "").strip()
         seasonal = False
         if verdict != "enrol":
             # A deferred board is normally not worth a source. The exception is the one that made
@@ -208,8 +247,13 @@ def main() -> int:
                 continue
             if int(record.get("early_family_roles") or 0):
                 continue
+            if uk > args.max_seasonal_roles:
+                skipped.append(
+                    f"{employer}: {uk} UK roles with no match today, above the"
+                    f" {args.max_seasonal_roles}-role ceiling for a seasonal source"
+                )
+                continue
             seasonal = True
-        employer = str(record.get("employer") or "").strip()
         slug = str(record.get("slug") or "").strip()
         if not employer or not slug:
             skipped.append(f"{employer or slug}: missing name or slug")
@@ -231,6 +275,10 @@ def main() -> int:
         source_id = slugify(employer)
         if source_id in NEVER_ENROL:
             skipped.append(f"{employer}: {NEVER_ENROL[source_id]}")
+            continue
+        reason = out_of_scope(employer)
+        if reason:
+            skipped.append(f"{employer}: {reason}")
             continue
         if source_id in ids:
             source_id = f"{source_id}_{str(record['adapter'])[:4]}"

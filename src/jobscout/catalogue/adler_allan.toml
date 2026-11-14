@@ -1,0 +1,16 @@
+# Smartrecruiters board `AdlerAllan1` behind Adler & Allan.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 215 roles,
+# 214 UK, 4 in an enabled family with an
+# early-career signal, 4 matching under the default rules.
+# Example: Graduate Consultant - Water Quality
+id = "adler_allan"
+employer = "Adler & Allan"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "AdlerAllan1"
+country = "gb"
+uk_employer = true

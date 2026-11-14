@@ -92,6 +92,7 @@ def test_catalogue_expansion_stays_on_supported_adapters() -> None:
             "ashby",
             "workable",
             "recruitee",
+            "smartrecruiters",
             "workday",
             "sitemap_html",
         }

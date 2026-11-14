@@ -121,6 +121,29 @@ def test_a_defer_verdict_is_never_written(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("acme*.toml"))
 
 
+def test_public_sector_employers_are_refused(tmp_path: Path) -> None:
+    """D-109 holds public-sector expansion, so a good board must not re-admit one by accident."""
+    record = dict(RECORD, employer="Portsmouth Hospitals University NHS Trust")
+    probe = write_probe(tmp_path, [record])
+
+    code, out = run(tmp_path, probe)
+
+    assert code == 0
+    assert "on hold by D-109" in out
+    assert not list(tmp_path.glob("portsmouth*.toml"))
+
+
+def test_a_private_employer_with_a_public_sounding_name_is_kept(tmp_path: Path) -> None:
+    record = dict(RECORD, employer="Hampshire Hospitals Facilities Ltd")
+    probe = write_probe(tmp_path, [record])
+
+    run(tmp_path, probe)
+
+    # "hospital" is in the name, and the exclusion is deliberately blunt: a flag to check, not a
+    # silent drop. This asserts the current behaviour so a change to it is a decision.
+    assert not list(tmp_path.glob("hampshire*.toml"))
+
+
 def test_a_policy_exclusion_is_never_written(tmp_path: Path) -> None:
     """A probe cannot see that an employer is a staffing agency; D-114 can."""
     record = dict(RECORD, employer="Evolution Recruitment Solutions")

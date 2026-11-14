@@ -1,0 +1,16 @@
+# Smartrecruiters board `EDF-UK` behind EDF UK.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 33 roles,
+# 33 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Equipment Supply Chain Industrial Placement
+id = "edf_uk"
+employer = "EDF UK"
+adapter = "smartrecruiters"
+access_note = "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+company = "EDF-UK"
+country = "gb"
+uk_employer = true
