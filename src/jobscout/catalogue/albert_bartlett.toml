@@ -1,0 +1,15 @@
+# Workable board `albert-bartlett` behind Albert Bartlett.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 51 roles,
+# 51 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Trainee Warehouse Operative
+id = "albert_bartlett"
+employer = "Albert Bartlett"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "albert-bartlett"
+uk_employer = true

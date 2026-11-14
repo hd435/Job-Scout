@@ -1,0 +1,18 @@
+# Workable board `lafosse` behind La Fosse.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 19 roles,
+# 19 UK, 0 in an enabled family with an
+# early-career signal, 0 matching under the default rules.
+#
+# Monitored seasonally (D-117): 9 of its UK roles are in
+# an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+id = "la_fosse"
+employer = "La Fosse"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "lafosse"
+uk_employer = true

@@ -96,6 +96,11 @@ def existing_tenants() -> set[str]:
     return tenants
 
 
+def existing_employers() -> set[str]:
+    """Every employer name already monitored, normalised the way the loader warns about them."""
+    return {" ".join(str(source.employer).casefold().split()) for source in DEFAULT_SOURCES}
+
+
 def render(record: dict[str, object], source_id: str, today: str) -> str:
     """One catalogue file, in the shape the shipped ones use."""
     adapter = str(record["adapter"])
@@ -166,11 +171,17 @@ def main() -> int:
         action="store_true",
         help="write a board with zero matches but with early-career family roles",
     )
+    parser.add_argument(
+        "--allow-second-board",
+        action="store_true",
+        help="allow a second board for an employer already monitored (D-115: measure the overlap)",
+    )
     args = parser.parse_args()
 
     payload = json.loads(args.probe.read_text(encoding="utf-8"))
     ids = existing_ids()
     tenants = existing_tenants()
+    employers = existing_employers()
     written = 0
     skipped: list[str] = []
     for record in payload.get("records", []):
@@ -202,6 +213,14 @@ def main() -> int:
             continue
         if slug.casefold() in tenants:
             skipped.append(f"{employer}: board {slug} is already monitored")
+            continue
+        normalised = " ".join(employer.casefold().split())
+        if normalised in employers and not args.allow_second_board:
+            # A different board for an employer already monitored is a decision (D-115), not a
+            # discovery result: it needs a measured title overlap with the incumbent first.
+            skipped.append(
+                f"{employer}: this employer is already monitored (D-115 needs a decision)"
+            )
             continue
         source_id = slugify(employer)
         if source_id in NEVER_ENROL:

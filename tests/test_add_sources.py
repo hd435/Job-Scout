@@ -133,6 +133,29 @@ def test_a_policy_exclusion_is_never_written(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("evolution*.toml"))
 
 
+def test_a_second_board_for_a_covered_employer_is_refused(tmp_path: Path) -> None:
+    """D-115 makes that a decision, measured against the incumbent — not a discovery result."""
+    record = dict(RECORD, slug="lseg-careers", employer="LSEG")
+    probe = write_probe(tmp_path, [record])
+
+    code, out = run(tmp_path, probe)
+
+    assert code == 0
+    assert "already monitored" in out
+    assert not list(tmp_path.glob("lseg*.toml"))
+
+
+def test_a_second_board_can_be_allowed_deliberately(tmp_path: Path) -> None:
+    record = dict(RECORD, slug="lseg-careers", employer="LSEG")
+    probe = write_probe(tmp_path, [record])
+
+    run(tmp_path, probe, "--allow-second-board")
+
+    # The id collides with the shipped `lseg`, so it is suffixed rather than overwritten.
+    assert list(tmp_path.glob("lseg*.toml")) != []
+    assert (tmp_path / "lseg.toml").exists() is False
+
+
 def test_an_enrol_verdict_is_written(tmp_path: Path) -> None:
     probe = write_probe(tmp_path, [RECORD])
 

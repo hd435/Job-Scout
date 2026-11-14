@@ -1,0 +1,19 @@
+# Workday board `reed.wd3.myworkdayjobs.com/reed/reed_specialist_recruitment_careers` behind Reed.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 4 roles,
+# 3 UK, 0 in an enabled family with an
+# early-career signal, 0 matching under the default rules.
+#
+# Monitored seasonally (D-117): 3 of its UK roles are in
+# an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+id = "reed"
+employer = "Reed"
+adapter = "workday"
+access_note = "public Workday job-search endpoint (myworkdayjobs.com), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+host = "reed.wd3.myworkdayjobs.com"
+tenant = "reed"
+site = "reed_specialist_recruitment_careers"

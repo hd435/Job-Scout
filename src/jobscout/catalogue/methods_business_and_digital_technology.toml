@@ -1,0 +1,18 @@
+# Workable board `methods` behind Methods Business and Digital Technology.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 69 roles,
+# 69 UK, 0 in an enabled family with an
+# early-career signal, 0 matching under the default rules.
+#
+# Monitored seasonally (D-117): 16 of its UK roles are in
+# an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+id = "methods_business_and_digital_technology"
+employer = "Methods Business and Digital Technology"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "methods"
+uk_employer = true
