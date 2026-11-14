@@ -211,12 +211,28 @@ RECRUITEE_PROFILE = ValidationProfile(
     records_key="offers",
 )
 
+#: SmartRecruiters' posting object. The list carries no description, so only what the adapter reads
+#: is watched: identity, title, and the location object it flattens.
+SMARTRECRUITERS_WATCHED_FIELDS: dict[str, type] = {
+    "id": str,
+    "name": str,
+    "location": dict,
+    "releasedDate": str,
+}
+
+SMARTRECRUITERS_PROFILE = ValidationProfile(
+    watched_fields=SMARTRECRUITERS_WATCHED_FIELDS,
+    required_fields=("name", "location"),
+    records_key="content",
+)
+
 ADAPTER_PROFILES: dict[str, ValidationProfile] = {
     "lever": PALANTIR_PROFILE,
     "greenhouse": MONZO_PROFILE,
     "ashby": ASHBY_PROFILE,
     "workable": WORKABLE_PROFILE,
     "recruitee": RECRUITEE_PROFILE,
+    "smartrecruiters": SMARTRECRUITERS_PROFILE,
     "workday": LLOYDS_PROFILE,
     "sitemap_html": SITEMAP_PROFILE,
 }

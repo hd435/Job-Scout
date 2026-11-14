@@ -293,6 +293,14 @@ DEFERRED = {
         "recruitment agency, not an employer: 3 postings, 1 in a family, but each names a client"
         " company rather than hiring in its own right"
     ),
+    # Batch 14 audit: "an international talent solutions business ... leveraging our recruitment,
+    # academy, solutions and executive search offerings" — the same exclusion as above, found by
+    # reading the account's own description after it had already been enrolled.
+    "la_fosse": (
+        "recruitment and executive search business, out of scope by D-114: its own description"
+        " names recruitment, academy and executive search, so the employer in an alert would be"
+        " the agency"
+    ),
     # DRW runs a second board for university and event hiring that the group board does not mirror;
     # it is enrolled rather than deferred (D-115 allows a second source for a covered employer).
     # Workable UK early-career search (2026-11-14): a labour-supply company whose board is 294
@@ -305,8 +313,13 @@ DEFERRED = {
 }
 
 
-def apply_statuses(rows: list[dict[str, str]], evidence_date: str) -> list[dict[str, str]]:
+def apply_statuses(
+    rows: list[dict[str, str]],
+    evidence_date: str,
+    catalogue_ids: set[str] | None = None,
+) -> list[dict[str, str]]:
     """Apply recorded rejections and deferrals, keeping any connection detail already found."""
+    shipped = catalogue_ids if catalogue_ids is not None else set()
     by_slug = {slugify(row["employer"]): row for row in rows}
     by_id = {row["employer"]: row for row in rows}
     dropped: set[str] = set()
@@ -327,9 +340,11 @@ def apply_statuses(rows: list[dict[str, str]], evidence_date: str) -> list[dict[
             # The discovery pass spelled the name differently ("P&G" -> p_g); the verdict
             # belongs to the catalogue id, so fold the alias away rather than keep both.
             dropped.add(target["employer"])
-        if target.get("status") == "added":
+        if target.get("status") == "added" and target["employer"] in shipped:
             # A shipped source's status comes from the catalogue, not from a note written before
             # it was enrolled. (lseg was recorded as "retry after a 502" and is now shipped.)
+            # A row that still *claims* shipped while the catalogue no longer has it is drift, and
+            # the recorded verdict is what fixes it: that is how la_fosse left the catalogue.
             continue
         target["status"] = status
         target["reason"] = reason
@@ -439,7 +454,7 @@ def cmd_seed(args: argparse.Namespace) -> int:
     rows = merge(rows, catalogue_rows(args.date))
     if args.inventory:
         rows = merge(rows, inventory_rows(args.inventory, args.date))
-    rows = apply_statuses(rows, args.date)
+    rows = apply_statuses(rows, args.date, {source.id for source in DEFAULT_SOURCES})
     for probe_path in args.probe or ():
         rows = apply_probe(rows, probe_path, args.date)
     rows, duplicates = dedupe(rows)

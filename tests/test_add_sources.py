@@ -133,6 +133,33 @@ def test_a_policy_exclusion_is_never_written(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("evolution*.toml"))
 
 
+def test_render_only_uses_options_the_adapter_accepts(tmp_path: Path) -> None:
+    """The bug this guard exists for: the generator wrote `company` for Recruitee, which reads
+    `account`, so the source silently fell back to its id and read a different tenant."""
+    import re
+
+    from jobscout.source_options import allowed_options
+
+    for adapter, slug in (
+        ("workable", "acme-london"),
+        ("recruitee", "acme"),
+        ("smartrecruiters", "Acme"),
+        ("greenhouse", "acme"),
+        ("ashby", "acme"),
+        ("lever", "acme"),
+    ):
+        record = dict(RECORD, adapter=adapter, slug=slug)
+        text = add_sources.render(record, "acme", "2026-11-14")
+        keys = set(re.findall(r"^([a-z_]+) = ", text, re.MULTILINE)) - {
+            "id",
+            "employer",
+            "adapter",
+            "access_note",
+            "cadence_minutes",
+        }
+        assert keys <= set(allowed_options(adapter)), f"{adapter}: {keys} not accepted"
+
+
 def test_a_second_board_for_a_covered_employer_is_refused(tmp_path: Path) -> None:
     """D-115 makes that a decision, measured against the incumbent — not a discovery result."""
     record = dict(RECORD, slug="lseg-careers", employer="LSEG")

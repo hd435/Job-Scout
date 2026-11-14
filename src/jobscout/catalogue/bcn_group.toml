@@ -14,5 +14,5 @@ access_note = "public Recruitee offers API ({account}.recruitee.com/api/offers/)
 cadence_minutes = 30
 
 [options]
-company = "bcngroup"
+account = "bcngroup"
 uk_employer = true

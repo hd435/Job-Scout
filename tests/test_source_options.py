@@ -23,11 +23,19 @@ def write_config(tmp_path: Path, body: str) -> Path:
 
 
 def test_every_registered_adapter_declares_its_options() -> None:
+    """Every adapter in the map must appear here, or its options go unchecked.
+
+    `recruitee` was missing from this schema until a generated catalogue file wrote `company` for
+    it — an option the adapter never read, so the source silently fell back to its id and read a
+    different tenant. Declaring the adapter's options is what makes that a config error instead.
+    """
     assert set(known_adapters()) == {
         "ashby",
         "greenhouse",
         "lever",
+        "recruitee",
         "sitemap_html",
+        "smartrecruiters",
         "workable",
         "workday",
     }

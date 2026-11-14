@@ -51,6 +51,10 @@ ACCESS_NOTES = {
         "public Recruitee offers API ({account}.recruitee.com/api/offers/), one GET per scan,"
         " no auth, no pagination"
     ),
+    "smartrecruiters": (
+        "public SmartRecruiters postings API (api.smartrecruiters.com/v1/companies), paged GET per"
+        " scan, no auth"
+    ),
     "workday": (
         "public Workday job-search endpoint (myworkdayjobs.com), paged GET per scan, no auth"
     ),
@@ -62,7 +66,8 @@ OPTION_KEY = {
     "ashby": "board",
     "lever": "site",
     "workable": "account",
-    "recruitee": "company",
+    "recruitee": "account",
+    "smartrecruiters": "company",
 }
 
 
@@ -72,6 +77,7 @@ NEVER_ENROL = {
     # D-114: a staffing agency's postings name client companies, so an alert would misattribute the
     # employer. The probe cannot see that; the decision can.
     "evolution_recruitment_solutions": "recruitment agency, out of scope by D-114",
+    "la_fosse": "recruitment and executive search business, out of scope by D-114",
 }
 
 

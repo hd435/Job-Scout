@@ -109,6 +109,63 @@ def test_a_missing_board_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
     assert rows == []
 
 
+def test_a_recorded_verdict_fixes_a_row_that_still_claims_shipped(tmp_path: Path) -> None:
+    """Removing a source must let its registry row be re-classified, not stay 'added' for ever.
+
+    That is how `la_fosse` left the catalogue: the D-114 exclusion is recorded, but a guard meant to
+    protect genuinely shipped rows kept the stale one alive.
+    """
+    sys.path.insert(0, str(TOOLS))
+    try:
+        import employer_registry
+    finally:
+        sys.path.pop(0)
+
+    rows = [
+        {
+            "employer": "la_fosse",
+            "name": "La Fosse",
+            "platform": "workable",
+            "tenant": "lafosse",
+            "site": "",
+            "status": "added",
+            "reason": "",
+            "evidence_date": "2026-11-13",
+        }
+    ]
+
+    result = employer_registry.apply_statuses(rows, "2026-11-14", catalogue_ids=set())
+
+    assert result[0]["status"] == "deferred"
+    assert "D-114" in result[0]["reason"]
+
+
+def test_a_recorded_verdict_does_not_overrule_a_shipped_source() -> None:
+    """The exception that guard exists for: a note written before enrolment must not un-ship it."""
+    sys.path.insert(0, str(TOOLS))
+    try:
+        import employer_registry
+    finally:
+        sys.path.pop(0)
+
+    rows = [
+        {
+            "employer": "lseg",
+            "name": "LSEG",
+            "platform": "workday",
+            "tenant": "lseg",
+            "site": "",
+            "status": "added",
+            "reason": "",
+            "evidence_date": "2026-11-13",
+        }
+    ]
+
+    result = employer_registry.apply_statuses(rows, "2026-11-14", catalogue_ids={"lseg"})
+
+    assert result[0]["status"] == "added"
+
+
 def test_a_temporary_failure_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
     """Workday's wd5 cluster answered 521 for three tenants in a row: that is not a judgement."""
     import json

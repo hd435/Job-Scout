@@ -8,6 +8,7 @@ from .greenhouse import GreenhouseAdapter
 from .lever import LeverAdapter
 from .recruitee import RecruiteeAdapter
 from .sitemap_html import SitemapHtmlAdapter
+from .smartrecruiters import SmartRecruitersAdapter
 from .workable import WorkableAdapter
 from .workday import WorkdayAdapter
 
@@ -21,6 +22,7 @@ _ADAPTERS: dict[str, SourceAdapter] = {
         SitemapHtmlAdapter(),
         WorkableAdapter(),
         RecruiteeAdapter(),
+        SmartRecruitersAdapter(),
     )
 }
 
