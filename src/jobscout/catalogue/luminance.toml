@@ -1,0 +1,14 @@
+# Workable board `luminance-1` behind Luminance.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 50 roles,
+# 25 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: AI Engineering Intern
+id = "luminance"
+employer = "Luminance"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "luminance-1"

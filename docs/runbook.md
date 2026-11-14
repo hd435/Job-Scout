@@ -905,9 +905,64 @@ to the word. Measured on 15,028 stored titles: **12 QS titles relabel, 3 buildin
 family, 2 quantum-computing titles lose a wrong label, and no genuine quant role is lost**
 (`RULES_VERSION` m1.4).
 
-**The engine to run next.** The same search supports `location` for any UK city, so the next sweep
-should vary location (Manchester, Leeds, Birmingham, Glasgow, Cardiff, Belfast) rather than only
-terms — that is how the London bias gets corrected without a sector list.
+**The engine to run next.** The same search takes `location` and now supports exhaustive paging, so
+the next coverage increments are: run `--exhaustive --all-titles` on the London terms that were not
+fully read (the 429 window cost about 1 250 postings), and vary the eight terms within London to
+catch employers whose early-career titles use words the eight queries miss. Regional work is
+explicitly not the priority: the operator's scope is London, and a catalogue twice the size of the
+London market does not help someone looking for a London role.
+
+**Batch 12 — 2026-11-14 — London, enumerated, and the gate that was capping the catalogue.**
+
+The Product Owner asked for London scope and more employers, so the search was paged **exhaustively**
+rather than sampled by term: `--exhaustive --all-titles` walks every London posting (3 335 available,
+2 080 read before the API began answering 429) and filters nothing, because the board probe is the
+right place to judge relevance, not the harvest.
+
+| Funnel | Count |
+|---|---|
+| London postings read | 2,080 |
+| New employers named | 439 |
+| Boards resolved from their own sites | 159 (36 %) |
+| Boards probed | 155 |
+| Enrolled | **1** (`luminance`) |
+
+One employer from 155 boards is the finding, not the disappointment: **126 of the 155 were deferred
+for "no UK early-career role in an enabled family"**, and 46 of those publish UK roles in an enabled
+family *right now* — `Our Future Health` (9 of 21 UK), `Ki Insurance` (8 of 16), `SAP Fioneer` (7),
+`PIC` (7 of 15), `Fulkers Bailey Russell` (5 of 7, built environment), `LondonEnergy`, `Civica`.
+
+The old gate required an early-career family role to be **open at the moment of the probe**, which
+makes the catalogue a snapshot of hiring season rather than a monitor. It is the single biggest cap
+on employer count, and it is wrong for the product's purpose: those employers advertise graduates
+when their intakes open, which is exactly the event worth catching.
+
+**D-117** therefore enrols an employer that hires in an enabled family but is between intakes, with
+thresholds that keep it honest — at least 2 UK roles in an enabled family, at least 50 % of the
+board UK, and no early-career role today (so it is *only* the seasonal case, never a substitute for
+the existing gate). Such a source says so in its own catalogue file:
+
+```
+# Monitored seasonally (D-117): 8 of its UK roles are
+# in an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+```
+
+**Enrolment became a command, not a chore.** `tools/add_sources.py` writes catalogue files from a
+probe's verdicts — access note, options, discovery evidence, and the seasonal note where it applies
+— refusing anything already monitored, any id collision, and any board with roles but no matches.
+The expansion bottleneck was never discovery; it was ten hand-written lines per employer.
+
+Seventeen seasonal employers enrolled this way (`our_future_health`, `ki`, `pic`, `londonenergy`,
+`fulkers_bailey_russell`, `hamiltonian_dynamics`, `steamship_insurance_management_services_ltd`,
+`aion`, `valis`, `hometrack`, `permutable`, `strideup`, `nexus_marine`, `feeld`, `qureight_ltd`,
+`anza`, `skiller_whale`) plus `luminance` on the ordinary gate. All 18 validated live `complete=yes`
+and baselined silently by hand.
+
+**State at the end of batch 12.** Catalogue **131 → 149**, registry 528 rows — 149 added, 69
+candidates, 256 deferred, 54 rejected. 40 employers contribute at least one match; the nine new
+contributors are expected over the next intake season rather than today, which the registry records
+and `report` shows separately.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
