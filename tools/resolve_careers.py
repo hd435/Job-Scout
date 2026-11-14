@@ -50,8 +50,20 @@ DEFAULT_OUT = Path(__file__).resolve().parent.parent / "data" / "research" / "ca
 SUFFIXES = ("com", "co.uk", "uk")
 
 #: Paths to try on a domain that answered. The root page comes first because its navigation usually
-#: links to the ATS directly.
+#: links to the ATS; `--deep` adds the shapes mid-market employers use when it does not.
 PATHS = ("", "/careers")
+
+DEEP_PATHS = (
+    "",
+    "/careers",
+    "/careers/jobs",
+    "/jobs",
+    "/vacancies",
+    "/work-with-us",
+    "/join-us",
+    "/en/careers",
+    "/about/careers",
+)
 
 #: ATS fingerprints: the host an employer's careers link points at, and how to read the tenant out
 #: of it. Every pattern captures the account in group 1, so one function can classify them all.
@@ -127,7 +139,7 @@ def careers_domains(name: str) -> list[str]:
     return [f"https://www.{slug}.{suffix}" for slug in slug_forms(name) for suffix in SUFFIXES]
 
 
-def url_groups(name: str, website: str = "") -> list[list[str]]:
+def url_groups(name: str, website: str = "", paths: tuple[str, ...] = PATHS) -> list[list[str]]:
     """The pages to read, grouped by how much they are worth trying.
 
     A harvested website is worth ten guesses: it is the employer's own domain, so `/careers` and
@@ -140,8 +152,8 @@ def url_groups(name: str, website: str = "") -> list[list[str]]:
         base = website.strip().rstrip("/")
         if not base.startswith("http"):
             base = f"https://{base}"
-        groups.append([base + path for path in PATHS])
-    groups.append([domain + path for domain in careers_domains(name) for path in PATHS])
+        groups.append([base + path for path in paths])
+    groups.append([domain + path for domain in careers_domains(name) for path in paths])
     return groups
 
 
@@ -151,7 +163,12 @@ def base_of(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}"
 
 
-def resolve(client: PacedHttpClient, name: str, website: str = "") -> dict[str, object]:
+def resolve(
+    client: PacedHttpClient,
+    name: str,
+    website: str = "",
+    paths: tuple[str, ...] = PATHS,
+) -> dict[str, object]:
     """Read an employer's own pages until one names an ATS, and record what was tried."""
     record: dict[str, object] = {
         "employer": name,
@@ -163,7 +180,7 @@ def resolve(client: PacedHttpClient, name: str, website: str = "") -> dict[str, 
     }
     seen_careers_page = False
     dead: set[str] = set()
-    for group in url_groups(name, website):
+    for group in url_groups(name, website, paths):
         answered = False
         for url in group:
             base = base_of(url)
@@ -267,6 +284,11 @@ def main() -> int:
     parser.add_argument(
         "--fresh", action="store_true", help="ignore an existing output file instead of resuming"
     )
+    parser.add_argument(
+        "--deep",
+        action="store_true",
+        help="also try the deeper careers paths (/jobs, /vacancies, /join-us, /en/careers, ...)",
+    )
     args = parser.parse_args()
 
     previous: dict[str, dict[str, object]] = {}
@@ -291,9 +313,10 @@ def main() -> int:
     print(f"resolving {len(names)} employer(s), {len(previous)} already done")
 
     records: list[dict[str, object]] = list(previous.values())
+    paths = DEEP_PATHS if args.deep else PATHS
     for index, (name, site) in enumerate(names, start=1):
         client.begin_scan()
-        record = resolve(client, name, site)
+        record = resolve(client, name, site, paths)
         records.append(record)
         write_outputs(args.out, records)
         detail = (

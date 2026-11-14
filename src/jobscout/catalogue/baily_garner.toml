@@ -1,0 +1,15 @@
+# Workable board `baily-garner` behind Baily Garner.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 27 roles,
+# 27 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Graduate Building Surveyor
+id = "baily_garner"
+employer = "Baily Garner"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "baily-garner"
+uk_employer = true

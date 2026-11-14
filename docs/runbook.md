@@ -905,12 +905,11 @@ to the word. Measured on 15,028 stored titles: **12 QS titles relabel, 3 buildin
 family, 2 quantum-computing titles lose a wrong label, and no genuine quant role is lost**
 (`RULES_VERSION` m1.4).
 
-**The engine to run next.** The same search takes `location` and now supports exhaustive paging, so
-the next coverage increments are: run `--exhaustive --all-titles` on the London terms that were not
-fully read (the 429 window cost about 1 250 postings), and vary the eight terms within London to
-catch employers whose early-career titles use words the eight queries miss. Regional work is
-explicitly not the priority: the operator's scope is London, and a catalogue twice the size of the
-London market does not help someone looking for a London role.
+**The engine to run next.** The Workable search is the richest unread source and is currently
+**rate-limited** (batch 13), so the next coverage work must either wait for the allowance to reset or
+spend it more carefully: one location per day, gentle pacing, and the exhaustive read resumed from
+where it stopped. Everything downstream is now automatic (`tools/add_sources.py`), so a successful
+harvest converts to catalogue files in minutes rather than an afternoon.
 
 **Batch 12 — 2026-11-14 — London, enumerated, and the gate that was capping the catalogue.**
 
@@ -978,10 +977,40 @@ needs measured title overlap, not a discovery result, so the generator now refus
 name unless `--allow-second-board` is passed. Both are covered by tests, because both were the kind
 of mistake that looks like progress in a diff.
 
-**State at the end of batch 12.** Catalogue **131 → 178**, registry 528 rows — 178 added, 66
-candidates, 231 deferred, 53 rejected. 40 employers contribute at least one match today; the
-seasonal additions are expected to contribute over the next intake season, which the registry
-records in each file and `report` keeps separate.
+**Batch 13 — 2026-11-14 — three substitute levers, and the request allowance behind them.**
+
+The planned increment was the two London levers left over from batch 12: re-read the ~1 250 postings
+the 429 cut short, and run the eight early-career terms within London. **Neither could run.**
+`jobs.workable.com` now answers 429 to everything, even at one request every two seconds: after
+roughly 1 500 requests across the day it is enforcing an allowance, not a rate. That is an
+operational fact worth recording, because it bounds any "enumerate the platform" strategy — the
+search is a resource to spend over days, not a switch to flip.
+
+So the increment used three levers that do not touch that host:
+
+| Lever | Requests | Boards found | Enrolled |
+|---|---|---|---|
+| Account guesses for the 439 harvested employers (`apply.workable.com`) | 705 | 35 | **9** |
+| Suffix variants of the same guesses (`-1`, `-2`, `-uk`, `-careers`) | 779 | 1 | 0 |
+| Deep careers paths for the 280 employers whose site named no ATS | 280 × up to 9 | 13 | **1** |
+
+**The account guesses were worth it** because these employers are on Workable by construction: two
+shapes of the company name found 35 real boards among them and 9 worth monitoring —
+`baily_garner` (27 UK roles, built environment), `ubds_group`, `quantumloopai`, `onodrim_industries`,
+`carnall_farrar`, `itrs`, `mitsubishi_electric`, `ionate`, `kobalt_music`.
+
+**The suffix variants were not.** 779 guesses produced one board, which then failed the gate. The
+evidence for trying was real — `luminance-1` exists, so Workable does disambiguate with a numeric
+suffix — but the plain forms had already found nearly every account. Guessing beyond them is
+**exhausted** and should not be repeated.
+
+**Deep paths are a thin but honest seam.** `--deep` adds `/jobs`, `/vacancies`, `/work-with-us`,
+`/join-us`, `/en/careers` and `/about/careers`; of 280 employers whose two-page probe had found
+nothing, 13 named an ATS and 1 was worth enrolling (`dc_thomson`). At up to nine requests per employer
+for a 4 % resolution rate, it is a last resort, not a routine.
+
+**State at the end of batch 13.** Catalogue **178 → 188**; registry 578 rows — 188 added, 66
+candidates, 257 deferred, 67 rejected. **43** employers contribute at least one match, up from 40.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
