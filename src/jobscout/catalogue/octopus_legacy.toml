@@ -1,0 +1,18 @@
+# Greenhouse board `octopuslegacy` behind Octopus Legacy.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 28 roles,
+# 28 UK, 0 in an enabled family with an
+# early-career signal, 0 matching under the default rules.
+#
+# Monitored seasonally (D-117): 7 of its UK roles are in
+# an enabled family but none is early-career today, so it contributes nothing until
+# its next intake opens. Recorded here so the decision is visible, not surprising.
+id = "octopus_legacy"
+employer = "Octopus Legacy"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "octopuslegacy"
+uk_employer = true

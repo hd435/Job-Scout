@@ -66,6 +66,15 @@ OPTION_KEY = {
 }
 
 
+#: Employers a probe may judge enrol-able but policy excludes, so the generator cannot re-admit
+#: them by accident. Keyed by source id.
+NEVER_ENROL = {
+    # D-114: a staffing agency's postings name client companies, so an alert would misattribute the
+    # employer. The probe cannot see that; the decision can.
+    "evolution_recruitment_solutions": "recruitment agency, out of scope by D-114",
+}
+
+
 def slugify(name: str) -> str:
     """A short stable id: "Fuse Energy" -> fuse_energy, and never a different employer's id."""
     cleaned = re.sub(r"[^a-z0-9]+", "_", name.strip().casefold()).strip("_")
@@ -195,6 +204,9 @@ def main() -> int:
             skipped.append(f"{employer}: board {slug} is already monitored")
             continue
         source_id = slugify(employer)
+        if source_id in NEVER_ENROL:
+            skipped.append(f"{employer}: {NEVER_ENROL[source_id]}")
+            continue
         if source_id in ids:
             source_id = f"{source_id}_{str(record['adapter'])[:4]}"
         if source_id in ids:

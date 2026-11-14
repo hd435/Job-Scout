@@ -1,5 +1,7 @@
 employer,name,platform,tenant,site,status,reason,roles,uk_roles,family_roles,matches,evidence_date
+abm_uk,ABM UK,workable,abm-careers,,added,,178,178,8,0,2026-11-14
 abnormalsecurity,Abnormal Security,greenhouse,abnormalsecurity,,added,,88,10,25,0,2026-11-14
+aegiq,Aegiq,workable,aegiq,,added,,9,9,5,0,2026-11-14
 affirm,Affirm,greenhouse,affirm,,added,,217,14,134,1,2026-11-14
 aion,AION,workable,aion,,added,,10,6,8,0,2026-11-14
 akunacapital,Akuna Capital,greenhouse,akunacapital,,added,,31,1,22,0,2026-11-14
@@ -10,9 +12,12 @@ aquatic_capital,Aquatic Capital Management,greenhouse,aquaticcapitalmanagement,,
 arm,Arm,sitemap_html,,,added,,404,102,183,0,2026-11-14
 arondite,Arondite,workable,arondite,,added,,25,21,11,2,2026-11-14
 attio,Attio,ashby,attio,,added,,22,9,8,0,2026-11-14
+aveva,AVEVA,workday,aveva,AVEVA_careers,added,,243,34,98,0,2026-11-14
 avk_uk,AVK UK,workable,avk-seg-uk-ltd,,added,,19,18,7,1,2026-11-14
 barclays,Barclays,workday,barclays,External_Career_Site_Barclays,added,,75,34,12,0,2026-11-14
+bcn_group,BCN Group,recruitee,bcngroup,,added,,,,,,2026-11-14
 beamng,BeamNG,workable,beamng,,added,,5,3,1,1,2026-11-14
+biffa_waste_services,Biffa Waste Services,workable,biffa,,added,,113,113,14,0,2026-11-14
 blackstone,Blackstone,workday,blackstone,blackstone_campus_careers,added,,19,13,3,0,2026-11-14
 blenheim_chalcot,Blenheim Chalcot,greenhouse,blenheimchalcot,,added,,15,12,4,2,2026-11-14
 bloomon,bloomon,lever,bloomon,,added,,16,10,2,1,2026-11-14
@@ -53,6 +58,7 @@ focusrite,Focusrite Group,workable,focusrite,,added,,17,15,6,1,2026-11-14
 form3,Form3,greenhouse,form3,,added,,5,2,3,0,2026-11-14
 fulkers_bailey_russell,Fulkers Bailey Russell,workable,fulkers-bailey-russell,,added,,7,7,5,0,2026-11-14
 fuse_energy,Fuse Energy,workable,fuseenergy,,added,,70,58,29,2,2026-11-14
+future_publishing,Future Publishing,workable,futureplc,,added,,40,29,2,0,2026-11-14
 gitlab,GitLab,greenhouse,gitlab,,added,,251,36,65,0,2026-11-14
 gocardless,GoCardless,greenhouse,gocardless,,added,,29,8,13,0,2026-11-14
 graphcore,Graphcore,greenhouse,graphcore,,added,,197,115,107,0,2026-11-14
@@ -66,6 +72,8 @@ helical,Helical,workable,helical,,added,,7,7,3,1,2026-11-14
 hometrack,Hometrack,workable,hometrack,,added,,4,4,3,0,2026-11-14
 howden,Howden,workday,hyperiongrp,hyperion_external,added,,14,1,1,0,2026-11-14
 incident,Incident.io,ashby,incident,,added,,32,14,4,0,2026-11-14
+infopro_digital_services_limited,Infopro Digital Services Limited,workable,infopro-digital,,added,,20,17,2,0,2026-11-14
+informed_solutions,Informed Solutions,workable,informed-solutions,,added,,14,14,6,0,2026-11-14
 intercom,Intercom,greenhouse,intercom,,added,,115,30,29,0,2026-11-14
 janestreet,Jane Street,greenhouse,janestreet,,added,,217,60,74,0,2026-11-14
 javelin_commodities,Javelin Global Commodities,workable,javelin-global-commodities,,added,,5,4,2,1,2026-11-14
@@ -74,6 +82,7 @@ jumptrading,Jump Trading,greenhouse,jumptrading,,added,,92,21,68,9,2026-11-14
 ki,Ki,workable,ki-insurance,,added,,16,16,8,0,2026-11-14
 klaviyo,Klaviyo,greenhouse,klaviyo,,added,,146,6,39,0,2026-11-14
 knowbe4,KnowBe4,greenhouse,knowbe4,,added,,58,6,19,0,2026-11-14
+lanes_group,Lanes Group,workable,lanes-group-1,,added,,77,77,2,0,2026-11-14
 legora,Legora,ashby,legora,,added,,339,45,69,0,2026-11-14
 leonardo,Leonardo,workday,leonardocompany,leonardocareersite,added,,84,68,46,0,2026-11-14
 libertyglobal,Liberty Global,workday,libertyglobal,liberty_global_careers,added,,5,4,1,1,2026-11-14
@@ -98,7 +107,10 @@ neptune_north,Neptune North,greenhouse,neptunenorth,,added,,22,18,19,0,2026-11-1
 newrocket,NewRocket,greenhouse,highmetric,,added,,48,5,22,1,2026-11-14
 nexus_marine,Nexus Marine,workable,nexus-marine,,added,,3,3,2,0,2026-11-14
 nu_quantum,Nu Quantum,workable,nu-quantum,,added,,8,8,5,0,2026-11-14
+ocean_infinity,Ocean Infinity,workable,ocean-infinity,,added,,25,23,5,0,2026-11-14
+octopus_legacy,Octopus Legacy,greenhouse,octopuslegacy,,added,,28,28,7,0,2026-11-14
 onetrust,OneTrust,greenhouse,onetrust,,added,,84,5,32,0,2026-11-14
+optimal_group,Optimal Group,workable,the-optimal-group,,added,,8,6,2,0,2026-11-14
 our_future_health,Our Future Health,workable,our-future-health,,added,,21,21,9,0,2026-11-14
 pagerduty,PagerDuty,greenhouse,pagerduty,,added,,47,3,16,0,2026-11-14
 palantir,Palantir Technologies,lever,palantir,,added,,302,46,219,11,2026-11-14
@@ -106,11 +118,14 @@ permutable,Permutable,workable,permutable,,added,,4,4,4,0,2026-11-14
 perplexity,Perplexity,ashby,perplexity,,added,,141,28,52,1,2026-11-14
 pfizer,Pfizer,workday,pfizer,pfizercareers,added,,29,2,5,0,2026-11-14
 pic,PIC,workable,pension-services-corporation-limited,,added,,15,15,7,0,2026-11-14
+plum_fintech,Plum Fintech,workable,withplum,,added,,15,9,9,0,2026-11-14
 point72,Point72,greenhouse,point72,,added,,200,15,98,0,2026-11-14
 posthog,PostHog,ashby,posthog,,added,,10,1,3,0,2026-11-14
+quick_release,Quick Release,workable,quickrelease,,added,,6,6,2,0,2026-11-14
 qureight_ltd,Qureight Ltd,workable,qureight,,added,,3,3,2,0,2026-11-14
 ramp,Ramp,ashby,ramp,,added,,180,9,72,0,2026-11-14
 retail_insights,Retail Insights,greenhouse,retailinsights,,added,,250,236,7,3,2026-11-14
+runware,Runware,workable,runware,,added,,25,13,10,0,2026-11-14
 sardine,Sardine,ashby,sardine,,added,,39,5,12,0,2026-11-14
 scale_ai,Scale AI,greenhouse,scaleai,,added,,170,24,77,2,2026-11-14
 schonfeld,Schonfeld,greenhouse,schonfeld,,added,,71,15,36,0,2026-11-14
@@ -122,12 +137,14 @@ steamship_insurance_management_services_ltd,Steamship Insurance Management Servi
 strideup,StrideUp,workable,strideup,,added,,4,4,2,0,2026-11-14
 stripe,Stripe,greenhouse,stripe,,added,,786,39,205,2,2026-11-14
 sumup,SumUp,greenhouse,sumup,,added,,329,74,86,0,2026-11-14
+sword_group,Sword Group,workable,sword-group,,added,,59,58,20,0,2026-11-14
 symphony_comms,Symphony Communication Services,greenhouse,symphony,,added,,17,8,4,0,2026-11-14
 synthesia,Synthesia,ashby,synthesia,,added,,31,19,11,0,2026-11-14
 tailscale,Tailscale,greenhouse,tailscale,,added,,79,3,23,0,2026-11-14
 thoughtworks,Thoughtworks,greenhouse,thoughtworks,,added,,47,2,20,0,2026-11-14
 tide,Tide,greenhouse,tide,,added,,100,22,21,0,2026-11-14
 tower_research,Tower Research Capital,greenhouse,towerresearchcapital,,added,,92,9,61,3,2026-11-14
+trinny_london,Trinny London,workable,trinnylondon,,added,,27,22,2,0,2026-11-14
 truelayer,TrueLayer,greenhouse,truelayer,,added,,3,1,0,0,2026-11-14
 twilio,Twilio,greenhouse,twilio,,added,,115,17,20,0,2026-11-14
 typeform,Typeform,greenhouse,typeform,,added,,6,4,0,0,2026-11-14
@@ -146,6 +163,7 @@ wordsmith,Wordsmith,ashby,wordsmith,,added,,25,17,4,0,2026-11-14
 workman_llp,Workman LLP,workable,workman-llp,,added,,23,23,4,0,2026-11-14
 worldquant,WorldQuant,greenhouse,worldquant,,added,,82,4,54,0,2026-11-14
 writer,Writer,ashby,writer,,added,,45,11,13,0,2026-11-14
+zaizi,Zaizi,workable,zaizi,,added,,14,14,6,0,2026-11-14
 zoopla,Zoopla,workable,zoopla,,added,,15,15,2,0,2026-11-14
 zopa,Zopa,lever,zopa,,added,,30,30,15,0,2026-11-14
 allegro_microsystems,Allegro MicroSystems,workday,allegromicro,allegrocareers,candidate,,,,,,2026-11-13
@@ -218,15 +236,13 @@ united_living,United Living,workday,unitedliving,united-infrastructure-careers,c
 vertex_pharmaceuticals,Vertex Pharmaceuticals,workday,vrtx,vertex_careers,candidate,,,,,,2026-11-13
 white_cap,White Cap,workday,whitecap,careers,candidate,,,,,,2026-11-13
 1global,1GLOBAL,workable,1global,,deferred,"only 2 UK of 39 (5%), below the 10% bar (measured: 39 posting(s))",,,,,2026-11-13
-abm_uk,ABM UK,workable,abm-careers,,deferred,no UK early-career role in an enabled family (measured: 178 posting(s)),,,,,2026-11-14
 academy_of_medical_sciences,Academy of Medical Sciences,workable,academy-of-medical-sciences,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-13
 accora,Accora,workable,accora,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-13
 accordia_care,Accordia Care,workable,accordia,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 acoustofab,AcoustoFab,workable,acoustofab,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 actionstep,Actionstep,workable,actionstep,,deferred,"only 1 UK of 11 (9%), below the 10% bar (measured: 11 posting(s))",,,,,2026-11-14
-aegiq,Aegiq,workable,aegiq,,deferred,no UK early-career role in an enabled family (measured: 9 posting(s)),,,,,2026-11-14
 albatross,Albatross,workable,usealbatross,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
-albert_bartlett,Albert Bartlett,workable,albert-bartlett,,deferred,"51 postings, all UK, none in an enabled family (manufacturing operatives)",,,,,2026-11-14
+albert_bartlett,Albert Bartlett,workable,albert-bartlett,,deferred,no UK early-career role in an enabled family (measured: 51 posting(s)),,,,,2026-11-14
 alexander_dennis,Alexander Dennis,workable,alexander-dennis,,deferred,no UK early-career role in an enabled family (measured: 28 posting(s)),,,,,2026-11-14
 allucent,Allucent,workable,allucent,,deferred,no UK early-career role in an enabled family (measured: 27 posting(s)),,,,,2026-11-14
 allwyn_lottery_solutions,Allwyn Lottery Solutions,workable,allwynls,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
@@ -240,15 +256,12 @@ assala_energy,Assala Energy,workable,assala-energy,,deferred,no UK early-career 
 atc_computer_transport_logistics,ATC Computer Transport & Logistics,workable,atc-driving-forward,,deferred,no UK early-career role in an enabled family (measured: 20 posting(s)),,,,,2026-11-14
 audiostack,AudioStack,workable,audiostack,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 aureol_global_connections,Aureol Global Connections,workable,aureol-global-connections,,deferred,no UK early-career role in an enabled family (measured: 376 posting(s)),,,,,2026-11-14
-aveva,AVEVA,workday,aveva,AVEVA_careers,deferred,no UK early-career role in an enabled family (measured: 35 posting(s)),,,,,2026-11-14
 ballinger_group,Ballinger Group,workable,ballingerco,,deferred,no UK early-career role in an enabled family (measured: 11 posting(s)),,,,,2026-11-14
 banana_moon_day_nurseries,Banana Moon Day Nurseries,workable,banana-moon-day-nurseries,,deferred,no UK early-career role in an enabled family (measured: 65 posting(s)),,,,,2026-11-13
 barfoots_of_botley,Barfoots of Botley,workable,barfoots-of-botley-2,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-13
 bauer_media_outdoor,Bauer Media Outdoor,greenhouse,bauerhockeycascademaveriklacrosse,,deferred,"only 1 UK of 17 (6%), below the 10% bar (measured: 17 posting(s))",,,,,2026-11-14
 bbc_maestro,BBC Maestro,workable,bbc-maestro,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
-bcn_group,BCN Group,recruitee,bcngroup,,deferred,no UK early-career role in an enabled family (measured: 13 posting(s)),,,,,2026-11-14
 beyond_co,Beyond Co,workable,beyondco,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-13
-biffa_waste_services,Biffa Waste Services,workable,biffa,,deferred,no UK early-career role in an enabled family (measured: 113 posting(s)),,,,,2026-11-14
 bishopfleming,Bishopfleming,,,,deferred,"13 postings, 2 UK, none in an enabled family",,,,,2026-11-14
 blast,BLAST,workable,blast,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
 borough_kitchen,Borough Kitchen,workable,borough-kitchen-1,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
@@ -311,7 +324,6 @@ flowx_ai,FlowX.AI,workable,flowxai,,deferred,no UK early-career role in an enabl
 fora_space_limited,Fora Space Limited,workable,fora-space-limited,,deferred,no UK early-career role in an enabled family (measured: 10 posting(s)),,,,,2026-11-14
 founders_forum_group,Founders Forum Group,workable,foundersforum,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 frontiers_media,Frontiers Media,workable,frontiersmedia,,deferred,no UK early-career role in an enabled family (measured: 23 posting(s)),,,,,2026-11-14
-future_publishing,Future Publishing,workable,futureplc,,deferred,no UK early-career role in an enabled family (measured: 40 posting(s)),,,,,2026-11-14
 gbg,GBG,workable,gbg,,deferred,no UK early-career role in an enabled family (measured: 6 posting(s)),,,,,2026-11-14
 gen_plus_group,GEN PLUS Group,workable,genplusgroup,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 gener8,Gener8,workable,gener8,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
@@ -332,8 +344,6 @@ hulcan,Hulcan,workable,hulcan,,deferred,no UK early-career role in an enabled fa
 huzzle,Huzzle,workable,huzzle,,deferred,no UK early-career role in an enabled family (measured: 520 posting(s)),,,,,2026-11-14
 ihateironing,ihateironing,workable,ihateironing,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 infleqtion,Infleqtion,workable,coldquanta,,deferred,no UK early-career role in an enabled family (measured: 53 posting(s)),,,,,2026-11-14
-infopro_digital_services_limited,Infopro Digital Services Limited,workable,infopro-digital,,deferred,no UK early-career role in an enabled family (measured: 20 posting(s)),,,,,2026-11-14
-informed_solutions,Informed Solutions,workable,informed-solutions,,deferred,no UK early-career role in an enabled family (measured: 14 posting(s)),,,,,2026-11-14
 inspired_thinking_group_itg,Inspired Thinking Group (ITG),workable,itg,,deferred,no UK early-career role in an enabled family (measured: 31 posting(s)),,,,,2026-11-14
 intellect,Intellect,workable,intellecthq,,deferred,"only 14 UK of 282 (5%), below the 10% bar (measured: 282 posting(s))",,,,,2026-11-14
 intelligent_change,Intelligent Change,workable,intelligentchange,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -356,7 +366,6 @@ la_fosse,La Fosse,workable,lafosse,,deferred,no UK early-career role in an enabl
 landmark_information_group_internal,Landmark Information Group - Internal,greenhouse,liginternal,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-13
 landor,Landor,greenhouse,landor,,deferred,no UK early-career role in an enabled family (measured: 52 posting(s)),,,,,2026-11-13
 landytech,Landytech,workable,landytech,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
-lanes_group,Lanes Group,workable,lanes-group-1,,deferred,no UK early-career role in an enabled family (measured: 77 posting(s)),,,,,2026-11-14
 laundryheap,Laundryheap,workable,laundryheap-2,,deferred,no UK early-career role in an enabled family (measured: 12 posting(s)),,,,,2026-11-14
 legalvision,LegalVision,workable,legalvision,,deferred,no UK early-career role in an enabled family (measured: 23 posting(s)),,,,,2026-11-13
 legatics,Legatics,workable,legatics,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
@@ -381,11 +390,8 @@ national_network_logistics,National Network Logistics,workable,national-network-
 newton_media_ltd,Newton Media Ltd,workable,newton-media-group,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 nexus_studios,Nexus Studios,workable,nexusstudios,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 nokwol_uk_limited,Nokwol UK Limited,workable,nokwol,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
-ocean_infinity,Ocean Infinity,workable,ocean-infinity,,deferred,no UK early-career role in an enabled family (measured: 25 posting(s)),,,,,2026-11-14
-octopus_legacy,Octopus Legacy,greenhouse,octopuslegacy,,deferred,no UK early-career role in an enabled family (measured: 28 posting(s)),,,,,2026-11-14
 old_mill,Old Mill,workable,oldmill,,deferred,no UK early-career role in an enabled family (measured: 16 posting(s)),,,,,2026-11-13
 one_of_us,One Of Us,workable,one-of-us,,deferred,no UK early-career role in an enabled family (measured: 21 posting(s)),,,,,2026-11-14
-optimal_group,Optimal Group,workable,the-optimal-group,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
 optime_group,Optime Group,workable,optimegroup,,deferred,no UK early-career role in an enabled family (measured: 53 posting(s)),,,,,2026-11-14
 panic_stations,Panic Stations,workable,panic-stations,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 parcelly,Parcelly,workable,parcelly,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
@@ -396,7 +402,6 @@ pharmacierge,Pharmacierge,workable,pharmacierge,,deferred,no UK early-career rol
 pinson,Pinson,,,,deferred,"294 postings, all UK, but they are one traffic-management operative role repeated; no early-career role in an enabled family",,,,,2026-11-14
 pixelogic_media_partners,Pixelogic Media Partners,workable,pixelogicmedia,,deferred,no UK early-career role in an enabled family (measured: 21 posting(s)),,,,,2026-11-14
 plain_concepts,Plain Concepts,workable,plainconcepts,,deferred,"only 1 UK of 17 (6%), below the 10% bar (measured: 17 posting(s))",,,,,2026-11-14
-plum_fintech,Plum Fintech,workable,withplum,,deferred,no UK early-career role in an enabled family (measured: 15 posting(s)),,,,,2026-11-14
 pmc_commerce,PMC Commerce,workable,pmc-commerce,,deferred,no UK early-career role in an enabled family (measured: 12 posting(s)),,,,,2026-11-14
 pmk_international_consult_llc,PMK International Consult LLC,workable,pmkconsult,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 portfolio_bi,Portfolio BI,workable,portfoliobi,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
@@ -413,7 +418,6 @@ reed,Reed,workday,reed,reed_specialist_recruitment_careers,deferred,"4 postings 
 reeve,Reeve,workable,reeve,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 reset_health,Reset Health,workable,resethealth,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 rimkus,Rimkus,workable,rimkus,,deferred,"only 11 UK of 122 (9%), below the 10% bar (measured: 122 posting(s))",,,,,2026-11-14
-runware,Runware,workable,runware,,deferred,no UK early-career role in an enabled family (measured: 25 posting(s)),,,,,2026-11-14
 runway_east,Runway East,workable,runway-east,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 sap_fioneer,SAP Fioneer,workable,fioneer,,deferred,no UK early-career role in an enabled family (measured: 88 posting(s)),,,,,2026-11-14
 second_nature,Second Nature,workable,secondnature,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
@@ -435,7 +439,6 @@ strise,Strise,workable,strise,,deferred,no UK early-career role in an enabled fa
 suade,Suade,workable,suade,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-13
 sulzer,Sulzer,workday,sulzer,sulzerjobs,deferred,"200 postings, 15 UK (8 %); UK share below the 10 % bar",,,,,2026-11-14
 suri,SURI,workable,suri-3,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
-sword_group,Sword Group,workable,sword-group,,deferred,no UK early-career role in an enabled family (measured: 59 posting(s)),,,,,2026-11-14
 tetrascience,TetraScience,workable,tetrascience,,deferred,no UK early-career role in an enabled family (measured: 18 posting(s)),,,,,2026-11-14
 the_beauty_tech_group_trading_limited,The Beauty Tech Group Trading Limited,workable,thebeautytechgroup,,deferred,no UK early-career role in an enabled family (measured: 12 posting(s)),,,,,2026-11-14
 the_children_s_investment_fund_foundation,The Children's Investment Fund Foundation,workable,ciff,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -450,7 +453,6 @@ torqcommodities,TORQCOMMODITIES,workable,torqcommodities,,deferred,no UK early-c
 toyota_financial_services,Toyota Financial Services,workable,toyota-financial-services,,deferred,no UK early-career role in an enabled family (measured: 6 posting(s)),,,,,2026-11-14
 trade_nation,Trade Nation,workable,trade-nation,,deferred,no UK early-career role in an enabled family (measured: 22 posting(s)),,,,,2026-11-14
 treatwell,Treatwell,workable,treatwell,,deferred,no UK early-career role in an enabled family (measured: 69 posting(s)),,,,,2026-11-14
-trinny_london,Trinny London,workable,trinnylondon,,deferred,no UK early-career role in an enabled family (measured: 27 posting(s)),,,,,2026-11-14
 triptease,Triptease,workable,triptease,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
 trybe,Trybe,workable,trybe-2,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 u_value_insulation,U Value Insulation,workable,u-value-insulation,,deferred,no UK early-career role in an enabled family (measured: 14 posting(s)),,,,,2026-11-14
@@ -471,7 +473,6 @@ woozle_research,Woozle Research,workable,woozle-research,,deferred,no UK early-c
 workable,Workable,workable,careers,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 workmotion,WorkMotion,workable,workmotion,,deferred,no UK early-career role in an enabled family (measured: 10 posting(s)),,,,,2026-11-14
 wqa,WQA,workable,wearewqa,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
-zaizi,Zaizi,workable,zaizi,,deferred,no UK early-career role in an enabled family (measured: 14 posting(s)),,,,,2026-11-14
 zutec,Zutec,workable,zutec,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 aggreko,Aggreko,workable,aggreko,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 airbus,Airbus,workable,airbus,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
@@ -513,7 +514,6 @@ nvidia,NVIDIA,workable,nvidia,,rejected,board returned no roles (measured: 0 pos
 nxp,NXP,workable,nxp,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 pg,Pg,,,,rejected,"Workday group board: 218 postings in the graduate search, 9 UK, 0 matches. P&G names graduate-entry roles 'Manager', which the seniority exclusions reject; revisit if that naming changes or a UK careers site appears",,,,,2026-11-14
 propharma_group,ProPharma Group,workable,propharma-group,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
-quick_release,Quick Release,workable,quickrelease,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 revolut,Revolut,,,,rejected,board token 404; careers site is CAPTCHA-gated,,,,,2026-11-14
 roche,Roche,workable,roche,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 rolls_royce,Rolls-Royce,workday,rollsroyce,intern_graduate,rejected,"intern_graduate site is global: 94 postings, 7 UK, 0 matches, 94 detail requests per scan mostly for non-UK roles",,,,,2026-11-14

@@ -121,6 +121,18 @@ def test_a_defer_verdict_is_never_written(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("acme*.toml"))
 
 
+def test_a_policy_exclusion_is_never_written(tmp_path: Path) -> None:
+    """A probe cannot see that an employer is a staffing agency; D-114 can."""
+    record = dict(RECORD, employer="Evolution Recruitment Solutions")
+    probe = write_probe(tmp_path, [record])
+
+    code, out = run(tmp_path, probe)
+
+    assert code == 0
+    assert "out of scope by D-114" in out
+    assert not list(tmp_path.glob("evolution*.toml"))
+
+
 def test_an_enrol_verdict_is_written(tmp_path: Path) -> None:
     probe = write_probe(tmp_path, [RECORD])
 

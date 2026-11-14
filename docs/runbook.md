@@ -959,10 +959,24 @@ Seventeen seasonal employers enrolled this way (`our_future_health`, `ki`, `pic`
 `anza`, `skiller_whale`) plus `luminance` on the ordinary gate. All 18 validated live `complete=yes`
 and baselined silently by hand.
 
-**State at the end of batch 12.** Catalogue **131 → 149**, registry 528 rows — 149 added, 69
-candidates, 256 deferred, 54 rejected. 40 employers contribute at least one match; the nine new
-contributors are expected over the next intake season rather than today, which the registry records
-and `report` shows separately.
+**D-117 also pays for itself in data already collected.** Every probe this project has run is on
+disk, so the rule was applied retrospectively rather than only to new sweeps — and 18 more employers
+qualified from verdicts recorded over the previous three days: `abm_uk`, `lanes_group`,
+`biffa_waste_services`, `sword_group`, `future_publishing`, `octopus_legacy`, `ocean_infinity`,
+`trinny_london`, `infopro_digital_services_limited`, `aveva`, `informed_solutions`, `zaizi`,
+`runware`, `bcn_group`, `aegiq`, `plum_fintech`, `quick_release`, `optimal_group`. No new requests
+were needed to find them, only the rule to admit them.
+
+The generator also grew a **policy guardrail**: a probe cannot see that an employer is a staffing
+agency, so `tools/add_sources.py` refuses anything in its `NEVER_ENROL` list. Without it, D-114's
+exclusion was re-admitted by the retrospective pass — which is exactly the kind of quiet reopening
+the decision log exists to prevent.
+
+**State at the end of batch 12.** Catalogue **131 → 167**, registry 528 rows — 167 added, 69
+candidates, 239 deferred, 53 rejected; by platform: greenhouse 68, workable 52, ashby 24, workday
+14, lever 5, sitemap_html 2, recruitee 2. 40 employers contribute at least one match today; the
+seasonal additions are expected to contribute over the next intake season, which the registry
+records in each file and `report` keeps separate.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
