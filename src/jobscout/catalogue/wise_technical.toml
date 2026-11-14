@@ -1,0 +1,13 @@
+# Workable board `wisetechltd` behind Wise Technical Ltd.
+# Discovery 2026-11-14 (Workable UK early-career search, then the employer's own careers page):
+# 5 roles, 5 UK, 1 matching under the default rules.
+# Example: Junior Controls Engineer
+id = "wise_technical"
+employer = "Wise Technical Ltd"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "wisetechltd"
+uk_employer = true

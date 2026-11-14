@@ -1,0 +1,16 @@
+# Workable board `colloide` behind Colloide Engineering Systems.
+# Discovery 2026-11-14 (Workable UK early-career search, then the employer's own careers page):
+# 3 roles, 3 UK, 1 matching under the default rules.
+# Example: Graduate Design Engineer
+#
+# Enniskillen, County Fermanagh: one of the few Northern Ireland employers in the catalogue, which
+# is why a three-role board is worth its single request.
+id = "colloide"
+employer = "Colloide Engineering Systems"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "colloide"
+uk_employer = true

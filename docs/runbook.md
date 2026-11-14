@@ -402,6 +402,14 @@ Workday search were found — expect the same.
    verify. A connection that never opened (DNS, refused) means "not this domain"; a reset or a
    timeout means nothing and is retried, so never treat one as a miss.
 
+   **Best of all: start from real vacancies.** `tools/harvest_workable.py` asks Workable's public
+   job search for UK early-career postings, and each result names the employer and its website:
+   1 049 postings became 236 unknown employers, 41 % of whom resolved to a named ATS from their own
+   site (`--sites employer,url`). Use it when the queue is thin — it is the only route that finds
+   employers nobody has listed — but expect single figures of enrolment per hundred, because a
+   Workable "early-career" hit is often a stale posting or a mention in a description, not a live
+   graduate scheme.
+
    **Record the verdict.** `python tools/employer_registry.py seed --inventory … --db …` writes the
    outcome into `research/employers.csv`, including the reason an employer was deferred or rejected.
    A probed employer that never reaches the catalogue is still research worth keeping — that is what
@@ -835,6 +843,71 @@ mostly non-UK head offices and renamed subsidiaries, and the run's own output sh
 early-career supply behind them). Its value is on a **new name list** — sector bodies, professional
 associations, regional ecosystems — where a resolver hit costs two requests and arrives with the
 board address. That is the next discovery increment.
+
+**Batch 11 — 2026-11-14 — opportunity-first discovery: the Workable UK early-career search.**
+
+Association member lists turned out to be a poor first move: twelve plausible "our members" URLs
+gave two readable pages, and the rest were 404s that would have to be found by reading each
+association's own navigation. The better engine was already public. Workable's job search indexes
+every published role on its platform and answers a UK location plus a free-text query:
+
+```
+https://jobs.workable.com/api/v1/jobs?location=United%20Kingdom&query=graduate&limit=20
+```
+
+`tools/harvest_workable.py` asks it for the eight terms the matcher treats as early-career
+(graduate, intern, placement, apprentice, trainee, junior, entry level, year in industry). The page
+size is capped at 20, so the queries narrow the catalogue rather than paging it: 50 requests, not
+500.
+
+| Funnel | Count |
+|---|---|
+| UK early-career postings seen | 1,049 |
+| Distinct employers not already in the registry | 236 |
+| Employers whose own site named a known ATS | 96 (41 %) |
+| … of those, Workable boards | 92 |
+| Boards probed | 94 |
+| **Enrolled** | **5** |
+
+The search does not reveal which Workable account carries a posting, and the public posting page is
+a JavaScript shell, so the account is not the handle to work from. The company record *does* carry
+its `website`, which is the better handle anyway — it resolves to whatever ATS the employer uses.
+`resolve_careers.py` gained `--sites employer,url` for exactly this, and stops guessing a name once
+the real site has answered.
+
+| Source | Board | Roles | UK | Matches | Sector |
+|---|---|---|---|---|---|
+| `fuse_energy` | `fuseenergy` | 70 | 58 | 2 | energy — Graduate Electrical Engineer, Finance Intern |
+| `helical` | `helical` | 7 | 7 | 1 | life sciences / ML — Machine Learning Intern |
+| `avk_uk` | `avk-seg-uk-ltd` | 19 | 18 | 1 | power generation — Assistant Quantity Surveyor |
+| `colloide` | `colloide` | 3 | 3 | 1 | engineering, **Northern Ireland** — Graduate Design Engineer |
+| `wise_technical` | `wisetechltd` | 5 | 5 | 1 | airport baggage systems — Junior Controls Engineer |
+
+**Why 5 of 94, and why that is the honest answer.** Workable's UK base is SMEs and startups, not
+graduate schemes. Probing showed the deferred boards were deferred correctly: Alexander Dennis (19
+UK roles) publishes assembly operatives and lead engineers, Zaizi publishes cloud engineers and
+technical leads, and neither had an open early-career role in a family on the day. The aggregator's
+"early-career" hit is a *mention* — often in a stale posting or in a description — not a live
+graduate scheme. A sweep of this kind therefore yields single figures, and the value is in the
+sector and geographic spread it adds (energy, life sciences, power generation, Northern Ireland)
+rather than in the count.
+
+**One board was dropped on reading rather than on probing.** `pinson` passed the gate with 294
+postings, all UK — but they are one traffic-management operative advertisement repeated, and the six
+rows that tripped the family conflict were `review:family_conflict:hr`. Storing 294 rows to alert
+nothing is a cost with no benefit, so it is deferred with that reason.
+
+**A matching defect found by the enrolments.** `Assistant Quantity Surveyor` was labelled
+**quantitative** — `_has_stem` is prefix-style, so `quant` matched `quantity` — and once that was
+corrected it matched no family at all, because a QS is a construction profession the stem list never
+named. D-116 fixes both: built-environment professions join `engineering`, and `quant` is narrowed
+to the word. Measured on 15,028 stored titles: **12 QS titles relabel, 3 building surveyors gain a
+family, 2 quantum-computing titles lose a wrong label, and no genuine quant role is lost**
+(`RULES_VERSION` m1.4).
+
+**The engine to run next.** The same search supports `location` for any UK city, so the next sweep
+should vary location (Manchester, Leeds, Birmingham, Glasgow, Cardiff, Belfast) rather than only
+terms — that is how the London bias gets corrected without a sector list.
 
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes

@@ -30,6 +30,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -126,8 +127,32 @@ def careers_domains(name: str) -> list[str]:
     return [f"https://www.{slug}.{suffix}" for slug in slug_forms(name) for suffix in SUFFIXES]
 
 
-def resolve(client: PacedHttpClient, name: str) -> dict[str, object]:
-    """Try an employer's domains until one answers with an ATS, and record what was tried."""
+def url_groups(name: str, website: str = "") -> list[list[str]]:
+    """The pages to read, grouped by how much they are worth trying.
+
+    A harvested website is worth ten guesses: it is the employer's own domain, so `/careers` and
+    `/jobs` are the only two paths that usually matter. The groups are ordered so a caller can stop
+    after the website answers — reading the marketing site it already found, under a guessed name,
+    adds nothing.
+    """
+    groups: list[list[str]] = []
+    if website:
+        base = website.strip().rstrip("/")
+        if not base.startswith("http"):
+            base = f"https://{base}"
+        groups.append([base + path for path in PATHS])
+    groups.append([domain + path for domain in careers_domains(name) for path in PATHS])
+    return groups
+
+
+def base_of(url: str) -> str:
+    """Scheme and host, so the pages of one site can be skipped together."""
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+def resolve(client: PacedHttpClient, name: str, website: str = "") -> dict[str, object]:
+    """Read an employer's own pages until one names an ATS, and record what was tried."""
     record: dict[str, object] = {
         "employer": name,
         "platform": "",
@@ -137,22 +162,32 @@ def resolve(client: PacedHttpClient, name: str) -> dict[str, object]:
         "note": "",
     }
     seen_careers_page = False
-    for domain in careers_domains(name):
-        for path in PATHS:
-            url = domain + path
+    dead: set[str] = set()
+    for group in url_groups(name, website):
+        answered = False
+        for url in group:
+            base = base_of(url)
+            if base in dead:
+                continue
             try:
                 html = client.get_text(url)
+            except ValueError:
+                # A malformed URL in a harvested list ("Outbrain, a Taboola company" once produced
+                # one). Nothing about the employer follows from it, so the site is simply unusable.
+                dead.add(base)
+                continue
             except HttpError as exc:
                 if exc.status is not None:
-                    # A real answer: this path is not there, but the domain is.
+                    # A real answer: this page is not there, but the site is, so try its other
+                    # paths.
+                    answered = True
                     continue
                 if not exc.uncertain:
-                    # The connection never opened, so this is not the employer's domain at all:
-                    # stop guessing at its paths and move to the next suffix.
-                    break
-                # Reached something that failed mid-flight (a reset, a timeout). That proves nothing
-                # about the domain, so keep going rather than recording a miss that is not real.
+                    # The host never opened, so it is not this employer's: skip its remaining
+                    # pages rather than asking a name that does not resolve for more answers.
+                    dead.add(base)
                 continue
+            answered = True
             record["attempts"] = int(record["attempts"]) + 1
             found = fingerprint(html)
             if found:
@@ -161,8 +196,12 @@ def resolve(client: PacedHttpClient, name: str) -> dict[str, object]:
                 if platform not in READABLE:
                     record["note"] = f"{platform} has no adapter yet"
                 return record
-            if path and CAREERS_HINT.search(html):
+            if CAREERS_HINT.search(html):
                 seen_careers_page = True
+        if answered and website:
+            # The employer's own site answered, so guessing its name would only find the marketing
+            # site we have just read.
+            break
     record["note"] = (
         "a careers page answered but named no known ATS"
         if seen_careers_page
@@ -171,16 +210,30 @@ def resolve(client: PacedHttpClient, name: str) -> dict[str, object]:
     return record
 
 
-def load_names(args: argparse.Namespace) -> list[str]:
+def load_names(args: argparse.Namespace) -> list[tuple[str, str]]:
+    """Employers to resolve, with any website already known for them."""
+    if args.sites:
+        pairs = []
+        for line in args.sites.read_text(encoding="utf-8").splitlines():
+            if not line.strip() or line.startswith("#"):
+                continue
+            # Split on the last comma: a company name can contain one ("Outbrain, a Taboola
+            # company") but a website cannot.
+            name, _, website = line.rpartition(",")
+            if not name:
+                pairs.append((website.strip(), ""))
+                continue
+            pairs.append((name.strip(), website.strip()))
+        return pairs
     if args.names:
         return [
-            line.strip()
+            (line.strip(), "")
             for line in args.names.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.startswith("#")
         ]
     with args.registry.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
-    return [row["name"] or row["employer"] for row in rows if row["status"] == "candidate"]
+    return [(row["name"] or row["employer"], "") for row in rows if row["status"] == "candidate"]
 
 
 def write_outputs(out: Path, records: list[dict[str, object]]) -> Path:
@@ -201,6 +254,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=REGISTRY)
     parser.add_argument("--names", type=Path, help="plain list of employer names, one per line")
+    parser.add_argument(
+        "--sites",
+        type=Path,
+        help="list of `employer,website` lines: the site is read first, guesses follow",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--limit", type=int, default=0, help="stop after this many employers")
     parser.add_argument(
@@ -220,7 +278,7 @@ def main() -> int:
     if previous:
         # Resuming matters at this scale: a sweep is a long run against dozens of unrelated hosts,
         # and losing it to one connection reset wastes the whole pass.
-        names = [name for name in names if name not in previous]
+        names = [pair for pair in names if pair[0] not in previous]
     if args.limit:
         names = names[: args.limit]
     if not names and not previous:
@@ -233,9 +291,9 @@ def main() -> int:
     print(f"resolving {len(names)} employer(s), {len(previous)} already done")
 
     records: list[dict[str, object]] = list(previous.values())
-    for index, name in enumerate(names, start=1):
+    for index, (name, site) in enumerate(names, start=1):
         client.begin_scan()
-        record = resolve(client, name)
+        record = resolve(client, name, site)
         records.append(record)
         write_outputs(args.out, records)
         detail = (

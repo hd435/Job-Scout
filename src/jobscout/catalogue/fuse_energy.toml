@@ -1,0 +1,13 @@
+# Workable board `fuseenergy` behind Fuse Energy.
+# Discovery 2026-11-14 (Workable UK early-career search, then the employer's own careers page):
+# 70 roles, 58 UK, 2 matching under the default rules.
+# Example: Graduate Electrical Engineer
+id = "fuse_energy"
+employer = "Fuse Energy"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "fuseenergy"
+uk_employer = true

@@ -26,7 +26,7 @@ from types import MappingProxyType
 
 from .models import Job, LocationResult, MatchDecision, MatchOutcome
 
-RULES_VERSION = "m1.3"
+RULES_VERSION = "m1.4"
 
 LOCATION_MODES = ("pinned", "uk", "uk_plus_pinned")
 
@@ -676,8 +676,12 @@ ROLE_FAMILIES: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "test engineer",
         ),
         "quant": (
-            "quant",
+            # Not the bare stem: `_has_stem` is prefix-style, so "quant" also matched
+            # "Quantity Surveyor" and "Quantum Networking". The word forms match
+            # "Quant Library Developer" and "Quantitative Researcher" and nothing else.
             "quantitative",
+            "quant ",
+            "quant-",
             "risk analyst",
             "risk analysis",
             "credit risk",
@@ -759,6 +763,13 @@ ROLE_FAMILIES: Mapping[str, tuple[str, ...]] = MappingProxyType(
             "instrumentation",
             "metrology",
             "composites",
+            # The built environment: the Product Owner's engineering scope names construction, and
+            # the QS is its core graduate profession. These matched no family before D-116, so a
+            # "Graduate Quantity Surveyor" was invisible to the catalogue.
+            "quantity survey",
+            "building survey",
+            "building services",
+            "construction management",
         ),
         "science": (
             "scientist",

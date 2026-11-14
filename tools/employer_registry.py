@@ -295,6 +295,13 @@ DEFERRED = {
     ),
     # DRW runs a second board for university and event hiring that the group board does not mirror;
     # it is enrolled rather than deferred (D-115 allows a second source for a covered employer).
+    # Workable UK early-career search (2026-11-14): a labour-supply company whose board is 294
+    # copies of one traffic-management operative advertisement. The probe's gate passed it because
+    # six rows trip `review:family_conflict:hr`, which is not a reason to store 294 rows.
+    "pinson": (
+        "294 postings, all UK, but they are one traffic-management operative role repeated;"
+        " no early-career role in an enabled family"
+    ),
 }
 
 

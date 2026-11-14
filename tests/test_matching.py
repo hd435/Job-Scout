@@ -49,6 +49,37 @@ def test_early_career_roles_in_target_families_match(title):
     assert any(reason.startswith("early_career:") for reason in decision.reasons)
 
 
+def test_a_quantity_surveyor_is_engineering_and_not_quantitative() -> None:
+    """Measured on the stored corpus: 12 such titles were labelled `quant`, none are finance."""
+    decision = match_job(make_job("Graduate Quantity Surveyor"))
+
+    assert decision.decision is MatchOutcome.MATCH
+    assert "family:engineering" in decision.reasons
+    assert "family:quant" not in decision.reasons
+
+
+def test_a_quantum_engineer_is_not_quantitative() -> None:
+    """`quant` was a prefix, so it also matched quantum computing — a different profession."""
+    decision = match_job(make_job("Graduate Quantum Engineer"))
+
+    assert "family:quant" not in decision.reasons
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Quant Library Developer",
+        "Quantitative Researcher - New Grad",
+        "Graduate Quant Analyst",
+    ],
+)
+def test_the_word_quant_still_means_quantitative(title):
+    """Narrowing the stem must not lose the finance roles it was there for."""
+    decision = match_job(make_job(title))
+
+    assert "family:quant" in decision.reasons
+
+
 @pytest.mark.parametrize(
     "title",
     [

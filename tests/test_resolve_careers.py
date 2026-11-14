@@ -136,6 +136,69 @@ def test_resolve_records_a_platform_it_cannot_read_yet() -> None:
     assert record["note"] == "icims has no adapter yet"
 
 
+def test_a_site_line_splits_on_its_last_comma() -> None:
+    """A company can be named "Outbrain, a Taboola company"; a website never contains a comma."""
+    import argparse
+
+    sites = Path(__file__).resolve().parent / "_sites_tmp.txt"
+    sites.write_text(
+        "Outbrain, a Taboola company,https://www.outbrain.com\nAcme,https://acme.com\n",
+        encoding="utf-8",
+    )
+    try:
+        pairs = resolve_careers.load_names(
+            argparse.Namespace(sites=sites, names=None, registry=None)
+        )
+    finally:
+        sites.unlink()
+
+    assert pairs == [
+        ("Outbrain, a Taboola company", "https://www.outbrain.com"),
+        ("Acme", "https://acme.com"),
+    ]
+
+
+def test_resolve_survives_a_malformed_url() -> None:
+    """A harvested list is untrusted input: one bad URL must not end the sweep."""
+
+    class InvalidClient(FakeClient):
+        def get_text(self, url: str) -> str:
+            self.requested.append(url)
+            raise ValueError("URL can't contain control characters")
+
+    client = InvalidClient({})
+
+    record = resolve_careers.resolve(client, "Acme")
+
+    assert record["platform"] == ""
+    assert record["note"] == "no domain answered"
+
+
+def test_resolve_reads_a_known_website_before_guessing_the_name() -> None:
+    """A harvested website is the employer's own domain: it resolves to whatever ATS they use."""
+    client = FakeClient(
+        {"https://www.real-acme.com/careers": '<a href="https://acme.teamtailor.com/jobs">Jobs</a>'}
+    )
+
+    record = resolve_careers.resolve(client, "Acme Holdings", "https://www.real-acme.com")
+
+    assert (record["platform"], record["slug"]) == ("teamtailor", "acme")
+    assert client.requested == [
+        "https://www.real-acme.com",
+        "https://www.real-acme.com/careers",
+    ]
+
+
+def test_a_website_without_a_scheme_is_still_readable() -> None:
+    client = FakeClient(
+        {"https://acme.com/careers": '<a href="https://jobs.lever.co/acme">Jobs</a>'}
+    )
+
+    record = resolve_careers.resolve(client, "Acme", "acme.com")
+
+    assert record["slug"] == "acme"
+
+
 def test_resolve_says_so_when_nothing_answers() -> None:
     missing = {
         f"https://www.{slug}.{suffix}" for slug in ("acme",) for suffix in resolve_careers.SUFFIXES

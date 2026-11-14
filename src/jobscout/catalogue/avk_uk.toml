@@ -1,0 +1,16 @@
+# Workable board `avk-seg-uk-ltd` behind AVK UK (power generation and modular energy systems).
+# Discovery 2026-11-14 (Workable UK early-career search, then the employer's own careers page):
+# 19 roles, 18 UK, 1 matching under the default rules.
+# Example: Assistant Quantity Surveyor
+#
+# The matching role is a built-environment one: it only became visible when D-116 added quantity
+# surveying to the engineering family, before which it was labelled `quant` by a prefix match.
+id = "avk_uk"
+employer = "AVK UK"
+adapter = "workable"
+access_note = "public Workable widget API (apply.workable.com/api/v1/widget/accounts), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+account = "avk-seg-uk-ltd"
+uk_employer = true

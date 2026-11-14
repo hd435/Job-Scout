@@ -183,7 +183,7 @@ def test_status_reports_built_in_matching_rules(db, capsys, monkeypatch, tmp_pat
     out = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "Matching rules: m1.3 (built-in defaults)" in out
+    assert "Matching rules: m1.4 (built-in defaults)" in out
 
 
 def write_matching_config(tmp_path: Path) -> Path:
