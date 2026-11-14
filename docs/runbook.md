@@ -1091,6 +1091,52 @@ baseline, but never completing.
 candidates, 272 deferred, 67 rejected. **49** employers contribute at least one match, up from 43,
 and the fourteen new sources alone carry more than 180.
 
+**Batch 15 — 2026-11-14 — four routes measured, and what each one actually yields.**
+
+Discovery breadth was the brief, so four routes were tested rather than one assumed:
+
+| Route | Requests | Boards found | Enrolled |
+|---|---|---|---|
+| SmartRecruiters, 9 extra keywords | 10 720 postings | **0 new** | 0 |
+| Teamtailor public index | 3 | — | 0 — **no index exists** |
+| ATS account guesses for 238 named UK employers | 1 685 | 14 (all wrong tenants) | 0 |
+| Workday host variants for 50 inventoried tenants | 252 | 9 answered, 1 good | **1** |
+
+**Widening the keywords was the wrong lever.** `analyst`, `engineer`, `data`, `summer`, `off-cycle`
+and `school leaver` added 5 750 postings and **no** employer, because the early-career filter removes
+almost everything they return — a "Data Analyst" is not a graduate role. SmartRecruiters is exhausted
+at 28 employers *for early-career titles in GB*, and that is the honest boundary of the route.
+
+**Teamtailor has no cross-customer index.** `career.teamtailor.com/jobs.json` is a JSON Feed of
+Teamtailor's own 21 vacancies, and the search page filters the same list. Recorded so it is not
+tried again.
+
+**Account guessing does not work for large corporates.** 238 named UK employers — Arup, Rolls-Royce,
+BAE, National Grid, Tesco, AstraZeneca — produced 14 boards in 1 685 guesses, and every one was the
+*right name on the wrong tenant* (an unrelated `bt`, a different `access`). Big employers use Workday,
+Taleo, SuccessFactors and iCIMS, whose tenants are not name-slugs on the five guessable platforms.
+
+**Re-applying the new gates to what was already measured paid once.** 23 boards previously deferred
+for UK share or early-career reasons were re-probed under D-118/D-117; one enrolled (`hellofresh`,
+27 UK roles, 1 match). The rest genuinely do not have early-career family roles today.
+
+**A Workday host is the tenant's, not a choice.** Forcing `wd3` for all 50 inventoried tenants
+returned 41 status-422 failures — which looked like rejections and were not. The host is `wd1`,
+`wd5`, `wd103`, `wd502` per tenant; where the inventory that found a board is gone, the only way back
+is to try the common numbers (252 requests). That found `cgg` at `wd103` — 22 UK roles, 4
+early-career family roles, 3 matches — and taught the registry that **422 is a failed guess, not a
+verdict**, exactly as 404 already was.
+
+**State at the end of batch 15.** Catalogue **201 → 203**; registry 684 rows — 203 added, 25
+candidates, 283 deferred, 173 rejected (the increase is empty tenants found by the guess sweep: a
+real account publishing nothing is worth recording). 49 employers contribute a match.
+
+**What this says about 1 000.** The three cheap seams — ATS indexes, account guessing, careers-page
+fingerprints — are all measured and all spent: they yield single figures each. Workday remains the
+richest unexplored surface (47 % of sampled roles in the original review), but its tenants are not
+discoverable without either a web search or a per-employer inventory, which is manual research, not
+engineering. That is the decision the next increment needs.
+
 **Batch 1 revisited — what the first batch proved, and what it did not.** It proved the candidate →
 validate → enable → baseline path works at scale for one adapter shape, and that `report` distinguishes
 stored roles from value delivered. It did not add much value: 3 047 roles produced 3 alerts-eligible

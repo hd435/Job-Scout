@@ -166,6 +166,38 @@ def test_a_recorded_verdict_does_not_overrule_a_shipped_source() -> None:
     assert result[0]["status"] == "added"
 
 
+def test_a_wrong_workday_host_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
+    """A workday site lives on one numbered host; trying the wrong one answers 422, not "no"."""
+    import json
+
+    sys.path.insert(0, str(TOOLS))
+    try:
+        import employer_registry
+    finally:
+        sys.path.pop(0)
+
+    probe_path = tmp_path / "probe.json"
+    probe_path.write_text(
+        json.dumps(
+            {
+                "records": [
+                    {
+                        "adapter": "workday",
+                        "slug": "acme.wd1.myworkdayjobs.com/acme/Acme",
+                        "employer": "Acme",
+                        "verdict": "reject",
+                        "verdict_reason": "scan failed: request rejected status=422 permanent",
+                        "records_parsed": 0,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert employer_registry.apply_probe([], probe_path, "2026-11-14") == []
+
+
 def test_a_temporary_failure_is_not_recorded_as_a_verdict(tmp_path: Path) -> None:
     """Workday's wd5 cluster answered 521 for three tenants in a row: that is not a judgement."""
     import json

@@ -1,0 +1,14 @@
+# Greenhouse board `hellofresh` behind HelloFresh.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 380 roles,
+# 27 UK, 1 in an enabled family with an
+# early-career signal, 1 matching under the default rules.
+# Example: Junior Maintenance Engineer
+id = "hellofresh"
+employer = "HelloFresh"
+adapter = "greenhouse"
+access_note = "public Greenhouse job-board API (boards-api.greenhouse.io), one GET per scan, no auth, no pagination"
+cadence_minutes = 30
+
+[options]
+board = "hellofresh"

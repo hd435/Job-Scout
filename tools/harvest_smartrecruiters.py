@@ -43,8 +43,28 @@ SEARCH = "https://jobs.smartrecruiters.com/sr-jobs/search"
 #: The index answers 100 postings per request regardless of the limit asked for.
 PAGE_SIZE = 100
 
-#: Keywords worth asking for: the index searches text, so one word per early-career idea.
-KEYWORDS = ("graduate", "intern", "placement", "apprentice", "trainee", "junior", "entry level")
+#: Keywords worth asking for: the index searches text, so one word per early-career idea. The second
+#: group widens the net to titles that name the *role* rather than the seniority — a 2027 graduate
+#: intake is often advertised as "Analyst 2027" or "Summer Internship" — but every posting is still
+#: filtered by `is_early_career` before an employer is researched.
+KEYWORDS = (
+    "graduate",
+    "intern",
+    "placement",
+    "apprentice",
+    "trainee",
+    "junior",
+    "entry level",
+    "analyst",
+    "associate",
+    "engineer",
+    "data",
+    "summer",
+    "off-cycle",
+    "industrial placement",
+    "school leaver",
+    "undergraduate",
+)
 
 
 def is_early_career(title: str) -> bool:
@@ -138,6 +158,11 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--location", default="London, United Kingdom")
     parser.add_argument("--pages", type=int, default=10, help="pages per keyword (100 each)")
+    parser.add_argument(
+        "--keywords",
+        nargs="*",
+        help="override the keyword list, e.g. --keywords graduate intern",
+    )
     parser.add_argument("--sleep", type=float, default=0.6, help="seconds between requests")
     args = parser.parse_args()
 
@@ -149,7 +174,7 @@ def main() -> int:
 
     seen: set[str] = set()
     postings: list[dict[str, object]] = []
-    for keyword in KEYWORDS:
+    for keyword in args.keywords or KEYWORDS:
         found = search(client, keyword, args.location, args.pages)
         fresh = [posting for posting in found if str(posting.get("id")) not in seen]
         seen.update(str(posting.get("id")) for posting in fresh)

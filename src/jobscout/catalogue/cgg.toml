@@ -1,0 +1,16 @@
+# Workday board `cgg.wd103.myworkdayjobs.com/cgg/viridiencareers` behind CGG.
+# Discovery 2026-11-14 (Workable London search, board resolved from the
+# employer's own careers page): 75 roles,
+# 22 UK, 4 in an enabled family with an
+# early-career signal, 3 matching under the default rules.
+# Example: Imaging Geophysicist / Scientist Graduate Programme - Autumn 2027
+id = "cgg"
+employer = "CGG"
+adapter = "workday"
+access_note = "public Workday job-search endpoint (myworkdayjobs.com), paged GET per scan, no auth"
+cadence_minutes = 30
+
+[options]
+host = "cgg.wd103.myworkdayjobs.com"
+tenant = "cgg"
+site = "viridiencareers"

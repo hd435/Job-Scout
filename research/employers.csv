@@ -36,6 +36,7 @@ causaly,Causaly,ashby,causaly,,added,,10,7,4,0,2026-11-14
 celonis,Celonis,greenhouse,celonis,,added,,265,21,80,0,2026-11-14
 centrica,Centrica,workday,centrica,centrica,added,,1,1,0,0,2026-11-14
 cfo_insights,CFO Insights,greenhouse,cfoinsights,,added,,364,251,24,3,2026-11-14
+cgg,CGG,workday,cgg,viridiencareers,added,,75,24,23,0,2026-11-14
 charles_river,Charles River Associates,greenhouse,charlesriverassociates,,added,,85,11,31,1,2026-11-14
 circleci,CircleCI,greenhouse,circleci,,added,,15,5,7,0,2026-11-14
 civic,Civic,workable,civic,,added,,20,18,18,1,2026-11-14
@@ -67,7 +68,7 @@ fireworks,Fireworks AI,ashby,fireworks,,added,,100,13,14,0,2026-11-14
 five_rings,Five Rings,greenhouse,fiveringsllc,,added,,19,4,10,2,2026-11-14
 focusrite,Focusrite Group,workable,focusrite,,added,,17,15,6,1,2026-11-14
 form3,Form3,greenhouse,form3,,added,,5,2,3,0,2026-11-14
-frasers_group,Frasers Group,smartrecruiters,,,added,,471,265,24,0,2026-11-14
+frasers_group,Frasers Group,smartrecruiters,,,added,,472,266,24,0,2026-11-14
 fulkers_bailey_russell,Fulkers Bailey Russell,workable,fulkers-bailey-russell,,added,,7,7,5,0,2026-11-14
 fuse_energy,Fuse Energy,workable,fuseenergy,,added,,70,58,29,2,2026-11-14
 future_publishing,Future Publishing,workable,futureplc,,added,,40,29,2,0,2026-11-14
@@ -81,6 +82,7 @@ gymshark,Gymshark,greenhouse,gymshark,,added,,6,3,2,0,2026-11-14
 hamiltonian_dynamics,Hamiltonian Dynamics,workable,hamiltonian-dynamics,,added,,7,7,6,0,2026-11-14
 headlands,Headlands Technologies,greenhouse,headlandstechnologiesllc,,added,,8,6,5,1,2026-11-14
 helical,Helical,workable,helical,,added,,7,7,3,1,2026-11-14
+hellofresh,HelloFresh,greenhouse,hellofresh,,added,,380,27,81,0,2026-11-14
 hometrack,Hometrack,workable,hometrack,,added,,4,4,3,0,2026-11-14
 howden,Howden,workday,hyperiongrp,hyperion_external,added,,14,1,1,0,2026-11-14
 incident,Incident.io,ashby,incident,,added,,32,14,4,0,2026-11-14
@@ -101,7 +103,7 @@ kobalt_music,Kobalt Music,workable,kobalt-music,,added,,16,7,2,1,2026-11-14
 lanes_group,Lanes Group,workable,lanes-group-1,,added,,77,77,2,0,2026-11-14
 legalandgeneral,LegalAndGeneral,smartrecruiters,,,added,,36,27,6,0,2026-11-14
 legalvision,LegalVision,workable,legalvision,,added,,23,21,2,0,2026-11-14
-legora,Legora,ashby,legora,,added,,340,45,69,0,2026-11-14
+legora,Legora,ashby,legora,,added,,341,45,69,0,2026-11-14
 leonardo,Leonardo,workday,leonardocompany,leonardocareersite,added,,84,68,46,0,2026-11-14
 libertyglobal,Liberty Global,workday,libertyglobal,liberty_global_careers,added,,5,4,1,1,2026-11-14
 linear,Linear,ashby,linear,,added,,33,2,3,0,2026-11-14
@@ -200,72 +202,31 @@ writer,Writer,ashby,writer,,added,,45,11,13,0,2026-11-14
 zaizi,Zaizi,workable,zaizi,,added,,14,14,6,0,2026-11-14
 zoopla,Zoopla,workable,zoopla,,added,,15,15,2,0,2026-11-14
 zopa,Zopa,lever,zopa,,added,,30,30,15,0,2026-11-14
-allegro_microsystems,Allegro MicroSystems,workday,allegromicro,allegrocareers,candidate,,,,,,2026-11-13
 altera,Altera,workday,altera,altera,candidate,,,,,,2026-11-13
-analog_devices,Analog Devices,workday,analogdevices,external,candidate,,,,,,2026-11-13
 ankura,Ankura,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-ardian,Ardian,workday,ardian,ardiancareers,candidate,,,,,,2026-11-13
 atkinsr_alis,AtkinsRéalis,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-ayvens,Ayvens,workday,ayvens,ayvenscareers,candidate,,,,,,2026-11-13
 baker_hughes,Baker Hughes,workday,bakerhughes,bakerhughes,candidate,,,,,,2026-11-13
-blackrock,BlackRock,workday,blackrock,blackrock_professional,candidate,,,,,,2026-11-13
 camlin,Camlin,rippling,jobs,,candidate,,,,,,2026-11-13
 capri,Capri,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-cgg,CGG,workday,cgg,viridiencareers,candidate,,,,,,2026-11-13
-chanel,CHANEL,workday,cc,chanelcareers,candidate,,,,,,2026-11-13
-clearwater_analytics,Clearwater Analytics,workday,clearwateranalytics,clearwater_analytics_careers,candidate,,,,,,2026-11-13
-cme_group,CME Group,workday,cmegroup,cme_careers,candidate,,,,,,2026-11-13
-crane_company,Crane Company,workday,cranecompany,careers,candidate,,,,,,2026-11-13
-creative_artists_agency,Creative Artists Agency,workday,caa,careers,candidate,,,,,,2026-11-13
-crowdstrike,CrowdStrike,workday,crowdstrike,crowdstrikecareers,candidate,,,,,,2026-11-13
-danaher,Danaher,workday,danaher,danaherjobs,candidate,,,,,,2026-11-13
-entrust,Entrust,workday,entrust,entrustcareers,candidate,,,,,,2026-11-13
-freshfields,Freshfields,workday,freshfields,fbd_101,candidate,,,,,,2026-11-13
-freudenberg,Freudenberg,workday,freudenberg,freudenberg-group,candidate,,,,,,2026-11-13
-gartner,Gartner,workday,gartner,ext,candidate,,,,,,2026-11-13
-ge_vernova,GE Vernova,workday,gevernova,vernova_externalsite,candidate,,,,,,2026-11-13
 grayling,Grayling,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 guggenheim_as_your_future_employer,Guggenheim as your future employer,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-hewlett_packard_enterprise,Hewlett Packard Enterprise,workday,hpe,jobsathpe,candidate,,,,,,2026-11-13
-hexcel,Hexcel,workday,hexcel,hexcelcareers,candidate,,,,,,2026-11-13
 ingram_micro,Ingram Micro,workday,ingrammicro,ingrammicro,candidate,,,,,,2026-11-13
-irhythmtech,irhythmtech,workday,irhythmtech,irhythm,candidate,,,,,,2026-11-13
 kion_group,KION Group,workday,kiongroup,kiongroup,candidate,,,,,,2026-11-13
-kith,Kith,workday,kith,kith_external_careers,candidate,,,,,,2026-11-13
-kla,KLA,workday,kla,search,candidate,,,,,,2026-11-13
 levi_strauss_co,Levi Strauss & Co.,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-mars,Mars,workday,mars,external,candidate,,,,,,2026-11-13
 mec_consulting_group,MEC Consulting Group,recruitee,mec.recruitee.com,,candidate,,,,,,2026-11-13
 merck_co_msd,Merck & Co. (MSD),,,,candidate,no public board found on the published job page,,,,,2026-11-13
-motorola_solutions,Motorola Solutions,workday,motorolasolutions,careers,candidate,,,,,,2026-11-13
-myhcm,myhcm,workday,myhcm,betway,candidate,,,,,,2026-11-13
-nasdaq,Nasdaq,workday,nasdaq,global_external_site,candidate,,,,,,2026-11-13
 ncr_voyix,NCR Voyix,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-neuberger_berman,Neuberger Berman,workday,nb,nbcareers,candidate,,,,,,2026-11-13
 nexstar_media_group,Nexstar Media Group,workday,nexstar,nexstar,candidate,,,,,,2026-11-13
-novanta,Novanta,workday,novanta,novanta-careers,candidate,,,,,,2026-11-13
-ontic,Ontic,workday,ontic,onticcareers,candidate,,,,,,2026-11-13
-p_g,P&G,workday,pg,1000,candidate,,,,,,2026-11-13
-pjt_partners,PJT Partners,workday,pjtpartners,careers,candidate,,,,,,2026-11-13
-prologis,Prologis,workday,prologis,prologis_external_careers,candidate,,,,,,2026-11-13
 reliaquest,ReliaQuest,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 safran_engineering_services_uk_limited,Safran Engineering Services UK Limited,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 sailpoint_technologies,SailPoint Technologies,workday,sailpoint,sailpoint,candidate,,,,,,2026-11-13
-samsung_electronics,Samsung Electronics,workday,sec,samsung_careers,candidate,,,,,,2026-11-13
-schweitzer_engineering_laboratories,Schweitzer Engineering Laboratories,workday,selinc,sel,candidate,,,,,,2026-11-13
 sensata,Sensata,,,,candidate,no public board found on the published job page,,,,,2026-11-13
-shell,Shell,workday,shell,shellcareers,candidate,,,,,,2026-11-13
 signifyd,Signifyd,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 smith_nephew,Smith+Nephew,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 sonyglobal,sonyglobal,,,,candidate,no public board found on the published job page,,,,,2026-11-13
 spectrum_control,Spectrum Control,workday,spectrumcontrol,spectrumcontrol,candidate,,,,,,2026-11-13
-synthomer,Synthomer,workday,synthomer,synthomercareers,candidate,,,,,,2026-11-13
-teledyne_flir,Teledyne FLIR,workday,flir,flircareers,candidate,,,,,,2026-11-13
-tencent,Tencent,workday,tencent,tencent_careers,candidate,,,,,,2026-11-13
-the_walt_disney_company,The Walt Disney Company,workday,disney,disneycareer,candidate,,,,,,2026-11-13
 transunion,TransUnion,workday,transunion,transunion,candidate,,,,,,2026-11-13
 vertex_pharmaceuticals,Vertex Pharmaceuticals,workday,vrtx,vertex_careers,candidate,,,,,,2026-11-13
-white_cap,White Cap,workday,whitecap,careers,candidate,,,,,,2026-11-13
 1global,1GLOBAL,workable,1global,,deferred,"only 2 UK of 39 (5%), below the 10% bar (measured: 39 posting(s))",,,,,2026-11-14
 academy_of_medical_sciences,Academy of Medical Sciences,workable,academy-of-medical-sciences,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 accora,Accora,workable,accora,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
@@ -282,16 +243,17 @@ anaqua,Anaqua,workable,anaqua,,deferred,no UK early-career role in an enabled fa
 androlabs,Androlabs,workable,androlabsuk,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
 arbor_education,Arbor Education,workable,arbor-education-3,,deferred,no UK early-career role in an enabled family (measured: 20 posting(s)),,,,,2026-11-14
 aro,ARO,workable,aro,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
-arriva,Arriva,workday,arriva,careers,deferred,"170 postings, 41 UK, none in an enabled family (operations and depot roles)",,,,,2026-11-14
+arriva,Arriva,workday,arriva,careers,deferred,no UK early-career role in an enabled family (measured: 170 posting(s)),,,,,2026-11-14
 as_equity_partners,AS Equity Partners,workable,as-equity-partners,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 assala_energy,Assala Energy,workable,assala-energy,,deferred,no UK early-career role in an enabled family (measured: 11 posting(s)),,,,,2026-11-14
 atc_computer_transport_logistics,ATC Computer Transport & Logistics,workable,atc-driving-forward,,deferred,no UK early-career role in an enabled family (measured: 20 posting(s)),,,,,2026-11-14
 audiostack,AudioStack,workable,audiostack,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 aureol_global_connections,Aureol Global Connections,workable,aureol-global-connections,,deferred,no UK early-career role in an enabled family (measured: 376 posting(s)),,,,,2026-11-14
+ayvens,Ayvens,workday,ayvens,ayvenscareers,deferred,no UK early-career role in an enabled family (measured: 200 posting(s)),,,,,2026-11-14
 ballinger_group,Ballinger Group,workable,ballingerco,,deferred,no UK early-career role in an enabled family (measured: 11 posting(s)),,,,,2026-11-14
 banana_moon_day_nurseries,Banana Moon Day Nurseries,workable,banana-moon-day-nurseries,,deferred,no UK early-career role in an enabled family (measured: 65 posting(s)),,,,,2026-11-14
 barfoots_of_botley,Barfoots of Botley,workable,barfoots-of-botley-2,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
-bauer_media_outdoor,Bauer Media Outdoor,greenhouse,bauerhockeycascademaveriklacrosse,,deferred,"only 1 UK of 17 (6%), below the 10% bar (measured: 17 posting(s))",,,,,2026-11-14
+bauer_media_outdoor,Bauer Media Outdoor,greenhouse,bauerhockeycascademaveriklacrosse,,deferred,no UK early-career role in an enabled family (measured: 21 posting(s)),,,,,2026-11-14
 bbc_maestro,BBC Maestro,workable,bbc-maestro,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 beyond_co,Beyond Co,workable,beyondco,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 bishop_fleming,Bishop Fleming,workday,bishopfleming,bf,deferred,no UK early-career role in an enabled family (measured: 13 posting(s)),,,,,2026-11-14
@@ -307,7 +269,9 @@ capitex,Capitex,workable,capitex,,deferred,no UK early-career role in an enabled
 capture_one,Capture One,workable,captureone,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 carmoola,Carmoola,workable,carmoola-1,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
 caxton_associates,Caxton Associates,workable,caxton,,deferred,no UK early-career role in an enabled family (measured: 29 posting(s)),,,,,2026-11-14
+chanel,CHANEL,workday,cc,chanelcareers,deferred,"only 12 UK of 200 (6%), below the 10% bar and under 20 UK roles (measured: 200 posting(s))",,,,,2026-11-14
 charity_link,Charity Link,workable,charity-link,,deferred,no UK early-career role in an enabled family (measured: 178 posting(s)),,,,,2026-11-14
+charlotte_tilbury,Charlotte Tilbury,workable,charlotte-tilbury,,deferred,no UK early-career role in an enabled family (measured: 212 posting(s)),,,,,2026-11-14
 civica,Civica,workable,civica-uk-ltd-1,,deferred,no UK early-career role in an enabled family (measured: 43 posting(s)),,,,,2026-11-14
 clear_junction,Clear Junction,workable,clearjunction,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 clearcourse,ClearCourse,workable,clearcourse-1,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
@@ -337,7 +301,7 @@ drool,DROOL,workable,drool,,deferred,no UK early-career role in an enabled famil
 dyad_artificial_intelligence_limited,Dyad Artificial Intelligence Limited,workable,dyad-ai,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 eight_four,eight&four,workable,eight-and-four,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
 elasticstage,elasticStage,workable,elasticstage,,deferred,no UK early-career role in an enabled family (measured: 7 posting(s)),,,,,2026-11-14
-enermech,EnerMech,workable,enermech,,deferred,no UK early-career role in an enabled family (measured: 95 posting(s)),,,,,2026-11-14
+enermech,EnerMech,workable,enermech,,deferred,no UK early-career role in an enabled family (measured: 91 posting(s)),,,,,2026-11-14
 enstar_group,Enstar Group,greenhouse,enstargrouplimited,,deferred,no UK early-career role in an enabled family (measured: 19 posting(s)),,,,,2026-11-14
 enviri_corporation,Enviri Corporation,smartrecruiters,EnviriCorporation,,deferred,"only 10 UK of 191 (5%), below the 10% bar and under 20 UK roles (measured: 191 posting(s))",,,,,2026-11-14
 environment_bank,Environment Bank,workable,environment-bank,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
@@ -359,6 +323,7 @@ flowx_ai,FlowX.AI,workable,flowxai,,deferred,no UK early-career role in an enabl
 fora_space_limited,Fora Space Limited,workable,fora-space-limited,,deferred,no UK early-career role in an enabled family (measured: 10 posting(s)),,,,,2026-11-14
 founders_forum_group,Founders Forum Group,workable,foundersforum,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 frazer_nash,Frazer Nash,workable,frazer-nash,,deferred,no UK early-career role in an enabled family (measured: 12 posting(s)),,,,,2026-11-14
+freshfields,Freshfields,workday,freshfields,fbd_101,deferred,no UK early-career role in an enabled family (measured: 184 posting(s)),,,,,2026-11-14
 frontiers_media,Frontiers Media,workable,frontiersmedia,,deferred,no UK early-career role in an enabled family (measured: 23 posting(s)),,,,,2026-11-14
 gbg,GBG,workable,gbg,,deferred,no UK early-career role in an enabled family (measured: 6 posting(s)),,,,,2026-11-14
 gen_plus_group,GEN PLUS Group,workable,genplusgroup,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -375,7 +340,6 @@ harris_daf,Harris DAF,workable,harris-daf,,deferred,no UK early-career role in a
 harvey_water_softeners,Harvey Water Softeners,workable,harveywatersofteners,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
 healthcare_central_london,Healthcare Central London,workable,healthcare-central-london,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 heated_mechanical_services,Heated Mechanical Services,workable,heated-mechanical-services,,deferred,no UK early-career role in an enabled family (measured: 20 posting(s)),,,,,2026-11-14
-hellofresh,HelloFresh,greenhouse,hellofresh,,deferred,"only 27 UK of 379 (7%), below the 10% bar (measured: 379 posting(s))",,,,,2026-11-14
 hermeneutic_research,hermeneutic research,workable,hermeneutic,,deferred,no UK early-career role in an enabled family (measured: 16 posting(s)),,,,,2026-11-14
 hodge_jones_allen_llp,Hodge Jones & Allen LLP,workable,hja,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 home_instead,Home Instead,smartrecruiters,HomeInsteadCare,,deferred,no UK early-career role in an enabled family (measured: 2661 posting(s)),,,,,2026-11-14
@@ -386,6 +350,7 @@ hulcan,Hulcan,workable,hulcan,,deferred,no UK early-career role in an enabled fa
 huzzle,Huzzle,workable,huzzle,,deferred,no UK early-career role in an enabled family (measured: 520 posting(s)),,,,,2026-11-14
 ihateironing,ihateironing,workable,ihateironing,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 infleqtion,Infleqtion,workable,coldquanta,,deferred,no UK early-career role in an enabled family (measured: 53 posting(s)),,,,,2026-11-14
+infosys_consulting_europe,Infosys Consulting - Europe,workable,infosys-consulting-europe,,deferred,no UK early-career role in an enabled family (measured: 151 posting(s)),,,,,2026-11-14
 inspired_thinking_group_itg,Inspired Thinking Group (ITG),workable,itg,,deferred,no UK early-career role in an enabled family (measured: 31 posting(s)),,,,,2026-11-14
 intellect,Intellect,workable,intellecthq,,deferred,"only 14 UK of 282 (5%), below the 10% bar (measured: 282 posting(s))",,,,,2026-11-14
 intelligent_change,Intelligent Change,workable,intelligentchange,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -421,6 +386,7 @@ lrn_corporation,LRN Corporation,workable,lrn-corporation,,deferred,"only 1 UK of
 m_i,M&I,workable,mi-forums,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 macphie_ltd,Macphie Ltd,workable,macphie-ltd,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 marcura,Marcura,workable,marcura,,deferred,no UK early-career role in an enabled family (measured: 19 posting(s)),,,,,2026-11-14
+mars,Mars,workday,mars,external,deferred,"only 7 UK of 200 (4%), below the 10% bar and under 20 UK roles (measured: 200 posting(s))",,,,,2026-11-14
 mercata,Mercata,workable,mercata,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 mesa_quantum_systems,Mesa Quantum Systems,workable,mesa-quantum-systems,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
 millennium_hotel_and_resorts_uk,Millennium Hotel and Resorts UK,workable,millennium-hotel-and-resorts,,deferred,no UK early-career role in an enabled family (measured: 55 posting(s)),,,,,2026-11-14
@@ -432,6 +398,7 @@ moreton_capital_partners,Moreton Capital Partners,workable,moreton-capital-partn
 motability_foundation,Motability Foundation,workable,motabilityfoundation,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 motia,Motia,workable,motia,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
 mssc,MSSC,workable,mssc,,deferred,no UK early-career role in an enabled family (measured: 4 posting(s)),,,,,2026-11-14
+myhcm,myhcm,workday,myhcm,betway,deferred,no UK early-career role in an enabled family (measured: 32 posting(s)),,,,,2026-11-14
 naked_wines,Naked Wines,workable,naked-wines,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 national_network_logistics,National Network Logistics,workable,national-network-logistics,,deferred,no UK early-career role in an enabled family (measured: 37 posting(s)),,,,,2026-11-14
 newton_media_ltd,Newton Media Ltd,workable,newton-media-group,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -442,6 +409,7 @@ one_of_us,One Of Us,workable,one-of-us,,deferred,no UK early-career role in an e
 optasia,Optasia,workable,optasia,,deferred,no UK early-career role in an enabled family (measured: 25 posting(s)),,,,,2026-11-14
 optime_group,Optime Group,workable,optimegroup,,deferred,no UK early-career role in an enabled family (measured: 53 posting(s)),,,,,2026-11-14
 outward,Outward,workable,outward,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
+ovo_energy,OVO Energy,greenhouse,ovoenergy,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 panic_stations,Panic Stations,workable,panic-stations,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 parcelly,Parcelly,workable,parcelly,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 payabl,payabl.,workable,payabl,,deferred,no UK early-career role in an enabled family (measured: 26 posting(s)),,,,,2026-11-14
@@ -469,10 +437,12 @@ reasonable_ai,Reasonable AI,workable,reasonable,,deferred,no UK early-career rol
 red_bull,Red Bull,smartrecruiters,RedBull,,deferred,no UK early-career role in an enabled family (measured: 1238 posting(s)),,,,,2026-11-14
 reeve,Reeve,workable,reeve,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 relais_ch_teaux,Relais & Châteaux,smartrecruiters,RelaisChateaux,,deferred,no UK early-career role in an enabled family (measured: 531 posting(s)),,,,,2026-11-14
+rentokil_initial_group,Rentokil Initial  Group,workable,rentokil-initial,,deferred,no UK early-career role in an enabled family (measured: 575 posting(s)),,,,,2026-11-14
 reset_health,Reset Health,workable,resethealth,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 rightangled,Rightangled,workable,rightangled,,deferred,no UK early-career role in an enabled family (measured: 18 posting(s)),,,,,2026-11-14
 rimkus,Rimkus,workable,rimkus,,deferred,"only 11 UK of 122 (9%), below the 10% bar (measured: 122 posting(s))",,,,,2026-11-14
 runway_east,Runway East,workable,runway-east,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
+samsung_electronics,Samsung Electronics,workday,sec,samsung_careers,deferred,"only 1 UK of 200 (0%), below the 10% bar and under 20 UK roles (measured: 200 posting(s))",,,,,2026-11-14
 sap_fioneer,SAP Fioneer,workable,fioneer,,deferred,no UK early-career role in an enabled family (measured: 88 posting(s)),,,,,2026-11-14
 sap_it_business_systeme,SAP IT Business Systeme,smartrecruiters,SAPITBusinessSysteme,,deferred,"only 10 UK of 565 (2%), below the 10% bar and under 20 UK roles (measured: 565 posting(s))",,,,,2026-11-14
 second_nature,Second Nature,workable,secondnature,,deferred,no UK early-career role in an enabled family (measured: 5 posting(s)),,,,,2026-11-14
@@ -480,6 +450,7 @@ seedlegals,SeedLegals,workable,seedlegals,,deferred,no UK early-career role in a
 seez,Seez,workable,seezcareers,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
 selecta,Selecta,workable,selecta,,deferred,no UK early-career role in an enabled family (measured: 25 posting(s)),,,,,2026-11-14
 sentec,Sentec,workable,sentec,,deferred,no UK early-career role in an enabled family (measured: 16 posting(s)),,,,,2026-11-14
+shell,Shell,workday,shell,shellcareers,deferred,"only 12 UK of 148 (8%), below the 10% bar and under 20 UK roles (measured: 148 posting(s))",,,,,2026-11-14
 sign_solutions,Sign Solutions,smartrecruiters,SignSolutions,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
 sika_ag,Sika AG,smartrecruiters,SikaAG,,deferred,"only 7 UK of 707 (1%), below the 10% bar and under 20 UK roles (measured: 707 posting(s))",,,,,2026-11-14
 singulier,Singulier,workable,singulier,,deferred,"only 1 UK of 13 (8%), below the 10% bar (measured: 13 posting(s))",,,,,2026-11-14
@@ -501,6 +472,7 @@ studioxag,StudioXAG,workable,studioxag,,deferred,no UK early-career role in an e
 suade,Suade,workable,suade,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
 sulzer,Sulzer,workday,sulzer,sulzerjobs,deferred,"200 postings, 15 UK (8 %); UK share below the 10 % bar",,,,,2026-11-14
 suri,SURI,workable,suri-3,,deferred,no UK early-career role in an enabled family (measured: 8 posting(s)),,,,,2026-11-14
+synthomer,Synthomer,workday,synthomer,synthomercareers,deferred,"only 5 UK of 62 (8%), below the 10% bar and under 20 UK roles (measured: 62 posting(s))",,,,,2026-11-14
 tetrascience,TetraScience,workable,tetrascience,,deferred,no UK early-career role in an enabled family (measured: 18 posting(s)),,,,,2026-11-14
 the_beauty_tech_group_trading_limited,The Beauty Tech Group Trading Limited,workable,thebeautytechgroup,,deferred,no UK early-career role in an enabled family (measured: 12 posting(s)),,,,,2026-11-14
 the_children_s_investment_fund_foundation,The Children's Investment Fund Foundation,workable,ciff,,deferred,no UK early-career role in an enabled family (measured: 3 posting(s)),,,,,2026-11-14
@@ -538,70 +510,176 @@ workmotion,WorkMotion,workable,workmotion,,deferred,no UK early-career role in a
 wqa,WQA,workable,wearewqa,,deferred,no UK early-career role in an enabled family (measured: 1 posting(s)),,,,,2026-11-14
 wsh_group,WSH Group,smartrecruiters,WSHGroup,,deferred,no UK early-career role in an enabled family (measured: 901 posting(s)),,,,,2026-11-14
 zutec,Zutec,workable,zutec,,deferred,no UK early-career role in an enabled family (measured: 2 posting(s)),,,,,2026-11-14
+2_sisters_food,2 Sisters Food,workable,2sistersfood,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+access_group,Access Group,ashby,access,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+advanced,Advanced,workable,advanced,,rejected,no UK roles at all (measured: 3 posting(s)),,,,,2026-11-14
 aggreko,Aggreko,workable,aggreko,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 airbus,Airbus,workable,airbus,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+allegro_microsystems,Allegro MicroSystems,workday,allegromicro,allegrocareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+amazon_uk,Amazon UK,workable,amazon,,rejected,scan failed: request rejected status=403 permanent (measured: 0 posting(s)),,,,,2026-11-14
+amgen_uk,Amgen UK,workable,amgen,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+analog_devices,Analog Devices,workday,analogdevices,external,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 andurilindustries,Andurilindustries,,,,rejected,2 511 postings for one UK early-career match; disproportionate scan cost,,,,,2026-11-14
+ans_group,ANS Group,lever,ans,,rejected,no UK roles at all (measured: 14 posting(s)),,,,,2026-11-14
+arcadis,Arcadis,workable,arcadis,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+ardian,Ardian,workday,ardian,ardiancareers,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+arup,Arup,workable,arup,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+astrazeneca,AstraZeneca,workable,astrazeneca,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 autodesk,Autodesk,workable,autodesk,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 avis_budget_group,Avis Budget Group,workable,avisbudgetgroup,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 avon,Avon,workable,avon,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+babcock_international,Babcock International,workable,babcock,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+bae_systems,BAE Systems,workable,bae-systems,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+bakkavor,Bakkavor,workable,bakkavor,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+balfour_beatty,Balfour Beatty,workable,balfour-beatty,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+bam_uk,BAM UK,workable,bam,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 bbva,BBVA,workable,bbva,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+biogen_uk,Biogen UK,workable,biogen,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+blackrock,BlackRock,workday,blackrock,blackrock_professional,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+boehringer_ingelheim_uk,Boehringer Ingelheim UK,workable,boehringer-ingelheim,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 boeing,Boeing,workable,boeing,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 bridges_electrical_engineers,Bridges Electrical Engineers,workable,bridges-electrical-engineers,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+bt_group,BT Group,recruitee,bt,,rejected,no UK roles at all (measured: 6 posting(s)),,,,,2026-11-14
 bully_pulpit_international,Bully Pulpit International,workable,bullypulpitinternational,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 bupa,Bupa,workable,bupa,,rejected,no UK roles at all (measured: 16 posting(s)),,,,,2026-11-14
 canonical,Canonical,greenhouse,canonical,,rejected,"314 postings, 2 in a target family, none with an early-career signal",,,,,2026-11-14
 capita,Capita,workable,capita,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 carrier,Carrier,workable,carrier,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
-charlotte_tilbury,Charlotte Tilbury,workable,charlotte-tilbury,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 checkout,Checkout,,,,rejected,board token 404; uses a different ATS,,,,,2026-11-14
 city_science,City Science,recruitee,cityscience.recruitee.com,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
+cityfibre,CityFibre,workable,cityfibre,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+clearwater_analytics,Clearwater Analytics,workday,clearwateranalytics,clearwater_analytics_careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 cloudflare,Cloudflare,greenhouse,cloudflare,,rejected,no UK roles at all (measured: 481 posting(s)),,,,,2026-11-14
+cloudreach,Cloudreach,workable,cloudreach,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+cme_group,CME Group,workday,cmegroup,cme_careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+co_op_food,Co-op Food,greenhouse,coop,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+coca_cola_europacific_partners,Coca-Cola Europacific Partners,recruitee,cocacola,,rejected,scan failed: request rejected status=403 permanent (measured: 0 posting(s)),,,,,2026-11-14
 control_risks,Control Risks,workable,control-risks,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+crane_company,Crane Company,workday,cranecompany,careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+creative_artists_agency,Creative Artists Agency,workday,caa,careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+crowdstrike,CrowdStrike,workday,crowdstrike,crowdstrikecareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 ctccampusboard,Ctccampusboard,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-14
+cundall,Cundall,workable,cundall,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+danaher,Danaher,workday,danaher,danaherjobs,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+db_schenker_uk,DB Schenker UK,workable,dbschenker,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 decoded_limited,Decoded Limited,recruitee,decoded.recruitee.com,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-13
 designer_group,Designer Group,workable,designer,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+dpd_uk,DPD UK,workable,dpd,,rejected,no UK roles at all (measured: 25 posting(s)),,,,,2026-11-14
+entrust,Entrust,workday,entrust,entrustcareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+equals,Equals,workable,equals,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 eurostar_international,Eurostar International,workable,eurostar,,rejected,no UK roles at all (measured: 14 posting(s)),,,,,2026-11-14
+ey_uk,EY UK,workable,ey,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+fedex_uk,FedEx UK,workable,fedex,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+forvis_mazars_uk,Forvis Mazars UK,greenhouse,forvismazars,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+freudenberg,Freudenberg,workday,freudenberg,freudenberg-group,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 g_20_group,G-20 Group,workable,g20,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+galliford_try,Galliford Try,workable,gallifordtry,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+gartner,Gartner,workday,gartner,ext,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+ge_vernova,GE Vernova,workday,gevernova,vernova_externalsite,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 gizmo,Gizmo,workable,gizmo,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+grant_thornton_uk,Grant Thornton UK,recruitee,grantthornton,,rejected,no UK roles at all (measured: 60 posting(s)),,,,,2026-11-14
+greencore,Greencore,workable,greencore,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 gsk,GSK,workable,gsk,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 gunnebo_entrance_control,Gunnebo Entrance Control,workable,gunnebo-entrance-control,,rejected,no UK roles at all (measured: 20 posting(s)),,,,,2026-11-14
 haleon,Haleon,workable,haleon,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+hewlett_packard_enterprise,Hewlett Packard Enterprise,workday,hpe,jobsathpe,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+hexcel,Hexcel,workday,hexcel,hexcelcareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 hitachi,Hitachi,workable,hitachi,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 hp,HP,workday,hp,externalcareersite,rejected,"Workday group board: 333 postings in the graduate search, 4 UK, 0 matches. Deferred rather than scanned; revisit if a UK or campus site is published",,,,,2026-11-14
 hr_wallingford,HR Wallingford,greenhouse,hrwallingford,,rejected,"4 postings, 1 in a target family, none with an early-career signal",,,,,2026-11-14
 hudson_river_trading,Hudson River Trading,workable,hudson-river-trading,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 ik_partners,IK Partners,recruitee,ikpartners.recruitee.com,,rejected,no UK roles at all (measured: 2 posting(s)),,,,,2026-11-13
+imi,IMI,greenhouse,imi,,rejected,no UK roles at all (measured: 3 posting(s)),,,,,2026-11-14
 indra_group_uk_ireland,Indra Group UK & Ireland,workable,indra-ireland,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
-infosys_consulting_europe,Infosys Consulting - Europe,workable,infosys-consulting-europe,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+infosys_uk,Infosys UK,workable,infosys,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+investec,Investec,workable,investec,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+irhythmtech,irhythmtech,workday,irhythmtech,irhythm,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+iris_software,Iris Software,workable,iris-software,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+jacobs,Jacobs,workable,jacobs,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 journey_further,Journey Further,workable,journey-further,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+kainos,Kainos,workable,kainos,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+kith,Kith,workday,kith,kith_external_careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+kla,KLA,workday,kla,search,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 kone,KONE,workable,kone,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+kpmg_uk,KPMG UK,lever,kpmg,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+kuehne_nagel_uk,Kuehne+Nagel UK,workable,kuehne-nagel,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 kurt_geiger,Kurt Geiger,workable,kurt-geiger,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+lidl_uk,Lidl UK,workable,lidl,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 lonza,Lonza,workable,lonza,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+mace,Mace,workable,mace,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+maersk_uk,Maersk UK,workable,maersk,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 man_group,Man Group,workable,man,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+medtronic_uk,Medtronic UK,workable,medtronic,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+morgan_sindall,Morgan Sindall,workable,morgan-sindall,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+motorola_solutions,Motorola Solutions,workday,motorolasolutions,careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+mott_macdonald,Mott MacDonald,workable,mott-macdonald,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 mufg,MUFG,workday,mufgub,mufg-careers,rejected,"Workday group board returns world-wide roles: 36 postings, 2 UK, 0 matches. Revisit if a UK graduate site is published",,,,,2026-11-14
 mwinternshipprogram,Mwinternshipprogram,,,,rejected,"campus/aggregator board, not an employer",,,,,2026-11-14
+nasdaq,Nasdaq,workday,nasdaq,global_external_site,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+neuberger_berman,Neuberger Berman,workday,nb,nbcareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 northern_trust,Northern Trust,workday,ntrs,northerntrust,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 northrop_grumman,Northrop Grumman,workable,northrop-grumman,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+novanta,Novanta,workday,novanta,novanta-careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+novartis_uk,Novartis UK,workable,novartis,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 nvidia,NVIDIA,workable,nvidia,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 nxp,NXP,workable,nxp,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+ontic,Ontic,workday,ontic,onticcareers,rejected,no UK roles at all (measured: 97 posting(s)),,,,,2026-11-14
+p_g,P&G,workday,pg,1000,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+pepsico_uk,PepsiCo UK,workable,pepsico,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 pg,Pg,,,,rejected,"Workday group board: 218 postings in the graduate search, 9 UK, 0 matches. P&G names graduate-entry roles 'Manager', which the seniority exclusions reject; revisit if that naming changes or a UK careers site appears",,,,,2026-11-14
+phoenix_group,Phoenix Group,ashby,phoenix,,rejected,no UK roles at all (measured: 12 posting(s)),,,,,2026-11-14
+pjt_partners,PJT Partners,workday,pjtpartners,careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+premier_foods,Premier Foods,workable,premier-foods,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+prologis,Prologis,workday,prologis,prologis_external_careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 propharma_group,ProPharma Group,workable,propharma-group,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
-rentokil_initial_group,Rentokil Initial  Group,workable,rentokil-initial,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 retirement_villages_group,Retirement Villages Group,workable,retirement-villages,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 revolut,Revolut,,,,rejected,board token 404; careers site is CAPTCHA-gated,,,,,2026-11-14
+rider_levett_bucknall,Rider Levett Bucknall,recruitee,riderlevettbucknall,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 roche,Roche,workable,roche,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 rolls_royce,Rolls-Royce,workday,rollsroyce,intern_graduate,rejected,"intern_graduate site is global: 94 postings, 7 UK, 0 matches, 94 detail requests per scan mostly for non-UK roles",,,,,2026-11-14
+rsm_uk,RSM UK,workable,rsm,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+safran,Safran,workable,safran,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+sage_group,Sage Group,workable,sage,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+sainsbury_s,Sainsbury's,workable,sainsburys,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 salesforce,Salesforce,workable,salesforce,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+sanofi_uk,Sanofi UK,workable,sanofi,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+schroders,Schroders,workable,schroders,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+schweitzer_engineering_laboratories,Schweitzer Engineering Laboratories,workday,selinc,sel,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 selini_capital,Selini Capital,greenhouse,selinicapital,,rejected,no UK roles at all (measured: 4 posting(s)),,,,,2026-11-14
+seqirus,Seqirus,workable,seqirus,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 side,Side,workable,side,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+skanska_uk,Skanska UK,workable,skanska,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+south_west_water,South West Water,workable,south-west-water,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+spirit_aerosystems,Spirit AeroSystems,workable,spirit-aerosystems,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 square_enix,Square Enix,workable,square-enix-america,,rejected,no UK roles at all (measured: 1 posting(s)),,,,,2026-11-14
 state_street,State Street,workable,state-street,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+sweco,Sweco,recruitee,sweco,,rejected,no UK roles at all (measured: 184 posting(s)),,,,,2026-11-14
+systra,Systra,workable,systra,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+takeda_uk,Takeda UK,workable,takeda,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+teledyne_flir,Teledyne FLIR,workday,flir,flircareers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+teleflex_uk,Teleflex UK,workable,teleflex,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 ten_group,Ten Group,workable,ten,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+tencent,Tencent,workday,tencent,tencent_careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
+tesco,Tesco,workable,tesco,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 thales,Thales,workable,thales,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 the_specialist_works,The Specialist Works,workable,thespecialistworks,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+the_walt_disney_company,The Walt Disney Company,workday,disney,disneycareer,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 thirdbridge,Thirdbridge,,,,rejected,35 UK early-career roles but only 1 in a target family,,,,,2026-11-14
 thomson_reuters,Thomson Reuters,workable,thomson-reuters,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+three_uk,Three UK,workable,three,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 toca_social,TOCA Social,workable,toca-social,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+unilever_uk,Unilever UK,greenhouse,unilever,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+ups_uk,UPS UK,workable,ups,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+vattenfall_uk,Vattenfall UK,workable,vattenfall,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+version_1,Version 1,workable,version1,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+vertex_uk,Vertex UK,workable,vertex,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+volkerwessels_uk,VolkerWessels UK,recruitee,volkerwessels,,rejected,no UK roles at all (measured: 6 posting(s)),,,,,2026-11-14
+waitrose,Waitrose,workable,waitrose,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+wates,Wates,workable,wates,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 wellington_management,Wellington Management,workday,wellington,external,rejected,no UK roles at all (measured: 2 posting(s)),,,,,2026-11-14
+white_cap,White Cap,workday,whitecap,careers,rejected,scan failed: invalid JSON in POST response: Expecting value: line 1 column 1 (char 0) (status (measured: 0 posting(s)),,,,,2026-11-14
 wifinity,Wifinity,workable,wifinity,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
 wild_nutrition,Wild Nutrition,workable,wildnutrition,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+wipro_uk,Wipro UK,recruitee,wipro,,rejected,scan failed: request rejected status=403 permanent (measured: 0 posting(s)),,,,,2026-11-14
+wsp,WSP,workable,wsp,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
+xpo_uk,XPO UK,workable,xpo,,rejected,board returned no roles (measured: 0 posting(s)),,,,,2026-11-14
